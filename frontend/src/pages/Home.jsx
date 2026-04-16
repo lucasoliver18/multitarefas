@@ -1,6 +1,13 @@
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import api from '../services/api'
 
 function Home() {
+const [servicos, setServicos] = useState([])
+useEffect(() => {
+  api.get('/servicos').then(res => setServicos(res.data))
+}, [])
+
 const navigate = useNavigate()  
     return (
     <div className="min-h-screen bg-gray-50 flex flex-col max-w-sm mx-auto">
@@ -57,22 +64,21 @@ const navigate = useNavigate()
       {/* Serviços em andamento */}
       <div className="px-6 mb-5">
         <h2 className="text-sm font-bold text-gray-800 mb-3">Serviços em andamento</h2>
-        <div className="flex gap-2">
-          <div className="flex-1 bg-white rounded-2xl p-3 border border-gray-100 shadow-sm">
-            <p className="text-xs text-gray-700 font-medium leading-tight">Pintura de apartamento para Eunice</p>
-            <p className="text-xs text-red-500 mt-2 font-semibold">🔺 Alta</p>
-          </div>
-          <div className="flex-1 bg-white rounded-2xl p-3 border border-gray-100 shadow-sm">
-            <p className="text-xs text-gray-700 font-medium leading-tight">Arrumar notebook de Alessandra</p>
-            <p className="text-xs text-green-500 mt-2 font-semibold">🔻 Baixa</p>
-          </div>
-          <div className="flex-1 bg-white rounded-2xl p-3 border border-gray-100 shadow-sm">
-            <p className="text-xs text-gray-700 font-medium leading-tight">Providenciar novas luzes para Liv</p>
-            <p className="text-xs text-orange-500 mt-2 font-semibold">🔺 Média</p>
-          </div>
-        </div>
-        <p className="text-xs text-blue-500 mt-2">Ver mais</p>
+      <div className="flex gap-2">
+        {servicos.slice(0, 3).map(s => (
+      <div key={s.id} className="flex-1 bg-white rounded-2xl p-3 border border-gray-100 shadow-sm">
+        <p className="text-xs text-gray-700 font-medium leading-tight">{s.titulo} para {s.cliente}</p>
+        <p className={`text-xs mt-2 font-semibold ${
+          s.prioridade === 'alta' ? 'text-red-500' :
+          s.prioridade === 'media' ? 'text-orange-500' : 'text-green-500'
+        }`}>
+          {s.prioridade === 'alta' ? '🔺 Alta' : s.prioridade === 'media' ? '🔺 Média' : '🔻 Baixa'}
+        </p>
       </div>
+        ))}
+      </div>
+  <p className="text-xs text-blue-500 mt-2">Ver mais</p>
+</div>
 
       {/* Input IA */}
       <div className="px-6 mb-6">
