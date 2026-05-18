@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
+import Navbar from '../components/Navbar'
 
 function Home() {
-const [servicos, setServicos] = useState([])
-useEffect(() => {
-  api.get('/servicos').then(res => setServicos(res.data))
-}, [])
+  const [servicos, setServicos] = useState([])
+  const navigate = useNavigate()
 
-const navigate = useNavigate()  
-    return (
+  useEffect(() => {
+    api.get('/servicos').then(res => {
+      setServicos(Array.isArray(res.data) ? res.data : [])
+    })
+  }, [])
+
+  return (
     <div className="min-h-screen bg-gray-50 flex flex-col max-w-sm mx-auto">
 
       {/* Header */}
@@ -20,15 +24,6 @@ const navigate = useNavigate()
             <h1 className="text-base font-bold text-gray-800">Olá, Luciano!</h1>
             <p className="text-xs text-gray-500">Pronto para mais um dia?</p>
           </div>
-        </div>
-
-        {/* Busca */}
-        <div className="mt-4 flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
-          <span className="text-gray-400 text-sm">🔍</span>
-          <input
-            className="flex-1 text-xs text-gray-400 outline-none bg-transparent"
-            placeholder="Quais os serviços que estão pendentes..."
-          />
         </div>
       </div>
 
@@ -49,7 +44,6 @@ const navigate = useNavigate()
                 <div className="flex-1 h-0.5 bg-red-400" />
                 <div className="w-3 h-3 rounded-full bg-red-400" />
               </div>
-              <p className="text-xs text-gray-400 mt-1">1 dia</p>
             </div>
             <div className="ml-4 w-16 h-16 rounded-full border-2 border-red-400 flex flex-col items-center justify-center shrink-0">
               <span className="text-red-500 font-bold text-xl leading-none">1</span>
@@ -57,60 +51,43 @@ const navigate = useNavigate()
               <span className="text-red-500 text-xs leading-none">restante</span>
             </div>
           </div>
-          <p className="text-xs text-blue-500 mt-3">Clique para ver mais detalhes</p>
+          <p className="text-xs text-blue-500 mt-3 cursor-pointer" onClick={() => navigate('/prazos')}>
+            Ver prazos →
+          </p>
         </div>
       </div>
 
       {/* Serviços em andamento */}
-      <div className="px-6 mb-5">
+      <div className="px-6 mb-8">
         <h2 className="text-sm font-bold text-gray-800 mb-3">Serviços em andamento</h2>
-      <div className="flex gap-2">
-        {servicos.slice(0, 3).map(s => (
-      <div key={s.id} className="flex-1 bg-white rounded-2xl p-3 border border-gray-100 shadow-sm">
-        <p className="text-xs text-gray-700 font-medium leading-tight">{s.titulo} para {s.cliente}</p>
-        <p className={`text-xs mt-2 font-semibold ${
-          s.prioridade === 'alta' ? 'text-red-500' :
-          s.prioridade === 'media' ? 'text-orange-500' : 'text-green-500'
-        }`}>
-          {s.prioridade === 'alta' ? '🔺 Alta' : s.prioridade === 'media' ? '🔺 Média' : '🔻 Baixa'}
+        {servicos.length === 0 ? (
+          <p className="text-xs text-gray-400">Nenhum serviço cadastrado ainda.</p>
+        ) : (
+          <div className="flex gap-2">
+            {servicos.slice(0, 3).map(s => (
+              <div key={s.id} className="flex-1 bg-white rounded-2xl p-3 border border-gray-100 shadow-sm">
+                <p className="text-xs text-gray-700 font-medium leading-tight">{s.titulo}</p>
+                <p className="text-xs text-gray-400 mt-1">{s.cliente}</p>
+                <p className={`text-xs mt-2 font-semibold ${
+                  s.prioridade === 'alta' ? 'text-red-500' :
+                  s.prioridade === 'media' ? 'text-orange-500' : 'text-green-500'
+                }`}>
+                  {s.prioridade === 'alta' ? '🔺 Alta' : s.prioridade === 'media' ? '🔸 Média' : '🔻 Baixa'}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+        <p
+          onClick={() => navigate('/servicos')}
+          className="text-xs text-blue-500 mt-2 cursor-pointer"
+        >
+          Ver todos →
         </p>
       </div>
-        ))}
-      </div>
-  <p className="text-xs text-blue-500 mt-2">Ver mais</p>
-</div>
 
-      {/* Input IA */}
-      <div className="px-6 mb-6">
-        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
-          <span className="text-gray-400 text-sm">🔍</span>
-          <input
-            className="flex-1 text-xs text-gray-400 outline-none bg-transparent"
-            placeholder="Deixe me te ajudar a se organizar..."
-          />
-        </div>
-      </div>
-
-    {/* Barra de navegação */}
-    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-sm bg-white border-t border-gray-200 flex justify-around items-center py-3 px-6">
-        <button onClick={() => navigate('/')} className="flex flex-col items-center gap-1">
-            <span className="text-xl">🏠</span>
-            <span className="text-xs text-blue-500 font-semibold">Início</span>
-        </button>
-        <button onClick={() => navigate('/prazos')} className="flex flex-col items-center gap-1">
-            <span className="text-xl">📅</span>
-            <span className="text-xs text-gray-400">Prazos</span>
-        </button>
-        <button onClick={() => navigate('/servicos')} className="flex flex-col items-center gap-1">
-            <span className="text-xl">📋</span>
-            <span className="text-xs text-gray-400">Serviços</span>
-        </button>
-        <button onClick={() => navigate('/novo')} className="flex flex-col items-center gap-1">
-            <span className="text-xl">➕</span>
-            <span className="text-xs text-gray-400">Novo</span>
-        </button>
+      <Navbar />
     </div>
-</div>
   )
 }
 

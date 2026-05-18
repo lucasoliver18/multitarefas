@@ -1,1 +1,9 @@
 @import "tailwindcss";
+
+.nav-label::before {
+  content: attr(data-titulo);
+}
+
+.cal-header::before {
+  content: attr(data-dia);
+}

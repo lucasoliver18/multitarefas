@@ -2,19 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Cliente;
 use App\Models\Servico;
 use Illuminate\Http\Request;
 
 class ServicoController extends Controller
 {
-    // Listar todos os serviços
     public function index()
     {
         $servicos = Servico::orderBy('created_at', 'desc')->get();
         return response()->json($servicos);
     }
 
-    // Criar novo serviço
     public function store(Request $request)
     {
         $request->validate([
@@ -27,17 +26,18 @@ class ServicoController extends Controller
             'tag'       => 'nullable|string',
         ]);
 
-        $servico = Servico::create($request->all());
+        $data = $request->all();
+        $data['cliente_id'] = Cliente::firstOrCreate(['nome' => $request->cliente])->id;
+
+        $servico = Servico::create($data);
         return response()->json($servico, 201);
     }
 
-    // Buscar um serviço
     public function show(Servico $servico)
     {
         return response()->json($servico);
     }
 
-    // Atualizar serviço
     public function update(Request $request, Servico $servico)
     {
         $request->validate([
@@ -50,11 +50,16 @@ class ServicoController extends Controller
             'tag'       => 'nullable|string',
         ]);
 
-        $servico->update($request->all());
+        $data = $request->all();
+
+        if ($request->filled('cliente')) {
+            $data['cliente_id'] = Cliente::firstOrCreate(['nome' => $request->cliente])->id;
+        }
+
+        $servico->update($data);
         return response()->json($servico);
     }
 
-    // Deletar serviço
     public function destroy(Servico $servico)
     {
         $servico->delete();

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '../services/api'
+import Navbar from '../components/Navbar'
 
 function EditarServico() {
   const navigate = useNavigate()
@@ -171,25 +172,7 @@ function EditarServico() {
 
       </div>
 
-      {/* Barra de navegação */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-sm bg-white border-t border-gray-200 flex justify-around items-center py-3 px-6">
-        <button onClick={() => navigate('/')} className="flex flex-col items-center gap-1">
-          <span className="text-xl">🏠</span>
-          <span className="text-xs text-gray-400">Início</span>
-        </button>
-        <button onClick={() => navigate('/prazos')} className="flex flex-col items-center gap-1">
-          <span className="text-xl">📅</span>
-          <span className="text-xs text-gray-400">Prazos</span>
-        </button>
-        <button onClick={() => navigate('/servicos')} className="flex flex-col items-center gap-1">
-          <span className="text-xl">📋</span>
-          <span className="text-xs text-gray-400">Serviços</span>
-        </button>
-        <button onClick={() => navigate('/novo')} className="flex flex-col items-center gap-1">
-          <span className="text-xl">➕</span>
-          <span className="text-xs text-gray-400">Novo</span>
-        </button>
-      </div>
+      <Navbar />
 
     </div>
   )
