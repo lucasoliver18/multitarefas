@@ -2,17 +2,18 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '../services/api'
 import Navbar from '../components/Navbar'
+import { useToast } from '../hooks/useToast'
+
+const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
+const LABEL = 'text-xs font-semibold text-slate-700 mb-1'
 
 function NovoOrcamento() {
   const { servicoId } = useParams()
   const navigate = useNavigate()
+  const toast = useToast()
   const [materiais, setMateriais] = useState([])
   const [servico, setServico] = useState(null)
-  const [form, setForm] = useState({
-    titulo: '',
-    descricao: '',
-    margem_lucro: '0',
-  })
+  const [form, setForm] = useState({ titulo: '', descricao: '', margem_lucro: '0' })
   const [itens, setItens] = useState([])
   const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
@@ -27,9 +28,7 @@ function NovoOrcamento() {
     })
   }, [servicoId])
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
-  }
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
   const adicionarMaterial = (materialId) => {
     if (!materialId || itens.find(i => i.id === Number(materialId))) return
@@ -39,23 +38,17 @@ function NovoOrcamento() {
     }
   }
 
-  const atualizarQuantidade = (id, quantidade) => {
+  const atualizarQuantidade = (id, quantidade) =>
     setItens(itens.map(i => i.id === id ? { ...i, quantidade } : i))
-  }
 
-  const removerItem = (id) => {
-    setItens(itens.filter(i => i.id !== id))
-  }
+  const removerItem = (id) => setItens(itens.filter(i => i.id !== id))
 
   const valorMateriais = itens.reduce((acc, i) => acc + parseFloat(i.preco_unitario) * parseFloat(i.quantidade || 0), 0)
   const valorFinal = valorMateriais * (1 + parseFloat(form.margem_lucro || 0) / 100)
 
   const salvar = async () => {
     setErro('')
-    if (!form.titulo) {
-      setErro('Informe o título do orçamento.')
-      return
-    }
+    if (!form.titulo) { setErro('Informe o título do orçamento.'); return }
     setSalvando(true)
     try {
       await api.post('/orcamentos', {
@@ -65,6 +58,7 @@ function NovoOrcamento() {
         margem_lucro: parseFloat(form.margem_lucro),
         materiais: itens.map(i => ({ id: i.id, quantidade: parseFloat(i.quantidade) })),
       })
+      toast.sucesso('Orçamento criado com sucesso!')
       navigate(`/orcamentos/${servicoId}`)
     } catch (e) {
       setErro(e.response?.data?.message || 'Erro ao salvar orçamento.')
@@ -74,50 +68,42 @@ function NovoOrcamento() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col max-w-sm mx-auto">
+    <div className="min-h-screen bg-slate-50 flex flex-col max-w-sm mx-auto">
 
-      <div className="px-6 pt-10 pb-4">
-        <button onClick={() => navigate(`/orcamentos/${servicoId}`)} className="text-xs text-gray-400 mb-2">← Voltar</button>
-        <h1 className="text-lg font-bold text-gray-800">Novo Orçamento</h1>
-        {servico && <p className="text-xs text-gray-500 mt-1">{servico.titulo}</p>}
+      {/* Header */}
+      <div className="bg-[#1e3a5f] px-6 pt-10 pb-5">
+        <button onClick={() => navigate(`/orcamentos/${servicoId}`)} className="text-xs text-slate-300 mb-3">← Voltar</button>
+        <h1 className="text-lg font-bold text-white">Novo Orçamento</h1>
+        {servico && <p className="text-xs text-slate-300 mt-0.5">{servico.titulo}</p>}
       </div>
 
-      <div className="px-6 flex flex-col gap-4 mb-24">
+      <div className="px-6 pt-5 flex flex-col gap-4 mb-24">
         {erro && (
-          <div className="bg-red-50 text-red-500 text-xs px-4 py-3 rounded-xl border border-red-200">
-            {erro}
-          </div>
+          <div className="bg-red-50 text-red-600 text-xs px-4 py-3 rounded-xl border border-red-200">{erro}</div>
         )}
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-gray-600">Título *</label>
-          <input
-            name="titulo"
-            value={form.titulo}
-            onChange={handleChange}
-            placeholder="Ex: Orçamento Opção A"
-            className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none"
-          />
+          <label className={LABEL}>Título *</label>
+          <input name="titulo" value={form.titulo} onChange={handleChange} placeholder="Ex: Orçamento Opção A" className={INPUT} />
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-gray-600">Descrição</label>
+          <label className={LABEL}>Descrição</label>
           <textarea
             name="descricao"
             value={form.descricao}
             onChange={handleChange}
             placeholder="Detalhes do orçamento..."
             rows={2}
-            className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none resize-none"
+            className={`${INPUT} resize-none`}
           />
         </div>
 
-        {/* Seleção de materiais */}
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-semibold text-gray-600">Materiais</label>
+          <label className={LABEL}>Materiais</label>
           <select
             onChange={(e) => { adicionarMaterial(e.target.value); e.target.value = '' }}
-            className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none text-gray-500"
+            className={INPUT + ' text-slate-500'}
             defaultValue=""
           >
             <option value="" disabled>Selecionar material...</option>
@@ -131,20 +117,18 @@ function NovoOrcamento() {
           {itens.length > 0 && (
             <div className="flex flex-col gap-2 mt-1">
               {itens.map(item => (
-                <div key={item.id} className="bg-white border border-gray-100 rounded-xl px-3 py-2 flex items-center gap-2">
+                <div key={item.id} className="bg-white border border-slate-100 rounded-xl px-3 py-2 flex items-center gap-2">
                   <div className="flex-1">
-                    <p className="text-xs font-semibold text-gray-700">{item.nome}</p>
-                    <p className="text-xs text-gray-400">R$ {parseFloat(item.preco_unitario).toFixed(2)} / {item.unidade_medida}</p>
+                    <p className="text-xs font-semibold text-slate-700">{item.nome}</p>
+                    <p className="text-xs text-slate-400">R$ {parseFloat(item.preco_unitario).toFixed(2)} / {item.unidade_medida}</p>
                   </div>
                   <input
-                    type="number"
-                    min="0.001"
-                    step="0.001"
+                    type="number" min="0.001" step="0.001"
                     value={item.quantidade}
                     onChange={(e) => atualizarQuantidade(item.id, e.target.value)}
-                    className="w-16 border border-gray-200 rounded-lg px-2 py-1 text-xs text-center outline-none"
+                    className="w-16 border border-slate-200 rounded-lg px-2 py-1 text-xs text-center outline-none focus:border-blue-600"
                   />
-                  <span className="text-xs text-gray-400">{item.unidade_medida}</span>
+                  <span className="text-xs text-slate-400">{item.unidade_medida}</span>
                   <button onClick={() => removerItem(item.id)} className="text-red-400 text-xs font-bold ml-1">✕</button>
                 </div>
               ))}
@@ -153,29 +137,20 @@ function NovoOrcamento() {
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-gray-600">Margem de Lucro (%)</label>
-          <input
-            name="margem_lucro"
-            type="number"
-            min="0"
-            step="0.5"
-            value={form.margem_lucro}
-            onChange={handleChange}
-            className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none"
-          />
+          <label className={LABEL}>Margem de Lucro (%)</label>
+          <input name="margem_lucro" type="number" min="0" step="0.5" value={form.margem_lucro} onChange={handleChange} className={INPUT} />
         </div>
 
-        {/* Resumo de valores */}
         <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">
-          <p className="text-xs text-gray-600">Custo materiais: <span className="font-semibold text-gray-800">R$ {valorMateriais.toFixed(2)}</span></p>
-          <p className="text-xs text-gray-600 mt-1">Margem ({form.margem_lucro}%): <span className="font-semibold text-gray-800">R$ {(valorFinal - valorMateriais).toFixed(2)}</span></p>
-          <p className="text-sm font-bold text-blue-600 mt-2">Total: R$ {valorFinal.toFixed(2)}</p>
+          <p className="text-xs text-slate-600">Custo materiais: <span className="font-semibold text-slate-800">R$ {valorMateriais.toFixed(2)}</span></p>
+          <p className="text-xs text-slate-600 mt-1">Margem ({form.margem_lucro}%): <span className="font-semibold text-slate-800">R$ {(valorFinal - valorMateriais).toFixed(2)}</span></p>
+          <p className="text-sm font-bold text-[#2563eb] mt-2">Total: R$ {valorFinal.toFixed(2)}</p>
         </div>
 
         <button
           onClick={salvar}
           disabled={salvando}
-          className="bg-blue-500 text-white text-sm font-semibold py-3 rounded-xl disabled:opacity-60"
+          className="bg-[#2563eb] hover:bg-[#1e3a5f] text-white text-sm font-semibold py-3 rounded-xl disabled:opacity-60 transition-colors"
         >
           {salvando ? 'Salvando...' : 'Salvar Orçamento'}
         </button>

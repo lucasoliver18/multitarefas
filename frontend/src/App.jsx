@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { ToastProvider } from './components/ToastNotification'
 import Home from './pages/Home'
 import Prazos from './pages/Prazos'
 import NovoServico from './pages/NovoServico'
@@ -16,27 +17,29 @@ import EditarCliente from './pages/EditarCliente'
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/prazos" element={<Prazos />} />
-        <Route path="/servicos" element={<Servicos />} />
-        <Route path="/novo" element={<NovoServico />} />
-        <Route path="/editar/:id" element={<EditarServico />} />
+    <ToastProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/prazos" element={<Prazos />} />
+          <Route path="/servicos" element={<Servicos />} />
+          <Route path="/novo" element={<NovoServico />} />
+          <Route path="/editar/:id" element={<EditarServico />} />
 
-        <Route path="/materiais" element={<Materiais />} />
-        <Route path="/materiais/novo" element={<NovoMaterial />} />
-        <Route path="/materiais/editar/:id" element={<EditarMaterial />} />
+          <Route path="/materiais" element={<Materiais />} />
+          <Route path="/materiais/novo" element={<NovoMaterial />} />
+          <Route path="/materiais/editar/:id" element={<EditarMaterial />} />
 
-        <Route path="/orcamentos/:servicoId" element={<Orcamentos />} />
-        <Route path="/orcamentos/:servicoId/novo" element={<NovoOrcamento />} />
-        <Route path="/orcamentos/:servicoId/editar/:id" element={<EditarOrcamento />} />
+          <Route path="/orcamentos/:servicoId" element={<Orcamentos />} />
+          <Route path="/orcamentos/:servicoId/novo" element={<NovoOrcamento />} />
+          <Route path="/orcamentos/:servicoId/editar/:id" element={<EditarOrcamento />} />
 
-        <Route path="/clientes" element={<Clientes />} />
-        <Route path="/clientes/novo" element={<NovoCliente />} />
-        <Route path="/clientes/editar/:id" element={<EditarCliente />} />
-      </Routes>
-    </BrowserRouter>
+          <Route path="/clientes" element={<Clientes />} />
+          <Route path="/clientes/novo" element={<NovoCliente />} />
+          <Route path="/clientes/editar/:id" element={<EditarCliente />} />
+        </Routes>
+      </BrowserRouter>
+    </ToastProvider>
   )
 }
 

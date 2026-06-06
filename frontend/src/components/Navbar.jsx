@@ -18,7 +18,7 @@ function Navbar() {
   }
 
   return (
-    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-sm bg-white border-t border-gray-200 flex justify-around items-center py-3 px-2 z-50">
+    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-sm bg-[#1e3a5f] flex justify-around items-center py-3 px-2 z-50">
       {items.map(({ titulo, icon, path }) => (
         <button
           key={path}
@@ -32,7 +32,7 @@ function Navbar() {
             data-titulo={titulo}
             aria-hidden="true"
             className={`nav-label text-xs font-semibold block text-center overflow-hidden whitespace-nowrap ${
-              isActive(path) ? 'text-blue-500' : 'text-gray-400'
+              isActive(path) ? 'text-[#3b82f6]' : 'text-slate-400'
             }`}
           />
         </button>

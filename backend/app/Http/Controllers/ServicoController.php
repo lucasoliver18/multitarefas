@@ -23,7 +23,7 @@ class ServicoController extends Controller
             'status'    => 'required|in:pendente,em_andamento,finalizado',
             'prazo'     => 'nullable|date',
             'descricao' => 'nullable|string',
-            'tag'       => 'nullable|string',
+            'tag'       => 'nullable|in:informatica,pintura,outros',
         ]);
 
         $data = $request->all();
@@ -47,7 +47,7 @@ class ServicoController extends Controller
             'status'    => 'sometimes|in:pendente,em_andamento,finalizado',
             'prazo'     => 'nullable|date',
             'descricao' => 'nullable|string',
-            'tag'       => 'nullable|string',
+            'tag'       => 'nullable|in:informatica,pintura,outros',
         ]);
 
         $data = $request->all();

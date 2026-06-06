@@ -7,3 +7,21 @@
 .cal-header::before {
   content: attr(data-dia);
 }
+
+@keyframes toast-in {
+  from { transform: translateY(-120%); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+
+@keyframes toast-out {
+  from { transform: translateY(0);     opacity: 1; }
+  to   { transform: translateY(-120%); opacity: 0; }
+}
+
+.toast-enter {
+  animation: toast-in 0.28s cubic-bezier(0.21, 1.02, 0.73, 1) forwards;
+}
+
+.toast-leave {
+  animation: toast-out 0.28s ease-in forwards;
+}

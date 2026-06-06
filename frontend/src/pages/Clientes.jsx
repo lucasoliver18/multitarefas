@@ -2,12 +2,25 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
 import Navbar from '../components/Navbar'
+import { useToast } from '../hooks/useToast'
 
-const corStatus = { finalizado: 'text-green-500', em_andamento: 'text-blue-500', pendente: 'text-orange-500' }
-const labelStatus = { finalizado: '✔ Finalizado', em_andamento: '🔄 Em andamento', pendente: '⏳ Pendente' }
+const TAG_LABEL = { informatica: 'Informática', pintura: 'Pintura', outros: 'Outros' }
+
+const badgeStatus = (s) => ({
+  finalizado:   'bg-[#dcfce7] text-[#166534]',
+  em_andamento: 'bg-[#dbeafe] text-[#1e40af]',
+  pendente:     'bg-[#fef9c3] text-[#854d0e]',
+}[s] || 'bg-[#fef9c3] text-[#854d0e]')
+
+const labelStatus = {
+  finalizado: '✔ Finalizado',
+  em_andamento: '🔄 Em andamento',
+  pendente: '⏳ Pendente',
+}
 
 function Clientes() {
   const navigate = useNavigate()
+  const toast = useToast()
   const [clientes, setClientes] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [busca, setBusca] = useState('')
@@ -30,11 +43,17 @@ function Clientes() {
     }
   }
 
-  const deletarCliente = async (id) => {
-    if (!confirm('Deseja remover este cliente?')) return
-    await api.delete(`/clientes/${id}`)
-    buscarClientes()
-    if (expandido === id) setExpandido(null)
+  const deletarCliente = (id) => {
+    toast.confirmar('Deseja remover este cliente?', async () => {
+      try {
+        await api.delete(`/clientes/${id}`)
+        buscarClientes()
+        if (expandido === id) setExpandido(null)
+        toast.sucesso('Cliente removido!')
+      } catch {
+        toast.erro('Erro ao remover cliente.')
+      }
+    })
   }
 
   const expandirCliente = async (id) => {
@@ -54,80 +73,74 @@ function Clientes() {
   const totalLabel = (n) => n === 0 ? 'nenhum serviço' : n === 1 ? '1 serviço' : `${n} serviços`
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col max-w-sm mx-auto">
+    <div className="min-h-screen bg-slate-50 flex flex-col max-w-sm mx-auto">
 
-      <div className="px-6 pt-10 pb-4">
+      {/* Header */}
+      <div className="bg-[#1e3a5f] px-6 pt-10 pb-5">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-lg font-bold text-gray-800">Clientes</h1>
-            <p className="text-xs text-gray-400 mt-1">
-              {carregando ? 'Carregando...' : clientes.length === 0 ? 'Nenhum cliente cadastrado' : clientes.length === 1 ? '1 cliente' : `${clientes.length} clientes`}
+            <h1 className="text-lg font-bold text-white">Clientes</h1>
+            <p className="text-xs text-slate-300 mt-0.5">
+              {carregando ? 'Carregando...' : clientes.length === 0 ? 'Nenhum cliente' : clientes.length === 1 ? '1 cliente' : `${clientes.length} clientes`}
             </p>
           </div>
           <button
             onClick={() => navigate('/clientes/novo')}
-            className="bg-blue-500 text-white text-xs px-4 py-2 rounded-full font-semibold"
+            className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold"
           >
             + Novo
           </button>
         </div>
 
         {/* Busca */}
-        <div className="mt-4 flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
-          <span className="text-gray-400 text-sm">🔍</span>
+        <div className="mt-4 flex items-center gap-2 bg-white/10 border border-white/20 rounded-xl px-4 py-3">
+          <span className="text-slate-300 text-sm">🔍</span>
           <input
             value={busca}
             onChange={e => setBusca(e.target.value)}
-            className="flex-1 text-xs text-gray-600 outline-none bg-transparent"
+            className="flex-1 text-xs text-white placeholder-slate-400 outline-none bg-transparent"
             placeholder="Buscar cliente pelo nome..."
           />
           {busca && (
-            <button onClick={() => setBusca('')} className="text-gray-300 text-xs">✕</button>
+            <button onClick={() => setBusca('')} className="text-slate-400 text-xs">✕</button>
           )}
         </div>
       </div>
 
-      <div className="px-6 flex flex-col gap-3 mb-24">
+      <div className="px-6 pt-4 flex flex-col gap-3 mb-24">
         {carregando && (
-          <div className="text-center text-gray-400 text-sm mt-10">Carregando clientes...</div>
+          <div className="text-center text-slate-400 text-sm mt-10">Carregando clientes...</div>
         )}
         {!carregando && clientesFiltrados.length === 0 && (
-          <div className="text-center text-gray-400 text-sm mt-10">
-            {busca ? 'Nenhum cliente encontrado para essa busca.' : 'Nenhum cliente cadastrado ainda!'}
+          <div className="text-center text-slate-400 text-sm mt-10">
+            {busca ? 'Nenhum cliente encontrado.' : 'Nenhum cliente cadastrado ainda!'}
           </div>
         )}
 
         {clientesFiltrados.map(c => (
-          <div key={c.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div key={c.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             {/* Card principal */}
-            <div
-              className="p-4 cursor-pointer"
-              onClick={() => expandirCliente(c.id)}
-            >
+            <div className="p-4 cursor-pointer" onClick={() => expandirCliente(c.id)}>
               <div className="flex justify-between items-start">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800">{c.nome}</p>
-                  {c.telefone && (
-                    <p className="text-xs text-gray-500 mt-0.5">📞 {c.telefone}</p>
-                  )}
-                  {c.email && (
-                    <p className="text-xs text-gray-500 mt-0.5">✉️ {c.email}</p>
-                  )}
-                  <p className="text-xs text-gray-400 mt-1">{totalLabel(c.servicos_count)}</p>
+                  <p className="text-sm font-semibold text-slate-800">{c.nome}</p>
+                  {c.telefone && <p className="text-xs text-slate-500 mt-0.5">📞 {c.telefone}</p>}
+                  {c.email && <p className="text-xs text-slate-500 mt-0.5">✉️ {c.email}</p>}
+                  <p className="text-xs text-slate-400 mt-1">{totalLabel(c.servicos_count)}</p>
                 </div>
-                <span className="text-gray-300 text-sm ml-2">{expandido === c.id ? '▲' : '▼'}</span>
+                <span className="text-slate-300 text-sm ml-2">{expandido === c.id ? '▲' : '▼'}</span>
               </div>
 
               <div className="flex justify-end gap-2 mt-3">
                 <button
                   onClick={e => { e.stopPropagation(); navigate(`/clientes/editar/${c.id}`) }}
-                  className="text-xs bg-blue-50 text-blue-500 px-3 py-1 rounded-full font-semibold"
+                  className="text-xs bg-[#2563eb] text-white px-3 py-1.5 rounded-full font-semibold"
                 >
                   Editar
                 </button>
                 <button
                   onClick={e => { e.stopPropagation(); deletarCliente(c.id) }}
-                  className="text-xs bg-red-50 text-red-500 px-3 py-1 rounded-full font-semibold"
+                  className="text-xs bg-[#dc2626] text-white px-3 py-1.5 rounded-full font-semibold"
                 >
                   Excluir
                 </button>
@@ -136,29 +149,29 @@ function Clientes() {
 
             {/* Serviços expandidos */}
             {expandido === c.id && (
-              <div className="border-t border-gray-100 bg-gray-50 px-4 py-3 flex flex-col gap-2">
-                <p className="text-xs font-semibold text-gray-500 mb-1">Serviços prestados</p>
+              <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 flex flex-col gap-2">
+                <p className="text-xs font-semibold text-slate-500 mb-1">Serviços prestados</p>
                 {!servicosCliente[c.id] ? (
-                  <p className="text-xs text-gray-400">Carregando...</p>
+                  <p className="text-xs text-slate-400">Carregando...</p>
                 ) : servicosCliente[c.id].length === 0 ? (
-                  <p className="text-xs text-gray-400">Nenhum serviço registrado para este cliente.</p>
+                  <p className="text-xs text-slate-400">Nenhum serviço registrado para este cliente.</p>
                 ) : (
                   servicosCliente[c.id].map(s => (
-                    <div key={s.id} className="bg-white rounded-xl p-3 border border-gray-100">
+                    <div key={s.id} className="bg-white rounded-xl p-3 border border-slate-100">
                       <div className="flex justify-between items-start gap-2">
-                        <p className="text-xs font-semibold text-gray-700 flex-1 truncate">{s.titulo}</p>
-                        <span className={`text-xs font-semibold shrink-0 ${corStatus[s.status]}`}>
+                        <p className="text-xs font-semibold text-slate-700 flex-1 truncate">{s.titulo}</p>
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${badgeStatus(s.status)}`}>
                           {labelStatus[s.status]}
                         </span>
                       </div>
                       {s.prazo && (
-                        <p className="text-xs text-gray-400 mt-1">
+                        <p className="text-xs text-slate-400 mt-1">
                           Prazo: {new Date(s.prazo + 'T00:00:00').toLocaleDateString('pt-BR')}
                         </p>
                       )}
                       {s.tag && (
-                        <span className="inline-block bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full mt-1">
-                          #{s.tag}
+                        <span className="inline-block bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full mt-1">
+                          {TAG_LABEL[s.tag] || s.tag}
                         </span>
                       )}
                     </div>
