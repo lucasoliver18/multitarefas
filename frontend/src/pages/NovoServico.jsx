@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
 import Navbar from '../components/Navbar'
 import { useToast } from '../hooks/useToast'
 
-const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
+const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
 const LABEL = 'text-xs font-semibold text-slate-700 mb-1'
 
 function NovoServico() {
@@ -21,9 +21,35 @@ function NovoServico() {
   })
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
+  const [clientes, setClientes] = useState([])
+  const [sugestoes, setSugestoes] = useState([])
+
+  useEffect(() => {
+    api.get('/clientes').then(res => {
+      setClientes(Array.isArray(res.data) ? res.data : [])
+    }).catch(() => {})
+  }, [])
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
+  }
+
+  const handleClienteChange = (e) => {
+    const val = e.target.value
+    setForm({ ...form, cliente: val })
+    if (val.trim().length >= 1) {
+      const filtrados = clientes.filter(c =>
+        c.nome.toLowerCase().includes(val.toLowerCase())
+      )
+      setSugestoes(filtrados.slice(0, 5))
+    } else {
+      setSugestoes([])
+    }
+  }
+
+  const selecionarCliente = (nome) => {
+    setForm(prev => ({ ...prev, cliente: nome }))
+    setSugestoes([])
   }
 
   const handleSalvar = async () => {
@@ -36,7 +62,7 @@ function NovoServico() {
     try {
       await api.post('/servicos', form)
       toast.sucesso('Serviço criado com sucesso!')
-      navigate('/')
+      navigate('/servicos')
     } catch {
       setErro('Erro ao salvar serviço. Tente novamente.')
     } finally {
@@ -45,10 +71,10 @@ function NovoServico() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col max-w-sm mx-auto">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
 
       {/* Header */}
-      <div className="bg-[#1e3a5f] px-6 pt-10 pb-5">
+      <div className="page-header bg-[#1e3a5f] px-6 pb-5">
         <h1 className="text-lg font-bold text-white">Novo Serviço</h1>
         <p className="text-xs text-slate-300 mt-0.5">Preencha os dados do serviço</p>
       </div>
@@ -75,13 +101,32 @@ function NovoServico() {
 
         <div>
           <p className={LABEL}>Cliente *</p>
-          <input
-            name="cliente"
-            value={form.cliente}
-            onChange={handleChange}
-            className={INPUT}
-            placeholder="Ex: Eunice"
-          />
+          <div className="relative">
+            <input
+              name="cliente"
+              value={form.cliente}
+              onChange={handleClienteChange}
+              onBlur={() => setTimeout(() => setSugestoes([]), 150)}
+              className={INPUT}
+              placeholder="Ex: Eunice"
+              autoComplete="off"
+            />
+            {sugestoes.length > 0 && (
+              <div className="absolute z-10 top-full left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-lg mt-1 overflow-hidden">
+                {sugestoes.map(c => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onMouseDown={() => selecionarCliente(c.nome)}
+                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 border-b border-slate-100 last:border-0 flex justify-between items-center"
+                  >
+                    <span>{c.nome}</span>
+                    {c.telefone && <span className="text-xs text-slate-400">{c.telefone}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div>
@@ -95,25 +140,24 @@ function NovoServico() {
           />
         </div>
 
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <p className={LABEL}>Prioridade</p>
-            <select name="prioridade" value={form.prioridade} onChange={handleChange} className={INPUT}>
-              <option value="alta">Alta</option>
-              <option value="media">Média</option>
-              <option value="baixa">Baixa</option>
-            </select>
-          </div>
-          <div className="flex-1">
-            <p className={LABEL}>Prazo</p>
-            <input
-              type="date"
-              name="prazo"
-              value={form.prazo}
-              onChange={handleChange}
-              className={INPUT}
-            />
-          </div>
+        <div>
+          <p className={LABEL}>Prioridade</p>
+          <select name="prioridade" value={form.prioridade} onChange={handleChange} className={INPUT}>
+            <option value="alta">Alta</option>
+            <option value="media">Média</option>
+            <option value="baixa">Baixa</option>
+          </select>
+        </div>
+
+        <div>
+          <p className={LABEL}>Prazo</p>
+          <input
+            type="date"
+            name="prazo"
+            value={form.prazo}
+            onChange={handleChange}
+            className={INPUT}
+          />
         </div>
 
         <div>

@@ -31,9 +31,24 @@ function Prazos() {
   const [filtroTags, setFiltroTags] = useState([])
   const [filtroPrioridade, setFiltroPrioridade] = useState(null)
   const [filtroStatus, setFiltroStatus] = useState(null)
-  const [editandoNota, setEditandoNota] = useState(null)
-  const [rascunhoNota, setRascunhoNota] = useState('')
-  const [salvandoNota, setSalvandoNota] = useState(false)
+  const [menuStatus, setMenuStatus] = useState(null)
+
+  const STATUS_OPCOES = [
+    { val: 'pendente',     label: '⏳ Pendente' },
+    { val: 'em_andamento', label: '🔄 Em andamento' },
+    { val: 'finalizado',   label: '✔ Finalizado' },
+  ]
+
+  const mudarStatus = async (id, novoStatus) => {
+    setMenuStatus(null)
+    try {
+      await api.patch(`/servicos/${id}`, { status: novoStatus })
+      setServicos(prev => prev.map(s => s.id === id ? { ...s, status: novoStatus } : s))
+      toast.sucesso('Status atualizado!')
+    } catch {
+      toast.erro('Erro ao atualizar status.')
+    }
+  }
 
   useEffect(() => {
     api.get('/servicos').then(res => {
@@ -97,41 +112,22 @@ function Prazos() {
   const togglePrioridade = (p) => setFiltroPrioridade(prev => prev === p ? null : p)
   const toggleStatus = (s) => setFiltroStatus(prev => prev === s ? null : s)
 
-  const abrirEdicaoNota = (s) => {
-    setEditandoNota(s.id)
-    setRascunhoNota(s.descricao || '')
-  }
-
-  const cancelarEdicaoNota = () => {
-    setEditandoNota(null)
-    setRascunhoNota('')
-  }
-
-  const salvarNota = async (servicoId) => {
-    setSalvandoNota(true)
-    try {
-      await api.patch(`/servicos/${servicoId}`, { descricao: rascunhoNota })
-      setServicos(prev => prev.map(s => s.id === servicoId ? { ...s, descricao: rascunhoNota } : s))
-      setEditandoNota(null)
-      toast.sucesso('Nota salva!')
-    } catch {
-      toast.erro('Erro ao salvar nota.')
-    } finally {
-      setSalvandoNota(false)
-    }
-  }
-
   const limparFiltros = () => { setFiltroTags([]); setFiltroPrioridade(null); setFiltroStatus(null) }
   const temFiltroAtivo = filtroTags.length > 0 || filtroPrioridade || filtroStatus
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col max-w-sm mx-auto">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
 
       {/* Header */}
-      <div className="bg-[#1e3a5f] px-6 pt-10 pb-5">
+      <div className="page-header bg-[#1e3a5f] px-6 pb-5">
         <h1 className="text-lg font-bold text-white">Prazos</h1>
         <p className="text-xs text-slate-300 mt-0.5">Calendário de serviços</p>
       </div>
+
+      {/* Backdrop para fechar menu de status */}
+      {menuStatus && (
+        <div className="fixed inset-0 z-10" onClick={() => setMenuStatus(null)} />
+      )}
 
       {/* Filtros */}
       <div className="px-6 pt-4 mb-3 flex flex-col gap-2">
@@ -149,9 +145,9 @@ function Prazos() {
         <div className="flex gap-2 flex-wrap items-center">
           <span className="text-xs text-slate-400">Prioridade:</span>
           {[
-            { val: 'alta',  label: '🔺 Alta',  ativo: 'bg-red-500 text-white',    inativo: 'bg-slate-100 text-slate-600' },
-            { val: 'media', label: '🔸 Média',  ativo: 'bg-orange-400 text-white', inativo: 'bg-slate-100 text-slate-600' },
-            { val: 'baixa', label: '🔻 Baixa',  ativo: 'bg-green-500 text-white',  inativo: 'bg-slate-100 text-slate-600' },
+            { val: 'alta',  label: '🔴 Alta',  ativo: 'bg-red-100 text-red-700 border border-red-300',       inativo: 'bg-slate-100 text-slate-600' },
+            { val: 'media', label: '🟠 Média',  ativo: 'bg-orange-100 text-orange-700 border border-orange-300', inativo: 'bg-slate-100 text-slate-600' },
+            { val: 'baixa', label: '🟢 Baixa',  ativo: 'bg-green-100 text-green-700 border border-green-300',  inativo: 'bg-slate-100 text-slate-600' },
           ].map(({ val, label, ativo, inativo }) => (
             <button key={val} onClick={() => togglePrioridade(val)}
               className={`text-xs px-3 py-1 rounded-full font-medium ${filtroPrioridade === val ? ativo : inativo}`}>
@@ -266,9 +262,27 @@ function Prazos() {
                       <p className="text-sm font-semibold text-slate-800 truncate">{s.titulo}</p>
                       <p className="text-xs text-slate-500 mt-0.5">Cliente: {s.cliente}</p>
                     </div>
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${badgeStatus(s.status)}`}>
-                      {LABEL_STATUS[s.status]}
-                    </span>
+                    <div className="relative shrink-0">
+                      <button
+                        onClick={() => setMenuStatus(prev => prev === s.id ? null : s.id)}
+                        className={`text-xs font-semibold px-3 py-1.5 rounded-full ${badgeStatus(s.status)}`}
+                      >
+                        {LABEL_STATUS[s.status]}
+                      </button>
+                      {menuStatus === s.id && (
+                        <div className="absolute right-0 top-full mt-1 bg-white rounded-xl border border-slate-200 shadow-lg z-20 min-w-[150px] overflow-hidden">
+                          {STATUS_OPCOES.filter(o => o.val !== s.status).map(o => (
+                            <button
+                              key={o.val}
+                              onClick={() => mudarStatus(s.id, o.val)}
+                              className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-slate-50 border-b border-slate-100 last:border-0 block"
+                            >
+                              {o.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-2 mt-2">
@@ -276,7 +290,7 @@ function Prazos() {
                       s.prioridade === 'alta' ? 'text-red-500' :
                       s.prioridade === 'media' ? 'text-amber-500' : 'text-green-600'
                     }`}>
-                      {s.prioridade === 'alta' ? '🔺 Alta' : s.prioridade === 'media' ? '🔸 Média' : '🔻 Baixa'}
+                      {s.prioridade === 'alta' ? '🔴 Alta' : s.prioridade === 'media' ? '🟠 Média' : '🟢 Baixa'}
                     </span>
                     {s.tag && (
                       <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">
@@ -285,57 +299,20 @@ function Prazos() {
                     )}
                   </div>
 
-                  {/* Notas */}
-                  <div className="mt-2 bg-amber-50 rounded-xl px-3 py-2 border border-amber-100">
-                    <div className="flex justify-between items-center mb-1">
-                      <p className="text-xs text-slate-500 font-semibold">📝 Notas</p>
-                      {editandoNota !== s.id && (
-                        <button
-                          onClick={() => abrirEdicaoNota(s)}
-                          className="text-xs text-amber-600 font-semibold"
-                        >
-                          {s.descricao ? 'Editar' : '+ Adicionar'}
-                        </button>
-                      )}
-                    </div>
-
-                    {editandoNota === s.id ? (
-                      <>
-                        <textarea
-                          value={rascunhoNota}
-                          onChange={e => setRascunhoNota(e.target.value)}
-                          placeholder="Escreva suas anotações aqui..."
-                          rows={3}
-                          className="w-full text-xs text-slate-700 bg-white border border-amber-200 rounded-lg px-2 py-1.5 outline-none resize-none focus:border-amber-400"
-                          autoFocus
-                        />
-                        <div className="flex gap-2 mt-1.5">
-                          <button
-                            onClick={() => salvarNota(s.id)}
-                            disabled={salvandoNota}
-                            className="text-xs bg-amber-500 text-white px-3 py-1 rounded-full font-semibold disabled:opacity-60"
-                          >
-                            {salvandoNota ? 'Salvando...' : 'Salvar'}
-                          </button>
-                          <button
-                            onClick={cancelarEdicaoNota}
-                            className="text-xs text-slate-400 px-3 py-1 rounded-full font-semibold"
-                          >
-                            Cancelar
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <p className="text-xs text-slate-600">
-                        {s.descricao || <span className="text-slate-400 italic">Nenhuma nota adicionada.</span>}
-                      </p>
-                    )}
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      onClick={() => navigate(`/servicos/${s.id}/anotacoes`)}
+                      className="flex-1 text-xs bg-amber-50 text-amber-700 border border-amber-200 px-3 py-2 rounded-xl font-semibold text-center"
+                    >
+                      📝 Anotações
+                    </button>
+                    <button
+                      onClick={() => navigate(`/editar/${s.id}`)}
+                      className="flex-1 text-xs bg-slate-50 text-[#2563eb] border border-slate-200 px-3 py-2 rounded-xl font-semibold text-center"
+                    >
+                      Editar serviço
+                    </button>
                   </div>
-
-                  <button onClick={() => navigate(`/editar/${s.id}`)}
-                    className="mt-3 text-xs text-[#2563eb] font-semibold">
-                    Editar serviço →
-                  </button>
                 </div>
               ))}
             </div>

@@ -25,3 +25,26 @@
 .toast-leave {
   animation: toast-out 0.28s ease-in forwards;
 }
+
+/* Prevent iOS Safari zoom on input focus */
+input, select, textarea {
+  font-size: 16px !important;
+}
+
+/* Normalize date input on iOS (removes native oversized rendering) */
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  line-height: normal;
+}
+
+/* Prevent rubber-band overscroll */
+html, body {
+  overscroll-behavior: none;
+  overflow-x: hidden;
+}
+
+/* Page header: accounts for iOS safe area (notch/dynamic island) */
+.page-header {
+  padding-top: calc(2.5rem + env(safe-area-inset-top, 0px));
+}

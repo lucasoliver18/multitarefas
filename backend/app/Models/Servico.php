@@ -24,4 +24,9 @@ class Servico extends Model
     {
         return $this->hasMany(Orcamento::class);
     }
+
+    public function anotacoes()
+    {
+        return $this->hasMany(Anotacao::class);
+    }
 }

@@ -9,6 +9,7 @@ function Materiais() {
   const toast = useToast()
   const [materiais, setMateriais] = useState([])
   const [carregando, setCarregando] = useState(true)
+  const [confirmandoId, setConfirmandoId] = useState(null)
 
   useEffect(() => {
     buscarMateriais()
@@ -26,23 +27,23 @@ function Materiais() {
     }
   }
 
-  const deletarMaterial = (id) => {
-    toast.confirmar('Deseja remover este material do estoque?', async () => {
-      try {
-        await api.delete(`/materiais/${id}`)
-        buscarMateriais()
-        toast.sucesso('Material removido do estoque!')
-      } catch {
-        toast.erro('Erro ao remover material.')
-      }
-    })
+  const deletarMaterial = async (id) => {
+    setConfirmandoId(null)
+    setMateriais(prev => prev.filter(m => m.id !== id))
+    try {
+      await api.delete(`/materiais/${id}`)
+      toast.sucesso('Material removido do estoque!')
+    } catch {
+      buscarMateriais()
+      toast.erro('Erro ao remover material.')
+    }
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col max-w-sm mx-auto">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
 
       {/* Header */}
-      <div className="bg-[#1e3a5f] px-6 pt-10 pb-5 flex justify-between items-center">
+      <div className="page-header bg-[#1e3a5f] px-6 pb-5 flex justify-between items-center">
         <div>
           <h1 className="text-lg font-bold text-white">Materiais</h1>
           <p className="text-xs text-slate-300 mt-0.5">
@@ -85,20 +86,40 @@ function Materiais() {
               </span>
             </div>
 
-            <div className="flex justify-end gap-2 mt-3">
-              <button
-                onClick={() => navigate(`/materiais/editar/${m.id}`)}
-                className="text-xs bg-[#2563eb] text-white px-3 py-1.5 rounded-full font-semibold"
-              >
-                Editar
-              </button>
-              <button
-                onClick={() => deletarMaterial(m.id)}
-                className="text-xs bg-[#dc2626] text-white px-3 py-1.5 rounded-full font-semibold"
-              >
-                Remover
-              </button>
-            </div>
+            {confirmandoId === m.id ? (
+              <div className="mt-3 pt-3 border-t border-slate-100">
+                <p className="text-xs text-slate-500 mb-2 text-center">Remover este material?</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => deletarMaterial(m.id)}
+                    className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold"
+                  >
+                    Sim, remover
+                  </button>
+                  <button
+                    onClick={() => setConfirmandoId(null)}
+                    className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-end gap-2 mt-3">
+                <button
+                  onClick={() => navigate(`/materiais/editar/${m.id}`)}
+                  className="text-xs bg-[#2563eb] text-white px-3 py-1.5 rounded-full font-semibold"
+                >
+                  Editar
+                </button>
+                <button
+                  onClick={() => setConfirmandoId(m.id)}
+                  className="text-xs bg-[#dc2626] text-white px-3 py-1.5 rounded-full font-semibold"
+                >
+                  Remover
+                </button>
+              </div>
+            )}
           </div>
         ))}
       </div>

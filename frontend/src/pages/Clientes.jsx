@@ -26,6 +26,7 @@ function Clientes() {
   const [busca, setBusca] = useState('')
   const [expandido, setExpandido] = useState(null)
   const [servicosCliente, setServicosCliente] = useState({})
+  const [confirmandoId, setConfirmandoId] = useState(null)
 
   useEffect(() => {
     buscarClientes()
@@ -43,17 +44,17 @@ function Clientes() {
     }
   }
 
-  const deletarCliente = (id) => {
-    toast.confirmar('Deseja remover este cliente?', async () => {
-      try {
-        await api.delete(`/clientes/${id}`)
-        buscarClientes()
-        if (expandido === id) setExpandido(null)
-        toast.sucesso('Cliente removido!')
-      } catch {
-        toast.erro('Erro ao remover cliente.')
-      }
-    })
+  const deletarCliente = async (id) => {
+    setConfirmandoId(null)
+    setClientes(prev => prev.filter(c => c.id !== id))
+    if (expandido === id) setExpandido(null)
+    try {
+      await api.delete(`/clientes/${id}`)
+      toast.sucesso('Cliente removido!')
+    } catch {
+      buscarClientes()
+      toast.erro('Erro ao remover cliente.')
+    }
   }
 
   const expandirCliente = async (id) => {
@@ -73,10 +74,10 @@ function Clientes() {
   const totalLabel = (n) => n === 0 ? 'nenhum serviço' : n === 1 ? '1 serviço' : `${n} serviços`
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col max-w-sm mx-auto">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
 
       {/* Header */}
-      <div className="bg-[#1e3a5f] px-6 pt-10 pb-5">
+      <div className="page-header bg-[#1e3a5f] px-6 pb-5">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-lg font-bold text-white">Clientes</h1>
@@ -131,20 +132,40 @@ function Clientes() {
                 <span className="text-slate-300 text-sm ml-2">{expandido === c.id ? '▲' : '▼'}</span>
               </div>
 
-              <div className="flex justify-end gap-2 mt-3">
-                <button
-                  onClick={e => { e.stopPropagation(); navigate(`/clientes/editar/${c.id}`) }}
-                  className="text-xs bg-[#2563eb] text-white px-3 py-1.5 rounded-full font-semibold"
-                >
-                  Editar
-                </button>
-                <button
-                  onClick={e => { e.stopPropagation(); deletarCliente(c.id) }}
-                  className="text-xs bg-[#dc2626] text-white px-3 py-1.5 rounded-full font-semibold"
-                >
-                  Excluir
-                </button>
-              </div>
+              {confirmandoId === c.id ? (
+                <div className="mt-3 pt-3 border-t border-slate-100">
+                  <p className="text-xs text-slate-500 mb-2 text-center">Remover este cliente?</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={e => { e.stopPropagation(); deletarCliente(c.id) }}
+                      className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold"
+                    >
+                      Sim, remover
+                    </button>
+                    <button
+                      onClick={e => { e.stopPropagation(); setConfirmandoId(null) }}
+                      className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex justify-end gap-2 mt-3">
+                  <button
+                    onClick={e => { e.stopPropagation(); navigate(`/clientes/editar/${c.id}`) }}
+                    className="text-xs bg-[#2563eb] text-white px-3 py-1.5 rounded-full font-semibold"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={e => { e.stopPropagation(); setConfirmandoId(c.id) }}
+                    className="text-xs bg-[#dc2626] text-white px-3 py-1.5 rounded-full font-semibold"
+                  >
+                    Excluir
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Serviços expandidos */}

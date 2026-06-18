@@ -13,8 +13,8 @@ function ToastItem({ toast, onRemove }) {
   const s = STYLES[toast.type] || STYLES.alerta
 
   return (
-    <div className={`${s.bg} text-white rounded-2xl px-4 py-3 shadow-xl flex items-start gap-3 ${toast.leaving ? 'toast-leave' : 'toast-enter'}`}>
-      <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+    <div className={`${s.bg} text-white rounded-2xl px-4 py-3 shadow-xl flex items-center gap-3 ${toast.leaving ? 'toast-leave' : 'toast-enter'}`}>
+      <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold shrink-0">
         {s.icon}
       </span>
       <p className="flex-1 text-sm font-medium leading-snug">{toast.message}</p>
@@ -37,7 +37,7 @@ function ToastItem({ toast, onRemove }) {
       ) : (
         <button
           onClick={() => onRemove(toast.id)}
-          className="text-white/60 hover:text-white shrink-0 text-xl leading-none mt-0.5"
+          className="text-white/60 hover:text-white shrink-0 text-xl leading-none"
         >
           ×
         </button>

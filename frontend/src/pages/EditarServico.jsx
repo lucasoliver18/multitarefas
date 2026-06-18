@@ -4,7 +4,7 @@ import api from '../services/api'
 import Navbar from '../components/Navbar'
 import { useToast } from '../hooks/useToast'
 
-const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
+const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
 const LABEL = 'text-xs font-semibold text-slate-700 mb-1'
 
 function EditarServico() {
@@ -61,10 +61,11 @@ function EditarServico() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col max-w-sm mx-auto">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
 
       {/* Header */}
-      <div className="bg-[#1e3a5f] px-6 pt-10 pb-5">
+      <div className="page-header bg-[#1e3a5f] px-6 pb-5">
+        <button onClick={() => navigate('/servicos')} className="text-xs text-slate-300 mb-3">← Voltar</button>
         <h1 className="text-lg font-bold text-white">Editar Serviço</h1>
         <p className="text-xs text-slate-300 mt-0.5">Atualize os dados do serviço</p>
       </div>
@@ -73,67 +74,63 @@ function EditarServico() {
       <div className="px-6 pt-5 flex flex-col gap-4 mb-24">
 
         {erro && (
-          <div className="bg-red-50 text-red-600 text-xs p-3 rounded-xl border border-red-200">
-            {erro}
-          </div>
+          <div className="bg-red-50 text-red-600 text-xs p-3 rounded-xl border border-red-200">{erro}</div>
         )}
 
-        <div>
-          <p className={LABEL}>Título *</p>
+        <div className="flex flex-col gap-1">
+          <label className={LABEL}>Título *</label>
           <input name="titulo" value={form.titulo} onChange={handleChange} className={INPUT} />
         </div>
 
-        <div>
-          <p className={LABEL}>Cliente *</p>
+        <div className="flex flex-col gap-1">
+          <label className={LABEL}>Cliente *</label>
           <input name="cliente" value={form.cliente} onChange={handleChange} className={INPUT} />
         </div>
 
-        <div>
-          <p className={LABEL}>Descrição</p>
+        <div className="flex flex-col gap-1">
+          <label className={LABEL}>Descrição</label>
           <textarea
             name="descricao"
             value={form.descricao}
             onChange={handleChange}
-            className={`${INPUT} resize-none h-28`}
+            rows={4}
+            className={`${INPUT} resize-none`}
           />
         </div>
 
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <p className={LABEL}>Prioridade</p>
-            <select name="prioridade" value={form.prioridade} onChange={handleChange} className={INPUT}>
-              <option value="alta">Alta</option>
-              <option value="media">Média</option>
-              <option value="baixa">Baixa</option>
-            </select>
-          </div>
-          <div className="flex-1">
-            <p className={LABEL}>Status</p>
-            <select name="status" value={form.status} onChange={handleChange} className={INPUT}>
-              <option value="pendente">Pendente</option>
-              <option value="em_andamento">Em andamento</option>
-              <option value="finalizado">Finalizado</option>
-            </select>
-          </div>
+        <div className="flex flex-col gap-1">
+          <label className={LABEL}>Prioridade</label>
+          <select name="prioridade" value={form.prioridade} onChange={handleChange} className={INPUT}>
+            <option value="alta">🔺 Alta</option>
+            <option value="media">🔸 Média</option>
+            <option value="baixa">🔻 Baixa</option>
+          </select>
         </div>
 
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <p className={LABEL}>Prazo</p>
-            <input type="date" name="prazo" value={form.prazo} onChange={handleChange} className={INPUT} />
-          </div>
-          <div className="flex-1">
-            <p className={LABEL}>Tag</p>
-            <select name="tag" value={form.tag} onChange={handleChange} className={INPUT}>
-              <option value="">Nenhuma</option>
-              <option value="informatica">Informática</option>
-              <option value="pintura">Pintura</option>
-              <option value="outros">Outros</option>
-            </select>
-          </div>
+        <div className="flex flex-col gap-1">
+          <label className={LABEL}>Status</label>
+          <select name="status" value={form.status} onChange={handleChange} className={INPUT}>
+            <option value="pendente">⏳ Pendente</option>
+            <option value="em_andamento">🔄 Em andamento</option>
+            <option value="finalizado">✔ Finalizado</option>
+          </select>
         </div>
 
-        {/* Botões */}
+        <div className="flex flex-col gap-1">
+          <label className={LABEL}>Prazo</label>
+          <input type="date" name="prazo" value={form.prazo} onChange={handleChange} className={INPUT} />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className={LABEL}>Tag</label>
+          <select name="tag" value={form.tag} onChange={handleChange} className={INPUT}>
+            <option value="">Nenhuma</option>
+            <option value="informatica">Informática</option>
+            <option value="pintura">Pintura</option>
+            <option value="outros">Outros</option>
+          </select>
+        </div>
+
         <div className="flex gap-3 mt-2">
           <button
             onClick={handleSalvar}

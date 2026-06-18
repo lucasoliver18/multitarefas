@@ -44,13 +44,16 @@ function EditarMaterial() {
 
   const salvar = async () => {
     setErro('')
-    if (!form.nome || !form.preco_unitario || form.quantidade_estoque === '') {
-      setErro('Preencha nome, preço unitário e quantidade em estoque.')
+    if (!form.nome || !form.preco_unitario) {
+      setErro('Preencha nome e preço unitário.')
       return
     }
     setSalvando(true)
     try {
-      await api.put(`/materiais/${id}`, form)
+      await api.put(`/materiais/${id}`, {
+        ...form,
+        quantidade_estoque: form.quantidade_estoque === '' ? 0 : form.quantidade_estoque,
+      })
       toast.sucesso('Material atualizado com sucesso!')
       navigate('/materiais')
     } catch (e) {
@@ -65,10 +68,10 @@ function EditarMaterial() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col max-w-sm mx-auto">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
 
       {/* Header */}
-      <div className="bg-[#1e3a5f] px-6 pt-10 pb-5">
+      <div className="page-header bg-[#1e3a5f] px-6 pb-5">
         <button onClick={() => navigate('/materiais')} className="text-xs text-slate-300 mb-3">← Voltar</button>
         <h1 className="text-lg font-bold text-white">Editar Material</h1>
       </div>
@@ -106,10 +109,12 @@ function EditarMaterial() {
             <input
               name="quantidade_estoque"
               type="number"
+              inputMode="decimal"
               min="0"
               step="0.001"
               value={form.quantidade_estoque}
               onChange={handleChange}
+              placeholder="0"
               className={INPUT}
             />
           </div>
@@ -120,6 +125,7 @@ function EditarMaterial() {
           <input
             name="preco_unitario"
             type="number"
+            inputMode="decimal"
             min="0"
             step="0.01"
             value={form.preco_unitario}

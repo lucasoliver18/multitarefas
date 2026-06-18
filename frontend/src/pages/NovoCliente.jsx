@@ -32,10 +32,10 @@ function NovoCliente() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col max-w-sm mx-auto">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
 
       {/* Header */}
-      <div className="bg-[#1e3a5f] px-6 pt-10 pb-5">
+      <div className="page-header bg-[#1e3a5f] px-6 pb-5">
         <button onClick={() => navigate('/clientes')} className="text-xs text-slate-300 mb-3">← Voltar</button>
         <h1 className="text-lg font-bold text-white">Novo Cliente</h1>
       </div>

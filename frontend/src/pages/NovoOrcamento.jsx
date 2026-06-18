@@ -68,10 +68,10 @@ function NovoOrcamento() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col max-w-sm mx-auto">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
 
       {/* Header */}
-      <div className="bg-[#1e3a5f] px-6 pt-10 pb-5">
+      <div className="page-header bg-[#1e3a5f] px-6 pb-5">
         <button onClick={() => navigate(`/orcamentos/${servicoId}`)} className="text-xs text-slate-300 mb-3">← Voltar</button>
         <h1 className="text-lg font-bold text-white">Novo Orçamento</h1>
         {servico && <p className="text-xs text-slate-300 mt-0.5">{servico.titulo}</p>}
@@ -123,7 +123,7 @@ function NovoOrcamento() {
                     <p className="text-xs text-slate-400">R$ {parseFloat(item.preco_unitario).toFixed(2)} / {item.unidade_medida}</p>
                   </div>
                   <input
-                    type="number" min="0.001" step="0.001"
+                    type="number" inputMode="decimal" min="0.001" step="0.001"
                     value={item.quantidade}
                     onChange={(e) => atualizarQuantidade(item.id, e.target.value)}
                     className="w-16 border border-slate-200 rounded-lg px-2 py-1 text-xs text-center outline-none focus:border-blue-600"
@@ -138,7 +138,7 @@ function NovoOrcamento() {
 
         <div className="flex flex-col gap-1">
           <label className={LABEL}>Margem de Lucro (%)</label>
-          <input name="margem_lucro" type="number" min="0" step="0.5" value={form.margem_lucro} onChange={handleChange} className={INPUT} />
+          <input name="margem_lucro" type="number" inputMode="decimal" min="0" step="0.5" value={form.margem_lucro} onChange={handleChange} className={INPUT} />
         </div>
 
         <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">

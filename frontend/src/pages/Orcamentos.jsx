@@ -19,6 +19,7 @@ function Orcamentos() {
   const [orcamentos, setOrcamentos] = useState([])
   const [servico, setServico] = useState(null)
   const [carregando, setCarregando] = useState(true)
+  const [confirmando, setConfirmando] = useState(null) // { id, acao }
 
   useEffect(() => {
     Promise.all([
@@ -30,28 +31,26 @@ function Orcamentos() {
     }).finally(() => setCarregando(false))
   }, [servicoId])
 
-  const reprovar = (id) => {
-    toast.confirmar('Deseja reprovar este orçamento?', async () => {
-      try {
-        const res = await api.patch(`/orcamentos/${id}/reprovar`)
-        setOrcamentos(prev => prev.map(o => o.id === id ? res.data : o))
-        toast.sucesso('Orçamento reprovado.')
-      } catch (e) {
-        toast.erro(e.response?.data?.message || 'Erro ao reprovar orçamento.')
-      }
-    })
+  const reprovar = async (id) => {
+    setConfirmando(null)
+    try {
+      const res = await api.patch(`/orcamentos/${id}/reprovar`)
+      setOrcamentos(prev => prev.map(o => o.id === id ? res.data : o))
+      toast.sucesso('Orçamento reprovado.')
+    } catch (e) {
+      toast.erro(e.response?.data?.message || 'Erro ao reprovar orçamento.')
+    }
   }
 
-  const aprovar = (id) => {
-    toast.confirmar('Deseja aprovar este orçamento?', async () => {
-      try {
-        const res = await api.patch(`/orcamentos/${id}/aprovar`)
-        setOrcamentos(prev => prev.map(o => o.id === id ? res.data : o))
-        toast.sucesso('Orçamento aprovado!')
-      } catch (e) {
-        toast.erro(e.response?.data?.message || 'Erro ao aprovar orçamento.')
-      }
-    })
+  const aprovar = async (id) => {
+    setConfirmando(null)
+    try {
+      const res = await api.patch(`/orcamentos/${id}/aprovar`)
+      setOrcamentos(prev => prev.map(o => o.id === id ? res.data : o))
+      toast.sucesso('Orçamento aprovado!')
+    } catch (e) {
+      toast.erro(e.response?.data?.message || 'Erro ao aprovar orçamento.')
+    }
   }
 
   if (carregando) {
@@ -59,10 +58,10 @@ function Orcamentos() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col max-w-sm mx-auto">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
 
       {/* Header */}
-      <div className="bg-[#1e3a5f] px-6 pt-10 pb-5">
+      <div className="page-header bg-[#1e3a5f] px-6 pb-5">
         <button onClick={() => navigate('/servicos')} className="text-xs text-slate-300 mb-3">← Serviços</button>
         <div className="flex justify-between items-center">
           <div>
@@ -124,30 +123,52 @@ function Orcamentos() {
                 </div>
               )}
 
-              <div className="flex justify-end gap-2 mt-3 flex-wrap">
-                {o.status !== 'aprovado' && (
+              {confirmando?.id === o.id ? (
+                <div className="mt-3 pt-3 border-t border-slate-100">
+                  <p className="text-xs text-slate-500 mb-2 text-center">
+                    {confirmando.acao === 'aprovar' ? 'Aprovar este orçamento?' : 'Reprovar este orçamento?'}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => confirmando.acao === 'aprovar' ? aprovar(o.id) : reprovar(o.id)}
+                      className={`flex-1 text-xs text-white py-2 rounded-xl font-semibold ${confirmando.acao === 'aprovar' ? 'bg-[#16a34a]' : 'bg-[#dc2626]'}`}
+                    >
+                      {confirmando.acao === 'aprovar' ? 'Sim, aprovar' : 'Sim, reprovar'}
+                    </button>
+                    <button
+                      onClick={() => setConfirmando(null)}
+                      className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex justify-end gap-2 mt-3 flex-wrap">
+                  {o.status !== 'aprovado' && (
+                    <button
+                      onClick={() => setConfirmando({ id: o.id, acao: 'aprovar' })}
+                      className="text-xs bg-[#16a34a] text-white px-3 py-1.5 rounded-full font-semibold"
+                    >
+                      Aprovar
+                    </button>
+                  )}
+                  {o.status !== 'reprovado' && (
+                    <button
+                      onClick={() => setConfirmando({ id: o.id, acao: 'reprovar' })}
+                      className="text-xs bg-[#dc2626] text-white px-3 py-1.5 rounded-full font-semibold"
+                    >
+                      Reprovar
+                    </button>
+                  )}
                   <button
-                    onClick={() => aprovar(o.id)}
-                    className="text-xs bg-[#16a34a] text-white px-3 py-1.5 rounded-full font-semibold"
+                    onClick={() => navigate(`/orcamentos/${servicoId}/editar/${o.id}`)}
+                    className="text-xs bg-[#2563eb] text-white px-3 py-1.5 rounded-full font-semibold"
                   >
-                    Aprovar
+                    Editar
                   </button>
-                )}
-                {o.status !== 'reprovado' && (
-                  <button
-                    onClick={() => reprovar(o.id)}
-                    className="text-xs bg-[#dc2626] text-white px-3 py-1.5 rounded-full font-semibold"
-                  >
-                    Reprovar
-                  </button>
-                )}
-                <button
-                  onClick={() => navigate(`/orcamentos/${servicoId}/editar/${o.id}`)}
-                  className="text-xs bg-[#2563eb] text-white px-3 py-1.5 rounded-full font-semibold"
-                >
-                  Editar
-                </button>
-              </div>
+                </div>
+              )}
             </div>
           )
         })}

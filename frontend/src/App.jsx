@@ -14,6 +14,7 @@ import EditarOrcamento from './pages/EditarOrcamento'
 import Clientes from './pages/Clientes'
 import NovoCliente from './pages/NovoCliente'
 import EditarCliente from './pages/EditarCliente'
+import Anotacoes from './pages/Anotacoes'
 
 function App() {
   return (
@@ -37,6 +38,8 @@ function App() {
           <Route path="/clientes" element={<Clientes />} />
           <Route path="/clientes/novo" element={<NovoCliente />} />
           <Route path="/clientes/editar/:id" element={<EditarCliente />} />
+
+          <Route path="/servicos/:id/anotacoes" element={<Anotacoes />} />
         </Routes>
       </BrowserRouter>
     </ToastProvider>
