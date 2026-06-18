@@ -34,6 +34,12 @@ Desenvolvido como estágio obrigatório por Lucas José Gomes Oliveira.
 cd C:\multitarefas\backend
 php artisan serve
 
+cd backend
+php artisan serve --host=0.0.0.0 --port=8000
+
 ## Terminal 2 — Frontend (React):
 cd C:\multitarefas\frontend
 npm run dev
+
+cd frontend
+npm run dev -- --host

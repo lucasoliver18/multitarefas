@@ -9,7 +9,7 @@ use App\Http\Controllers\ServicoController;
 
 Route::apiResource('servicos', ServicoController::class);
 Route::apiResource('clientes', ClienteController::class);
-Route::apiResource('materiais', MaterialController::class);
+Route::apiResource('materiais', MaterialController::class)->parameters(['materiais' => 'material']);
 Route::apiResource('orcamentos', OrcamentoController::class);
 
 Route::patch('orcamentos/{orcamento}/aprovar', [OrcamentoController::class, 'aprovar']);
