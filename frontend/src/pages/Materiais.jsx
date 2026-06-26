@@ -22,6 +22,7 @@ function Materiais() {
       setMateriais(Array.isArray(res.data) ? res.data : [])
     } catch {
       setMateriais([])
+      toast.erro('Erro ao carregar materiais. Verifique a conexão.')
     } finally {
       setCarregando(false)
     }

@@ -40,7 +40,8 @@ function NovoMaterial() {
       toast.sucesso('Material adicionado ao estoque!')
       navigate('/materiais')
     } catch (e) {
-      setErro(e.response?.data?.message || 'Erro ao salvar material.')
+      const erros = e.response?.data?.errors
+      setErro(erros ? Object.values(erros).flat()[0] : 'Erro ao salvar material.')
     } finally {
       setSalvando(false)
     }

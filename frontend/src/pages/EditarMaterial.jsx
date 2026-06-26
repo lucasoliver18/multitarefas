@@ -35,6 +35,7 @@ function EditarMaterial() {
           quantidade_estoque: m.quantidade_estoque,
         })
       })
+      .catch(() => setErro('Não foi possível carregar o material.'))
       .finally(() => setCarregando(false))
   }, [id])
 
@@ -57,7 +58,8 @@ function EditarMaterial() {
       toast.sucesso('Material atualizado com sucesso!')
       navigate('/materiais')
     } catch (e) {
-      setErro(e.response?.data?.message || 'Erro ao salvar material.')
+      const erros = e.response?.data?.errors
+      setErro(erros ? Object.values(erros).flat()[0] : 'Erro ao salvar material.')
     } finally {
       setSalvando(false)
     }
