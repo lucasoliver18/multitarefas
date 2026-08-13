@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreClienteRequest;
+use App\Http\Requests\UpdateClienteRequest;
+use App\Http\Resources\ClienteResource;
 use App\Models\Cliente;
 use Illuminate\Http\Request;
 
@@ -15,38 +18,24 @@ class ClienteController extends Controller
             $query->where('nome', 'like', '%' . $request->busca . '%');
         }
 
-        return response()->json($query->orderBy('nome')->get());
+        return ClienteResource::collection($query->orderBy('nome')->get());
     }
 
-    public function store(Request $request)
+    public function store(StoreClienteRequest $request)
     {
-        $request->validate([
-            'nome'        => 'required|string|max:255',
-            'telefone'    => 'nullable|string|max:50',
-            'email'       => 'nullable|email|max:255',
-            'observacoes' => 'nullable|string',
-        ]);
-
-        $cliente = Cliente::create($request->all());
-        return response()->json($cliente, 201);
+        $cliente = Cliente::create($request->validated());
+        return new ClienteResource($cliente);
     }
 
     public function show(Cliente $cliente)
     {
-        return response()->json($cliente->load('servicos'));
+        return new ClienteResource($cliente->load('servicos'));
     }
 
-    public function update(Request $request, Cliente $cliente)
+    public function update(UpdateClienteRequest $request, Cliente $cliente)
     {
-        $request->validate([
-            'nome'        => 'sometimes|string|max:255',
-            'telefone'    => 'nullable|string|max:50',
-            'email'       => 'nullable|email|max:255',
-            'observacoes' => 'nullable|string',
-        ]);
-
-        $cliente->update($request->all());
-        return response()->json($cliente);
+        $cliente->update($request->validated());
+        return new ClienteResource($cliente);
     }
 
     public function destroy(Cliente $cliente)

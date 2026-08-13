@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { ToastProvider } from './components/ToastNotification'
+import ErrorBoundary from './components/ErrorBoundary'
 import Home from './pages/Home'
 import Prazos from './pages/Prazos'
 import NovoServico from './pages/NovoServico'
@@ -18,8 +19,9 @@ import Anotacoes from './pages/Anotacoes'
 
 function App() {
   return (
-    <ToastProvider>
-      <BrowserRouter>
+    <ErrorBoundary>
+      <ToastProvider>
+        <BrowserRouter>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/prazos" element={<Prazos />} />
@@ -41,8 +43,9 @@ function App() {
 
           <Route path="/servicos/:id/anotacoes" element={<Anotacoes />} />
         </Routes>
-      </BrowserRouter>
-    </ToastProvider>
+        </BrowserRouter>
+      </ToastProvider>
+    </ErrorBoundary>
   )
 }
 

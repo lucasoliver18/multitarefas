@@ -1,58 +1,27 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
 import Navbar from '../components/Navbar'
 import { useToast } from '../hooks/useToast'
-
-const TAG_LABEL = { informatica: 'Informática', pintura: 'Pintura', outros: 'Outros' }
-
-const badgeStatus = (s) => ({
-  finalizado:   'bg-[#dcfce7] text-[#166534]',
-  em_andamento: 'bg-[#dbeafe] text-[#1e40af]',
-  pendente:     'bg-[#fef9c3] text-[#854d0e]',
-}[s] || 'bg-[#fef9c3] text-[#854d0e]')
-
-const labelStatus = {
-  finalizado: '✔ Finalizado',
-  em_andamento: '🔄 Em andamento',
-  pendente: '⏳ Pendente',
-}
+import { useClientes } from '../hooks/useClientes'
+import { TAG_LABEL, badgeStatus, labelStatus } from '../utils/status'
 
 function Clientes() {
   const navigate = useNavigate()
   const toast = useToast()
-  const [clientes, setClientes] = useState([])
-  const [carregando, setCarregando] = useState(true)
+  const { clientes, carregando, deletar } = useClientes()
   const [busca, setBusca] = useState('')
   const [expandido, setExpandido] = useState(null)
   const [servicosCliente, setServicosCliente] = useState({})
   const [confirmandoId, setConfirmandoId] = useState(null)
 
-  useEffect(() => {
-    buscarClientes()
-  }, [])
-
-  const buscarClientes = async () => {
-    setCarregando(true)
-    try {
-      const res = await api.get('/clientes')
-      setClientes(Array.isArray(res.data) ? res.data : [])
-    } catch {
-      setClientes([])
-    } finally {
-      setCarregando(false)
-    }
-  }
-
-  const deletarCliente = async (id) => {
+  const handleDeletar = async (id) => {
     setConfirmandoId(null)
-    setClientes(prev => prev.filter(c => c.id !== id))
     if (expandido === id) setExpandido(null)
     try {
-      await api.delete(`/clientes/${id}`)
+      await deletar(id)
       toast.sucesso('Cliente removido!')
     } catch {
-      buscarClientes()
       toast.erro('Erro ao remover cliente.')
     }
   }
@@ -137,7 +106,7 @@ function Clientes() {
                   <p className="text-xs text-slate-500 mb-2 text-center">Remover este cliente?</p>
                   <div className="flex gap-2">
                     <button
-                      onClick={e => { e.stopPropagation(); deletarCliente(c.id) }}
+                      onClick={e => { e.stopPropagation(); handleDeletar(c.id) }}
                       className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold"
                     >
                       Sim, remover
@@ -182,7 +151,7 @@ function Clientes() {
                       <div className="flex justify-between items-start gap-2">
                         <p className="text-xs font-semibold text-slate-700 flex-1 truncate">{s.titulo}</p>
                         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${badgeStatus(s.status)}`}>
-                          {labelStatus[s.status]}
+                          {labelStatus(s.status)}
                         </span>
                       </div>
                       {s.prazo && (

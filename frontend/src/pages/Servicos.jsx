@@ -1,78 +1,42 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import api from '../services/api'
 import Navbar from '../components/Navbar'
 import { useToast } from '../hooks/useToast'
-
-const TAG_LABEL = { informatica: 'Informática', pintura: 'Pintura', outros: 'Outros' }
-
-const borderPrioridade = (p) => {
-  if (p === 'alta')  return 'border-l-[#dc2626]'
-  if (p === 'media') return 'border-l-[#ca8a04]'
-  return 'border-l-[#16a34a]'
-}
-
-const badgeStatus = (s) => {
-  if (s === 'finalizado')   return 'bg-[#dcfce7] text-[#166534]'
-  if (s === 'em_andamento') return 'bg-[#dbeafe] text-[#1e40af]'
-  return 'bg-[#fef9c3] text-[#854d0e]'
-}
-
-const labelStatus = (s) => {
-  if (s === 'finalizado')   return '✔ Finalizado'
-  if (s === 'em_andamento') return '🔄 Em andamento'
-  return '⏳ Pendente'
-}
-
-const STATUS_OPCOES = [
-  { val: 'pendente',     label: '⏳ Pendente' },
-  { val: 'em_andamento', label: '🔄 Em andamento' },
-  { val: 'finalizado',   label: '✔ Finalizado' },
-]
+import { useServicos } from '../hooks/useServicos'
+import {
+  badgeStatus,
+  labelStatus,
+  borderPrioridade,
+  labelPrioridade,
+  corTextoPrioridade,
+  TAG_LABEL,
+  STATUS_OPCOES,
+} from '../utils/status'
 
 function Servicos() {
   const navigate = useNavigate()
   const toast = useToast()
-  const [servicos, setServicos] = useState([])
-  const [carregando, setCarregando] = useState(true)
+  const { servicos, carregando, buscar, deletar, mudarStatus } = useServicos()
   const [menuStatus, setMenuStatus] = useState(null)
   const [confirmandoId, setConfirmandoId] = useState(null)
 
-  useEffect(() => {
-    buscarServicos()
-  }, [])
-
-  const buscarServicos = async () => {
-    setCarregando(true)
-    try {
-      const res = await api.get('/servicos')
-      setServicos(Array.isArray(res.data) ? res.data : [])
-    } catch {
-      setServicos([])
-    } finally {
-      setCarregando(false)
-    }
-  }
-
-  const deletarServico = async (id) => {
+  const handleDeletar = async (id) => {
     setConfirmandoId(null)
-    setServicos(prev => prev.filter(s => s.id !== id))
     try {
-      await api.delete(`/servicos/${id}`)
+      await deletar(id)
       toast.sucesso('Serviço excluído com sucesso!')
     } catch {
-      buscarServicos()
       toast.erro('Erro ao excluir serviço.')
     }
   }
 
-  const mudarStatus = async (id, novoStatus) => {
+  const handleMudarStatus = async (id, novoStatus) => {
     setMenuStatus(null)
     try {
-      await api.patch(`/servicos/${id}`, { status: novoStatus })
-      setServicos(prev => prev.map(s => s.id === id ? { ...s, status: novoStatus } : s))
+      await mudarStatus(id, novoStatus)
       toast.sucesso('Status atualizado!')
     } catch {
+      buscar()
       toast.erro('Erro ao atualizar status.')
     }
   }
@@ -132,7 +96,7 @@ function Servicos() {
                     {STATUS_OPCOES.filter(o => o.val !== s.status).map(o => (
                       <button
                         key={o.val}
-                        onClick={() => mudarStatus(s.id, o.val)}
+                        onClick={() => handleMudarStatus(s.id, o.val)}
                         className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-slate-50 border-b border-slate-100 last:border-0 block"
                       >
                         {o.label}
@@ -152,11 +116,8 @@ function Servicos() {
                 </p>
               )}
               <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <span className={`text-xs font-medium ${
-                  s.prioridade === 'alta' ? 'text-red-500' :
-                  s.prioridade === 'media' ? 'text-amber-500' : 'text-green-600'
-                }`}>
-                  {s.prioridade === 'alta' ? '🔴 Alta' : s.prioridade === 'media' ? '🟠 Média' : '🟢 Baixa'}
+                <span className={`text-xs font-medium ${corTextoPrioridade(s.prioridade)}`}>
+                  {labelPrioridade(s.prioridade)}
                 </span>
                 {s.tag && (
                   <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">
@@ -182,13 +143,13 @@ function Servicos() {
               </button>
             </div>
 
-            {/* Ações secundárias / Confirmação de exclusão */}
+            {/* Confirmação de exclusão */}
             {confirmandoId === s.id ? (
               <div className="mt-2 pt-2 border-t border-slate-100">
                 <p className="text-xs text-slate-500 mb-2 text-center">Excluir este serviço?</p>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => deletarServico(s.id)}
+                    onClick={() => handleDeletar(s.id)}
                     className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold"
                   >
                     Sim, excluir

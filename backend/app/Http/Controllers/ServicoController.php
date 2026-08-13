@@ -2,62 +2,41 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreServicoRequest;
+use App\Http\Requests\UpdateServicoRequest;
+use App\Http\Resources\ServicoResource;
 use App\Models\Cliente;
 use App\Models\Servico;
-use Illuminate\Http\Request;
 
 class ServicoController extends Controller
 {
     public function index()
     {
-        $servicos = Servico::orderBy('created_at', 'desc')->get();
-        return response()->json($servicos);
+        $servicos = Servico::with('clienteRelacao')->orderBy('created_at', 'desc')->get();
+        return ServicoResource::collection($servicos);
     }
 
-    public function store(Request $request)
+    public function store(StoreServicoRequest $request)
     {
-        $request->validate([
-            'titulo'    => 'required|string|max:255',
-            'cliente'   => 'required|string|max:255',
-            'prioridade'=> 'required|in:alta,media,baixa',
-            'status'    => 'required|in:pendente,em_andamento,finalizado',
-            'prazo'     => 'nullable|date',
-            'descricao' => 'nullable|string',
-            'tag'       => 'nullable|in:informatica,pintura,outros',
-        ]);
-
-        $data = $request->all();
-        $data['cliente_id'] = Cliente::firstOrCreate(['nome' => $request->cliente])->id;
-
+        $data = $request->validated();
+        $data['cliente_id'] = Cliente::firstOrCreate(['nome' => $data['cliente']])->id;
         $servico = Servico::create($data);
-        return response()->json($servico, 201);
+        return new ServicoResource($servico->load('clienteRelacao'));
     }
 
     public function show(Servico $servico)
     {
-        return response()->json($servico);
+        return new ServicoResource($servico->load('clienteRelacao'));
     }
 
-    public function update(Request $request, Servico $servico)
+    public function update(UpdateServicoRequest $request, Servico $servico)
     {
-        $request->validate([
-            'titulo'    => 'sometimes|string|max:255',
-            'cliente'   => 'sometimes|string|max:255',
-            'prioridade'=> 'sometimes|in:alta,media,baixa',
-            'status'    => 'sometimes|in:pendente,em_andamento,finalizado',
-            'prazo'     => 'nullable|date',
-            'descricao' => 'nullable|string',
-            'tag'       => 'nullable|in:informatica,pintura,outros',
-        ]);
-
-        $data = $request->all();
-
-        if ($request->filled('cliente')) {
-            $data['cliente_id'] = Cliente::firstOrCreate(['nome' => $request->cliente])->id;
+        $data = $request->validated();
+        if (!empty($data['cliente'])) {
+            $data['cliente_id'] = Cliente::firstOrCreate(['nome' => $data['cliente']])->id;
         }
-
         $servico->update($data);
-        return response()->json($servico);
+        return new ServicoResource($servico->load('clienteRelacao'));
     }
 
     public function destroy(Servico $servico)

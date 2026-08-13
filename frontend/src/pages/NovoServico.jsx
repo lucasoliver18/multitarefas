@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
 import Navbar from '../components/Navbar'
 import { useToast } from '../hooks/useToast'
+import { useClientes } from '../hooks/useClientes'
 
 const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
 const LABEL = 'text-xs font-semibold text-slate-700 mb-1'
@@ -10,6 +11,7 @@ const LABEL = 'text-xs font-semibold text-slate-700 mb-1'
 function NovoServico() {
   const navigate = useNavigate()
   const toast = useToast()
+  const { clientes } = useClientes()
   const [form, setForm] = useState({
     titulo: '',
     descricao: '',
@@ -21,14 +23,7 @@ function NovoServico() {
   })
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
-  const [clientes, setClientes] = useState([])
   const [sugestoes, setSugestoes] = useState([])
-
-  useEffect(() => {
-    api.get('/clientes').then(res => {
-      setClientes(Array.isArray(res.data) ? res.data : [])
-    }).catch(() => {})
-  }, [])
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })

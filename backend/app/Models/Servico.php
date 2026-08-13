@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Servico extends Model
 {
-    use SoftDeletes;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'titulo',
@@ -19,6 +20,11 @@ class Servico extends Model
         'prazo',
         'tag',
     ];
+
+    public function clienteRelacao()
+    {
+        return $this->belongsTo(Cliente::class, 'cliente_id');
+    }
 
     public function orcamentos()
     {

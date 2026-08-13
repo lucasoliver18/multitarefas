@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import api from '../services/api'
 import Navbar from '../components/Navbar'
 import { useToast } from '../hooks/useToast'
+import { useMateriais } from '../hooks/useMateriais'
 
 const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
 const LABEL = 'text-xs font-semibold text-slate-700 mb-1'
@@ -11,7 +12,7 @@ function NovoOrcamento() {
   const { servicoId } = useParams()
   const navigate = useNavigate()
   const toast = useToast()
-  const [materiais, setMateriais] = useState([])
+  const { materiais } = useMateriais()
   const [servico, setServico] = useState(null)
   const [form, setForm] = useState({ titulo: '', descricao: '', margem_lucro: '0' })
   const [itens, setItens] = useState([])
@@ -19,13 +20,7 @@ function NovoOrcamento() {
   const [salvando, setSalvando] = useState(false)
 
   useEffect(() => {
-    Promise.all([
-      api.get('/materiais'),
-      api.get(`/servicos/${servicoId}`),
-    ]).then(([resMat, resSrv]) => {
-      setMateriais(resMat.data)
-      setServico(resSrv.data)
-    })
+    api.get(`/servicos/${servicoId}`).then(res => setServico(res.data))
   }, [servicoId])
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })

@@ -1,30 +1,29 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import api from '../services/api'
 import Navbar from '../components/Navbar'
 import { useToast } from '../hooks/useToast'
+import { useServicos } from '../hooks/useServicos'
+import {
+  badgeStatus,
+  labelStatus,
+  TAG_LABEL,
+  STATUS_OPCOES,
+  labelPrioridade,
+  corTextoPrioridade,
+} from '../utils/status'
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 const DIAS_SEMANA = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
 
 const COR_PONTO = { alta: 'bg-red-500', media: 'bg-orange-400', baixa: 'bg-green-400' }
 
-const TAG_LABEL = { informatica: 'Informática', pintura: 'Pintura', outros: 'Outros' }
-
-const badgeStatus = (s) => ({
-  finalizado:   'bg-[#dcfce7] text-[#166534]',
-  em_andamento: 'bg-[#dbeafe] text-[#1e40af]',
-  pendente:     'bg-[#fef9c3] text-[#854d0e]',
-}[s] || 'bg-[#fef9c3] text-[#854d0e]')
-
-const LABEL_STATUS = { finalizado: '✔ Finalizado', em_andamento: '🔄 Em andamento', pendente: '⏳ Pendente' }
-
 function Prazos() {
   const navigate = useNavigate()
   const toast = useToast()
   const hoje = new Date()
+  const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`
 
-  const [servicos, setServicos] = useState([])
+  const { servicos, mudarStatus: mudarStatusHook } = useServicos()
   const [ano, setAno] = useState(hoje.getFullYear())
   const [mes, setMes] = useState(hoje.getMonth())
   const [diaSelecionado, setDiaSelecionado] = useState(hoje.getDate())
@@ -33,28 +32,15 @@ function Prazos() {
   const [filtroStatus, setFiltroStatus] = useState(null)
   const [menuStatus, setMenuStatus] = useState(null)
 
-  const STATUS_OPCOES = [
-    { val: 'pendente',     label: '⏳ Pendente' },
-    { val: 'em_andamento', label: '🔄 Em andamento' },
-    { val: 'finalizado',   label: '✔ Finalizado' },
-  ]
-
   const mudarStatus = async (id, novoStatus) => {
     setMenuStatus(null)
     try {
-      await api.patch(`/servicos/${id}`, { status: novoStatus })
-      setServicos(prev => prev.map(s => s.id === id ? { ...s, status: novoStatus } : s))
+      await mudarStatusHook(id, novoStatus)
       toast.sucesso('Status atualizado!')
     } catch {
       toast.erro('Erro ao atualizar status.')
     }
   }
-
-  useEffect(() => {
-    api.get('/servicos').then(res => {
-      setServicos(Array.isArray(res.data) ? res.data : [])
-    })
-  }, [])
 
   const todasTags = useMemo(() =>
     [...new Set(servicos.map(s => s.tag).filter(Boolean))],
@@ -69,6 +55,16 @@ function Prazos() {
       return true
     })
   }, [servicos, filtroTags, filtroPrioridade, filtroStatus])
+
+  const vencidos = useMemo(() =>
+    servicosFiltrados.filter(s => s.prazo && s.status !== 'finalizado' && s.prazo < hojeStr),
+    [servicosFiltrados, hojeStr]
+  )
+
+  const semPrazo = useMemo(() =>
+    servicosFiltrados.filter(s => !s.prazo && s.status !== 'finalizado'),
+    [servicosFiltrados]
+  )
 
   const servicosDaData = (d) => {
     const dateStr = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
@@ -111,22 +107,116 @@ function Prazos() {
     setFiltroTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])
   const togglePrioridade = (p) => setFiltroPrioridade(prev => prev === p ? null : p)
   const toggleStatus = (s) => setFiltroStatus(prev => prev === s ? null : s)
-
   const limparFiltros = () => { setFiltroTags([]); setFiltroPrioridade(null); setFiltroStatus(null) }
   const temFiltroAtivo = filtroTags.length > 0 || filtroPrioridade || filtroStatus
+
+  const CardServico = ({ s }) => (
+    <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+      <div className="flex justify-between items-start gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-slate-800 truncate">{s.titulo}</p>
+          <p className="text-xs text-slate-500 mt-0.5">Cliente: {s.cliente}</p>
+        </div>
+        <div className="relative shrink-0">
+          <button
+            onClick={() => setMenuStatus(prev => prev === s.id ? null : s.id)}
+            className={`text-xs font-semibold px-3 py-1.5 rounded-full ${badgeStatus(s.status)}`}
+          >
+            {labelStatus(s.status)}
+          </button>
+          {menuStatus === s.id && (
+            <div className="absolute right-0 top-full mt-1 bg-white rounded-xl border border-slate-200 shadow-lg z-20 min-w-[150px] overflow-hidden">
+              {STATUS_OPCOES.filter(o => o.val !== s.status).map(o => (
+                <button
+                  key={o.val}
+                  onClick={() => mudarStatus(s.id, o.val)}
+                  className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-slate-50 border-b border-slate-100 last:border-0 block"
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 mt-2">
+        <span className={`text-xs font-semibold ${corTextoPrioridade(s.prioridade)}`}>
+          {labelPrioridade(s.prioridade)}
+        </span>
+        {s.tag && (
+          <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">
+            {TAG_LABEL[s.tag] || s.tag}
+          </span>
+        )}
+      </div>
+
+      <div className="flex gap-2 mt-3">
+        <button
+          onClick={() => navigate(`/servicos/${s.id}/anotacoes`)}
+          className="flex-1 text-xs bg-amber-50 text-amber-700 border border-amber-200 px-3 py-2 rounded-xl font-semibold text-center"
+        >
+          📝 Anotações
+        </button>
+        <button
+          onClick={() => navigate(`/editar/${s.id}`)}
+          className="flex-1 text-xs bg-slate-50 text-[#2563eb] border border-slate-200 px-3 py-2 rounded-xl font-semibold text-center"
+        >
+          Editar serviço
+        </button>
+      </div>
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
 
       {/* Header */}
-      <div className="page-header bg-[#1e3a5f] px-6 pb-5">
-        <h1 className="text-lg font-bold text-white">Prazos</h1>
-        <p className="text-xs text-slate-300 mt-0.5">Calendário de serviços</p>
+      <div className="page-header bg-[#1e3a5f] px-6 pb-5 flex justify-between items-center">
+        <div>
+          <h1 className="text-lg font-bold text-white">Prazos</h1>
+          <p className="text-xs text-slate-300 mt-0.5">Calendário de serviços</p>
+        </div>
+        <button
+          onClick={() => navigate('/novo')}
+          className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold"
+        >
+          + Novo
+        </button>
       </div>
 
       {/* Backdrop para fechar menu de status */}
       {menuStatus && (
         <div className="fixed inset-0 z-10" onClick={() => setMenuStatus(null)} />
+      )}
+
+      {/* Prazos vencidos */}
+      {vencidos.length > 0 && (
+        <div className="px-6 pt-4">
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
+            <p className="text-sm font-bold text-red-700 mb-3">
+              ⚠ {vencidos.length} prazo{vencidos.length > 1 ? 's' : ''} vencido{vencidos.length > 1 ? 's' : ''}
+            </p>
+            <div className="flex flex-col gap-2">
+              {vencidos.map(s => (
+                <div key={s.id} className="flex justify-between items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-red-800 truncate">{s.titulo}</p>
+                    <p className="text-xs text-red-500">
+                      Venceu em {new Date(s.prazo + 'T00:00:00').toLocaleDateString('pt-BR')}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => navigate(`/editar/${s.id}`)}
+                    className="text-xs bg-red-600 text-white px-3 py-1.5 rounded-full font-semibold shrink-0"
+                  >
+                    Editar
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Filtros */}
@@ -193,7 +283,6 @@ function Prazos() {
             </button>
           </div>
 
-          {/* Headers dos dias — via CSS attr() para imunidade ao autocomplete/translate */}
           <div className="grid grid-cols-7 mb-1">
             {DIAS_SEMANA.map(d => (
               <div
@@ -205,7 +294,6 @@ function Prazos() {
             ))}
           </div>
 
-          {/* Dias do mês */}
           {semanas.map((semana, i) => (
             <div key={i} className="grid grid-cols-7">
               {semana.map((dia, j) => {
@@ -241,7 +329,7 @@ function Prazos() {
 
       {/* Serviços do dia selecionado */}
       {diaSelecionado && (
-        <div className="px-6 mb-24">
+        <div className="px-6 mb-4">
           <h2 className="text-sm font-bold text-slate-800 mb-3">
             {diaSelecionado} de {MESES[mes]} de {ano}
             <span className="text-xs font-normal text-slate-400 ml-2">
@@ -255,71 +343,56 @@ function Prazos() {
             </div>
           ) : (
             <div className="flex flex-col gap-2">
-              {servicosDiaSelecionado.map(s => (
-                <div key={s.id} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
-                  <div className="flex justify-between items-start gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-800 truncate">{s.titulo}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">Cliente: {s.cliente}</p>
-                    </div>
-                    <div className="relative shrink-0">
-                      <button
-                        onClick={() => setMenuStatus(prev => prev === s.id ? null : s.id)}
-                        className={`text-xs font-semibold px-3 py-1.5 rounded-full ${badgeStatus(s.status)}`}
-                      >
-                        {LABEL_STATUS[s.status]}
-                      </button>
-                      {menuStatus === s.id && (
-                        <div className="absolute right-0 top-full mt-1 bg-white rounded-xl border border-slate-200 shadow-lg z-20 min-w-[150px] overflow-hidden">
-                          {STATUS_OPCOES.filter(o => o.val !== s.status).map(o => (
-                            <button
-                              key={o.val}
-                              onClick={() => mudarStatus(s.id, o.val)}
-                              className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-slate-50 border-b border-slate-100 last:border-0 block"
-                            >
-                              {o.label}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className={`text-xs font-semibold ${
-                      s.prioridade === 'alta' ? 'text-red-500' :
-                      s.prioridade === 'media' ? 'text-amber-500' : 'text-green-600'
-                    }`}>
-                      {s.prioridade === 'alta' ? '🔴 Alta' : s.prioridade === 'media' ? '🟠 Média' : '🟢 Baixa'}
-                    </span>
-                    {s.tag && (
-                      <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">
-                        {TAG_LABEL[s.tag] || s.tag}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2 mt-3">
-                    <button
-                      onClick={() => navigate(`/servicos/${s.id}/anotacoes`)}
-                      className="flex-1 text-xs bg-amber-50 text-amber-700 border border-amber-200 px-3 py-2 rounded-xl font-semibold text-center"
-                    >
-                      📝 Anotações
-                    </button>
-                    <button
-                      onClick={() => navigate(`/editar/${s.id}`)}
-                      className="flex-1 text-xs bg-slate-50 text-[#2563eb] border border-slate-200 px-3 py-2 rounded-xl font-semibold text-center"
-                    >
-                      Editar serviço
-                    </button>
-                  </div>
-                </div>
-              ))}
+              {servicosDiaSelecionado.map(s => <CardServico key={s.id} s={s} />)}
             </div>
           )}
         </div>
       )}
 
+      {/* Serviços sem prazo definido */}
+      {semPrazo.length > 0 && (
+        <div className="px-6 mb-4">
+          <h2 className="text-sm font-bold text-slate-800 mb-3">
+            Sem prazo definido
+            <span className="text-xs font-normal text-slate-400 ml-2">
+              ({semPrazo.length} serviço{semPrazo.length > 1 ? 's' : ''})
+            </span>
+          </h2>
+          <div className="flex flex-col gap-2">
+            {semPrazo.map(s => (
+              <div key={s.id} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 truncate">{s.titulo}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{s.cliente}</p>
+                  </div>
+                  <span className={`text-xs font-semibold px-3 py-1 rounded-full shrink-0 ${badgeStatus(s.status)}`}>
+                    {labelStatus(s.status)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className={`text-xs font-semibold ${corTextoPrioridade(s.prioridade)}`}>
+                    {labelPrioridade(s.prioridade)}
+                  </span>
+                  {s.tag && (
+                    <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">
+                      {TAG_LABEL[s.tag] || s.tag}
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => navigate(`/editar/${s.id}`)}
+                  className="mt-3 w-full text-xs bg-slate-50 text-[#2563eb] border border-slate-200 px-3 py-2 rounded-xl font-semibold text-center"
+                >
+                  Definir prazo →
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="h-24" />
       <Navbar />
     </div>
   )

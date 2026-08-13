@@ -1,43 +1,43 @@
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import api from '../services/api'
 import Navbar from '../components/Navbar'
 import { useToast } from '../hooks/useToast'
+import { useMateriais } from '../hooks/useMateriais'
 
 function Materiais() {
   const navigate = useNavigate()
   const toast = useToast()
-  const [materiais, setMateriais] = useState([])
-  const [carregando, setCarregando] = useState(true)
+  const { materiais, carregando, deletar } = useMateriais()
   const [confirmandoId, setConfirmandoId] = useState(null)
+  const [busca, setBusca] = useState('')
 
-  useEffect(() => {
-    buscarMateriais()
-  }, [])
-
-  const buscarMateriais = async () => {
-    setCarregando(true)
+  const handleDeletar = async (id) => {
+    setConfirmandoId(null)
     try {
-      const res = await api.get('/materiais')
-      setMateriais(Array.isArray(res.data) ? res.data : [])
+      await deletar(id)
+      toast.sucesso('Material removido do estoque!')
     } catch {
-      setMateriais([])
-      toast.erro('Erro ao carregar materiais. Verifique a conexão.')
-    } finally {
-      setCarregando(false)
+      toast.erro('Erro ao remover material.')
     }
   }
 
-  const deletarMaterial = async (id) => {
-    setConfirmandoId(null)
-    setMateriais(prev => prev.filter(m => m.id !== id))
-    try {
-      await api.delete(`/materiais/${id}`)
-      toast.sucesso('Material removido do estoque!')
-    } catch {
-      buscarMateriais()
-      toast.erro('Erro ao remover material.')
-    }
+  const zerados = useMemo(
+    () => materiais.filter(m => parseFloat(m.quantidade_estoque) <= 0).length,
+    [materiais]
+  )
+
+  const materiaisFiltrados = useMemo(() => {
+    if (!busca.trim()) return materiais
+    return materiais.filter(m =>
+      m.nome.toLowerCase().includes(busca.toLowerCase())
+    )
+  }, [materiais, busca])
+
+  const subtitulo = () => {
+    if (carregando) return 'Carregando...'
+    if (materiais.length === 0) return 'Estoque vazio'
+    const total = materiais.length === 1 ? '1 item' : `${materiais.length} itens`
+    return zerados > 0 ? `${total} • ${zerados} zerado${zerados > 1 ? 's' : ''}` : total
   }
 
   return (
@@ -47,8 +47,8 @@ function Materiais() {
       <div className="page-header bg-[#1e3a5f] px-6 pb-5 flex justify-between items-center">
         <div>
           <h1 className="text-lg font-bold text-white">Materiais</h1>
-          <p className="text-xs text-slate-300 mt-0.5">
-            {carregando ? 'Carregando...' : materiais.length === 0 ? 'Estoque vazio' : materiais.length === 1 ? '1 item no estoque' : `${materiais.length} itens no estoque`}
+          <p className={`text-xs mt-0.5 ${zerados > 0 && !carregando ? 'text-red-300' : 'text-slate-300'}`}>
+            {subtitulo()}
           </p>
         </div>
         <button
@@ -59,8 +59,20 @@ function Materiais() {
         </button>
       </div>
 
+      {/* Busca */}
+      {!carregando && materiais.length > 0 && (
+        <div className="px-6 pt-4">
+          <input
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+            placeholder="Buscar material..."
+            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+          />
+        </div>
+      )}
+
       {/* Lista */}
-      <div className="px-6 pt-4 flex flex-col gap-3 mb-24">
+      <div className="px-6 pt-3 flex flex-col gap-3 mb-24">
         {carregando && (
           <div className="text-center text-slate-400 text-sm mt-10">Carregando materiais...</div>
         )}
@@ -69,7 +81,12 @@ function Materiais() {
             Nenhum material cadastrado ainda!
           </div>
         )}
-        {materiais.map(m => (
+        {!carregando && materiais.length > 0 && materiaisFiltrados.length === 0 && (
+          <div className="text-center text-slate-400 text-sm mt-6">
+            Nenhum material encontrado para "{busca}".
+          </div>
+        )}
+        {materiaisFiltrados.map(m => (
           <div key={m.id} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
             <p className="text-sm font-semibold text-slate-800">{m.nome}</p>
             {m.descricao && (
@@ -92,7 +109,7 @@ function Materiais() {
                 <p className="text-xs text-slate-500 mb-2 text-center">Remover este material?</p>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => deletarMaterial(m.id)}
+                    onClick={() => handleDeletar(m.id)}
                     className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold"
                   >
                     Sim, remover

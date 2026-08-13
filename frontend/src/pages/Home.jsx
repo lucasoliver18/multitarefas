@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import api from '../services/api'
 import Navbar from '../components/Navbar'
+import { useServicos } from '../hooks/useServicos'
+import { badgeStatus, labelStatus } from '../utils/status'
 
 function RingProgresso({ diasRestantes }) {
   const r = 18
@@ -51,18 +52,6 @@ function RingProgresso({ diasRestantes }) {
 const corTexto = (d) =>
   d < 0 ? 'text-red-500' : d <= 2 ? 'text-red-500' : d <= 7 ? 'text-orange-500' : d <= 14 ? 'text-yellow-600' : 'text-green-600'
 
-const badgeStatus = (s) => ({
-  finalizado:   'bg-[#dcfce7] text-[#166534]',
-  em_andamento: 'bg-[#dbeafe] text-[#1e40af]',
-  pendente:     'bg-[#fef9c3] text-[#854d0e]',
-}[s] || 'bg-[#fef9c3] text-[#854d0e]')
-
-const labelStatus = (s) => ({
-  finalizado:   '✔ Finalizado',
-  em_andamento: '🔄 Em andamento',
-  pendente:     '⏳ Pendente',
-}[s] || '⏳ Pendente')
-
 const PERIODOS = [
   { val: '7d', label: '7 dias' },
   { val: '1m', label: '1 mês' },
@@ -70,15 +59,9 @@ const PERIODOS = [
 ]
 
 function Home() {
-  const [servicos, setServicos] = useState([])
+  const { servicos } = useServicos()
   const [periodo, setPeriodo] = useState('1m')
   const navigate = useNavigate()
-
-  useEffect(() => {
-    api.get('/servicos').then(res => {
-      setServicos(Array.isArray(res.data) ? res.data : [])
-    }).catch(() => {})
-  }, [])
 
   const hoje = useMemo(() => {
     const d = new Date()
