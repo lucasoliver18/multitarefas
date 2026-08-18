@@ -171,7 +171,6 @@ function Prazos() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
 
-      {/* Header */}
       <div className="page-header bg-[#1e3a5f] px-6 pb-5 flex justify-between items-center">
         <div>
           <h1 className="text-lg font-bold text-white">Prazos</h1>
@@ -185,12 +184,10 @@ function Prazos() {
         </button>
       </div>
 
-      {/* Backdrop para fechar menu de status */}
       {menuStatus && (
         <div className="fixed inset-0 z-10" onClick={() => setMenuStatus(null)} />
       )}
 
-      {/* Prazos vencidos */}
       {vencidos.length > 0 && (
         <div className="px-6 pt-4">
           <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
@@ -219,7 +216,6 @@ function Prazos() {
         </div>
       )}
 
-      {/* Filtros */}
       <div className="px-6 pt-4 mb-3 flex flex-col gap-2">
         {todasTags.length > 0 && (
           <div className="flex gap-2 flex-wrap">
@@ -267,7 +263,6 @@ function Prazos() {
         )}
       </div>
 
-      {/* Calendário */}
       <div className="px-6 mb-4">
         <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
 
@@ -327,7 +322,6 @@ function Prazos() {
         </div>
       </div>
 
-      {/* Serviços do dia selecionado */}
       {diaSelecionado && (
         <div className="px-6 mb-4">
           <h2 className="text-sm font-bold text-slate-800 mb-3">
@@ -349,7 +343,6 @@ function Prazos() {
         </div>
       )}
 
-      {/* Serviços sem prazo definido */}
       {semPrazo.length > 0 && (
         <div className="px-6 mb-4">
           <h2 className="text-sm font-bold text-slate-800 mb-3">

@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import api from '../services/api'
 import Navbar from '../components/Navbar'
 import { useToast } from '../hooks/useToast'
+import { usePaginacao } from '../hooks/usePaginacao'
+import Paginacao from '../components/Paginacao'
 
 const badgeOrcStatus = (s) => ({
   aprovado:  'bg-[#dcfce7] text-[#166534]',
@@ -19,7 +21,8 @@ function Orcamentos() {
   const [orcamentos, setOrcamentos] = useState([])
   const [servico, setServico] = useState(null)
   const [carregando, setCarregando] = useState(true)
-  const [confirmando, setConfirmando] = useState(null) // { id, acao }
+  const [confirmando, setConfirmando] = useState(null)
+  const { pagina, setPagina, tamanhoPagina, mudarTamanhoPagina, totalPaginas, itensPagina } = usePaginacao(orcamentos)
 
   useEffect(() => {
     Promise.all([
@@ -60,7 +63,6 @@ function Orcamentos() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
 
-      {/* Header */}
       <div className="page-header bg-[#1e3a5f] px-6 pb-5">
         <button onClick={() => navigate('/servicos')} className="text-xs text-slate-300 mb-3">← Serviços</button>
         <div className="flex justify-between items-center">
@@ -84,7 +86,12 @@ function Orcamentos() {
           </div>
         )}
 
-        {orcamentos.map(o => {
+        {orcamentos.length > 0 && (
+          <Paginacao pagina={pagina} setPagina={setPagina} tamanhoPagina={tamanhoPagina}
+            mudarTamanhoPagina={mudarTamanhoPagina} totalPaginas={totalPaginas} />
+        )}
+
+        {itensPagina.map(o => {
           const valorMateriais = (o.materiais || []).reduce((acc, m) =>
             acc + parseFloat(m.pivot.quantidade) * parseFloat(m.pivot.preco_unitario_snapshot), 0)
           const valorFinal = valorMateriais * (1 + parseFloat(o.margem_lucro) / 100)

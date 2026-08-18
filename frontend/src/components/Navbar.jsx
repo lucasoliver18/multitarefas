@@ -27,7 +27,7 @@ function Navbar() {
           className="flex flex-col items-center gap-1 flex-1 min-w-0"
         >
           <span className="text-xl leading-none" aria-hidden="true">{icon}</span>
-          {/* Label via CSS attr() — imune a autocomplete do browser */}
+          {/* Rótulo via CSS attr() para não sofrer autocomplete do navegador */}
           <span
             data-titulo={titulo}
             aria-hidden="true"

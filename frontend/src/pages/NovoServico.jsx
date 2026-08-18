@@ -68,13 +68,11 @@ function NovoServico() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
 
-      {/* Header */}
       <div className="page-header bg-[#1e3a5f] px-6 pb-5">
         <h1 className="text-lg font-bold text-white">Novo Serviço</h1>
         <p className="text-xs text-slate-300 mt-0.5">Preencha os dados do serviço</p>
       </div>
 
-      {/* Formulário */}
       <div className="px-6 pt-5 flex flex-col gap-4 mb-24">
 
         {erro && (
@@ -165,7 +163,6 @@ function NovoServico() {
           </select>
         </div>
 
-        {/* Botões */}
         <div className="flex gap-3 mt-2">
           <button
             onClick={handleSalvar}

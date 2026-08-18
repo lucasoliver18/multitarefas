@@ -4,6 +4,8 @@ import api from '../services/api'
 import Navbar from '../components/Navbar'
 import { useToast } from '../hooks/useToast'
 import { useClientes } from '../hooks/useClientes'
+import { usePaginacao } from '../hooks/usePaginacao'
+import Paginacao from '../components/Paginacao'
 import { TAG_LABEL, badgeStatus, labelStatus } from '../utils/status'
 
 function Clientes() {
@@ -40,12 +42,13 @@ function Clientes() {
     [clientes, busca]
   )
 
+  const { pagina, setPagina, tamanhoPagina, mudarTamanhoPagina, totalPaginas, itensPagina } = usePaginacao(clientesFiltrados)
+
   const totalLabel = (n) => n === 0 ? 'nenhum serviço' : n === 1 ? '1 serviço' : `${n} serviços`
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
 
-      {/* Header */}
       <div className="page-header bg-[#1e3a5f] px-6 pb-5">
         <div className="flex justify-between items-center">
           <div>
@@ -62,7 +65,6 @@ function Clientes() {
           </button>
         </div>
 
-        {/* Busca */}
         <div className="mt-4 flex items-center gap-2 bg-white/10 border border-white/20 rounded-xl px-4 py-3">
           <span className="text-slate-300 text-sm">🔍</span>
           <input
@@ -87,13 +89,24 @@ function Clientes() {
           </div>
         )}
 
-        {clientesFiltrados.map(c => (
+        {clientesFiltrados.length > 0 && (
+          <Paginacao pagina={pagina} setPagina={setPagina} tamanhoPagina={tamanhoPagina}
+            mudarTamanhoPagina={mudarTamanhoPagina} totalPaginas={totalPaginas} />
+        )}
+
+        {itensPagina.map(c => (
           <div key={c.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            {/* Card principal */}
             <div className="p-4 cursor-pointer" onClick={() => expandirCliente(c.id)}>
               <div className="flex justify-between items-start">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-800">{c.nome}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-slate-800">{c.nome}</p>
+                    <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full shrink-0">
+                      {c.tipo_pessoa === 'juridica' ? 'PJ' : 'PF'}
+                    </span>
+                  </div>
+                  {c.cpf && <p className="text-xs text-slate-500 mt-0.5">CPF: {c.cpf}</p>}
+                  {c.cnpj && <p className="text-xs text-slate-500 mt-0.5">CNPJ: {c.cnpj}</p>}
                   {c.telefone && <p className="text-xs text-slate-500 mt-0.5">📞 {c.telefone}</p>}
                   {c.email && <p className="text-xs text-slate-500 mt-0.5">✉️ {c.email}</p>}
                   <p className="text-xs text-slate-400 mt-1">{totalLabel(c.servicos_count)}</p>
@@ -137,7 +150,6 @@ function Clientes() {
               )}
             </div>
 
-            {/* Serviços expandidos */}
             {expandido === c.id && (
               <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 flex flex-col gap-2">
                 <p className="text-xs font-semibold text-slate-500 mb-1">Serviços prestados</p>

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import { useToast } from '../hooks/useToast'
 import { useServicos } from '../hooks/useServicos'
+import { usePaginacao } from '../hooks/usePaginacao'
+import Paginacao from '../components/Paginacao'
 import {
   badgeStatus,
   labelStatus,
@@ -19,6 +21,7 @@ function Servicos() {
   const { servicos, carregando, buscar, deletar, mudarStatus } = useServicos()
   const [menuStatus, setMenuStatus] = useState(null)
   const [confirmandoId, setConfirmandoId] = useState(null)
+  const { pagina, setPagina, tamanhoPagina, mudarTamanhoPagina, totalPaginas, itensPagina } = usePaginacao(servicos)
 
   const handleDeletar = async (id) => {
     setConfirmandoId(null)
@@ -44,7 +47,6 @@ function Servicos() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
 
-      {/* Header */}
       <div className="page-header bg-[#1e3a5f] px-6 pb-5 flex justify-between items-center">
         <div>
           <h1 className="text-lg font-bold text-white">Serviços</h1>
@@ -60,12 +62,10 @@ function Servicos() {
         </button>
       </div>
 
-      {/* Backdrop para fechar menu */}
       {menuStatus && (
         <div className="fixed inset-0 z-10" onClick={() => setMenuStatus(null)} />
       )}
 
-      {/* Lista */}
       <div className="px-6 pt-4 flex flex-col gap-5 mb-24">
         {carregando && (
           <div className="text-center text-slate-400 text-sm mt-10">Carregando serviços...</div>
@@ -76,12 +76,16 @@ function Servicos() {
           </div>
         )}
 
-        {servicos.map(s => (
+        {servicos.length > 0 && (
+          <Paginacao pagina={pagina} setPagina={setPagina} tamanhoPagina={tamanhoPagina}
+            mudarTamanhoPagina={mudarTamanhoPagina} totalPaginas={totalPaginas} />
+        )}
+
+        {itensPagina.map(s => (
           <div
             key={s.id}
             className={`bg-white rounded-2xl p-4 border border-slate-100 border-l-4 ${borderPrioridade(s.prioridade)} shadow-sm`}
           >
-            {/* Título + Status */}
             <div className="flex justify-between items-start gap-2">
               <p className="text-sm font-semibold text-slate-800 flex-1 leading-snug">{s.titulo}</p>
               <div className="relative shrink-0">
@@ -107,7 +111,6 @@ function Servicos() {
               </div>
             </div>
 
-            {/* Meta */}
             <div className="mt-2 flex flex-col gap-0.5">
               <p className="text-xs text-slate-500">👤 {s.cliente}</p>
               {s.prazo && (
@@ -127,7 +130,6 @@ function Servicos() {
               </div>
             </div>
 
-            {/* Ações primárias */}
             <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2">
               <button
                 onClick={() => navigate(`/editar/${s.id}`)}
@@ -143,7 +145,6 @@ function Servicos() {
               </button>
             </div>
 
-            {/* Confirmação de exclusão */}
             {confirmandoId === s.id ? (
               <div className="mt-2 pt-2 border-t border-slate-100">
                 <p className="text-xs text-slate-500 mb-2 text-center">Excluir este serviço?</p>

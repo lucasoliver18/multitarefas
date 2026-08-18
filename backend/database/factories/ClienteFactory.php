@@ -10,7 +10,7 @@ class ClienteFactory extends Factory
     {
         return [
             'nome'     => $this->faker->name(),
-            'telefone' => $this->faker->numerify('##9########'),
+            'telefone' => $this->faker->numerify('(##) 9####-####'),
             'email'    => $this->faker->unique()->safeEmail(),
         ];
     }

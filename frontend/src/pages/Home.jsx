@@ -104,7 +104,6 @@ function Home() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col pb-24">
 
-      {/* Header */}
       <div className="page-header bg-[#1e3a5f] px-6 pb-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-[#2563eb] flex items-center justify-center text-white font-bold text-sm shrink-0">
@@ -116,7 +115,6 @@ function Home() {
           </div>
         </div>
 
-        {/* Seletor de período */}
         <div className="flex gap-1.5 mt-4">
           {PERIODOS.map(({ val, label }) => (
             <button
@@ -131,7 +129,6 @@ function Home() {
           ))}
         </div>
 
-        {/* Indicadores de status */}
         <div className="flex gap-2 mt-3">
           {[
             { label: 'Pendentes',    val: totais.pendente,     cor: 'bg-yellow-400/20 text-yellow-200' },
@@ -146,7 +143,6 @@ function Home() {
         </div>
       </div>
 
-      {/* Próximos Prazos */}
       <div className="px-6 mt-5 mb-5">
         <h2 className="text-sm font-bold text-slate-800 mb-3">Próximos Prazos</h2>
 
@@ -182,7 +178,6 @@ function Home() {
         </p>
       </div>
 
-      {/* Serviços em andamento */}
       <div className="px-6 mb-4">
         <h2 className="text-sm font-bold text-slate-800 mb-3">Serviços em andamento</h2>
 

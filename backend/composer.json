@@ -1,9 +1,9 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "infooseg/multitarefas-backend",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
+    "description": "API do sistema de gestão de serviços da INFOOSEG Sistemas de Segurança e Informática.",
+    "keywords": ["laravel", "multitarefas", "infooseg"],
     "license": "MIT",
     "require": {
         "php": "^8.3",

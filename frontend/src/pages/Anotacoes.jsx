@@ -65,7 +65,6 @@ function Anotacoes() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col pb-24">
 
-      {/* Header */}
       <div className="page-header bg-[#1e3a5f] px-6 pb-5">
         <button onClick={() => navigate(-1)} className="text-xs text-slate-300 mb-3 block">← Voltar</button>
         <h1 className="text-lg font-bold text-white">Anotações</h1>
@@ -74,7 +73,6 @@ function Anotacoes() {
         )}
       </div>
 
-      {/* Nova anotação */}
       <div className="px-6 pt-5 mb-4">
         <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
           <p className="text-xs font-semibold text-slate-600 mb-2">Nova anotação</p>
@@ -95,7 +93,6 @@ function Anotacoes() {
         </div>
       </div>
 
-      {/* Lista de anotações */}
       <div className="px-6 flex flex-col gap-3">
         {anotacoes.length === 0 ? (
           <div className="text-center text-slate-400 text-sm py-8 bg-white rounded-2xl border border-slate-100">

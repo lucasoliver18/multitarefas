@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import { useToast } from '../hooks/useToast'
 import { useMateriais } from '../hooks/useMateriais'
+import { usePaginacao } from '../hooks/usePaginacao'
+import Paginacao from '../components/Paginacao'
 
 function Materiais() {
   const navigate = useNavigate()
@@ -33,6 +35,8 @@ function Materiais() {
     )
   }, [materiais, busca])
 
+  const { pagina, setPagina, tamanhoPagina, mudarTamanhoPagina, totalPaginas, itensPagina } = usePaginacao(materiaisFiltrados)
+
   const subtitulo = () => {
     if (carregando) return 'Carregando...'
     if (materiais.length === 0) return 'Estoque vazio'
@@ -43,7 +47,6 @@ function Materiais() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
 
-      {/* Header */}
       <div className="page-header bg-[#1e3a5f] px-6 pb-5 flex justify-between items-center">
         <div>
           <h1 className="text-lg font-bold text-white">Materiais</h1>
@@ -59,7 +62,6 @@ function Materiais() {
         </button>
       </div>
 
-      {/* Busca */}
       {!carregando && materiais.length > 0 && (
         <div className="px-6 pt-4">
           <input
@@ -71,7 +73,6 @@ function Materiais() {
         </div>
       )}
 
-      {/* Lista */}
       <div className="px-6 pt-3 flex flex-col gap-3 mb-24">
         {carregando && (
           <div className="text-center text-slate-400 text-sm mt-10">Carregando materiais...</div>
@@ -86,7 +87,12 @@ function Materiais() {
             Nenhum material encontrado para "{busca}".
           </div>
         )}
-        {materiaisFiltrados.map(m => (
+        {materiaisFiltrados.length > 0 && (
+          <Paginacao pagina={pagina} setPagina={setPagina} tamanhoPagina={tamanhoPagina}
+            mudarTamanhoPagina={mudarTamanhoPagina} totalPaginas={totalPaginas} />
+        )}
+
+        {itensPagina.map(m => (
           <div key={m.id} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
             <p className="text-sm font-semibold text-slate-800">{m.nome}</p>
             {m.descricao && (
