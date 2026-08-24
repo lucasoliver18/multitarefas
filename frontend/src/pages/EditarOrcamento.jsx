@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import api from '../services/api'
 import Navbar from '../components/Navbar'
 import { useToast } from '../hooks/useToast'
+import { materiaisComEstoqueInsuficiente } from '../utils/materiais'
 
 const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
 const LABEL = 'text-xs font-semibold text-slate-700 mb-1'
@@ -33,6 +34,7 @@ function EditarOrcamento() {
         nome: m.nome,
         unidade_medida: m.unidade_medida,
         preco_unitario: m.pivot.preco_unitario_snapshot,
+        quantidade_estoque: resMat.data.find(mat => mat.id === m.id)?.quantidade_estoque,
         quantidade: String(m.pivot.quantidade),
       })))
     }).finally(() => setCarregando(false))
@@ -44,7 +46,7 @@ function EditarOrcamento() {
     if (!materialId || itens.find(i => i.id === Number(materialId))) return
     const material = todosMateriaisList.find(m => m.id === Number(materialId))
     if (material) {
-      setItens([...itens, { id: material.id, nome: material.nome, unidade_medida: material.unidade_medida, preco_unitario: material.preco_unitario, quantidade: '1' }])
+      setItens([...itens, { id: material.id, nome: material.nome, unidade_medida: material.unidade_medida, preco_unitario: material.preco_unitario, quantidade_estoque: material.quantidade_estoque, quantidade: '1' }])
     }
   }
 
@@ -56,9 +58,7 @@ function EditarOrcamento() {
   const valorMateriais = itens.reduce((acc, i) => acc + parseFloat(i.preco_unitario) * parseFloat(i.quantidade || 0), 0)
   const valorFinal = valorMateriais * (1 + parseFloat(form.margem_lucro || 0) / 100)
 
-  const salvar = async () => {
-    setErro('')
-    if (!form.titulo) { setErro('Informe o título do orçamento.'); return }
+  const atualizarOrcamento = async () => {
     setSalvando(true)
     try {
       await api.put(`/orcamentos/${id}`, {
@@ -74,6 +74,30 @@ function EditarOrcamento() {
     } finally {
       setSalvando(false)
     }
+  }
+
+  const salvar = () => {
+    setErro('')
+    if (!form.titulo) { setErro('Informe o título do orçamento.'); return }
+
+    const insuficientes = materiaisComEstoqueInsuficiente(itens)
+    if (insuficientes.length > 0) {
+      toast.confirmar(
+        <>
+          A quantidade informada é maior que o estoque disponível para:
+          <ul className="list-disc list-inside mt-1">
+            {insuficientes.map(i => (
+              <li key={i.id}>{i.nome}: informado {i.quantidade}, estoque {parseFloat(i.quantidade_estoque)} {i.unidade_medida}</li>
+            ))}
+          </ul>
+          Deseja salvar o orçamento mesmo assim?
+        </>,
+        atualizarOrcamento
+      )
+      return
+    }
+
+    atualizarOrcamento()
   }
 
   const aprovar = () => {

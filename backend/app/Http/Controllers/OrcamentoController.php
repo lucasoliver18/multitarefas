@@ -85,13 +85,26 @@ class OrcamentoController extends Controller
 
         $orcamento->load('materiais');
 
+        $insuficientes = [];
         foreach ($orcamento->materiais as $material) {
             $necessario = $material->pivot->quantidade;
             if ($material->quantidade_estoque < $necessario) {
-                return response()->json([
-                    'message' => "Estoque insuficiente para \"{$material->nome}\". Disponível: {$material->quantidade_estoque} {$material->unidade_medida}, necessário: {$necessario}.",
-                ], 422);
+                $insuficientes[] = [
+                    'nome'           => $material->nome,
+                    'disponivel'     => $material->quantidade_estoque,
+                    'necessario'     => $necessario,
+                    'unidade_medida' => $material->unidade_medida,
+                ];
             }
+        }
+
+        if (!empty($insuficientes)) {
+            $nomes = collect($insuficientes)->pluck('nome')->implode(', ');
+
+            return response()->json([
+                'message' => "Não foi possível aprovar: não há estoque suficiente para {$nomes}. Ajuste as quantidades do orçamento ou reponha o estoque antes de aprovar.",
+                'materiais_insuficientes' => $insuficientes,
+            ], 422);
         }
 
         DB::transaction(function () use ($orcamento) {
