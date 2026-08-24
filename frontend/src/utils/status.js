@@ -10,6 +10,14 @@ export const STATUS_OPCOES = [
   { val: 'finalizado',   label: '✔ Finalizado' },
 ]
 
+export const PRIORIDADE_OPCOES = [
+  { val: 'alta',  label: '🔴 Alta' },
+  { val: 'media', label: '🟠 Média' },
+  { val: 'baixa', label: '🟢 Baixa' },
+]
+
+export const TAG_OPCOES = Object.entries(TAG_LABEL).map(([val, label]) => ({ val, label }))
+
 export const badgeStatus = (s) => ({
   finalizado:   'bg-[#dcfce7] text-[#166534]',
   em_andamento: 'bg-[#dbeafe] text-[#1e40af]',

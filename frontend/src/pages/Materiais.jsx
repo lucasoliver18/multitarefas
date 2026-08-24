@@ -5,6 +5,14 @@ import { useToast } from '../hooks/useToast'
 import { useMateriais } from '../hooks/useMateriais'
 import { usePaginacao } from '../hooks/usePaginacao'
 import Paginacao from '../components/Paginacao'
+import PainelFiltros from '../components/PainelFiltros'
+import BarraSelecao from '../components/BarraSelecao'
+import { useSelecaoMultipla } from '../hooks/useSelecaoMultipla'
+import { excluirEmMassa } from '../utils/exclusaoEmMassa'
+import { UNIDADES } from '../utils/materiais'
+
+const SELECT = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-600'
+const LABEL = 'text-xs font-semibold text-slate-600 mb-1 block'
 
 function Materiais() {
   const navigate = useNavigate()
@@ -12,6 +20,24 @@ function Materiais() {
   const { materiais, carregando, deletar } = useMateriais()
   const [confirmandoId, setConfirmandoId] = useState(null)
   const [busca, setBusca] = useState('')
+  const { ativo: selecaoAtiva, selecionados, alternarModo, alternarItem, cancelar, quantidade } = useSelecaoMultipla()
+
+  const [filtroUnidade, setFiltroUnidade] = useState('')
+  const [filtroPrecoMin, setFiltroPrecoMin] = useState('')
+  const [filtroPrecoMax, setFiltroPrecoMax] = useState('')
+  const [filtroQtdMin, setFiltroQtdMin] = useState('')
+  const [filtroQtdMax, setFiltroQtdMax] = useState('')
+
+  const quantidadeFiltrosAtivos = [filtroUnidade, filtroPrecoMin, filtroPrecoMax, filtroQtdMin, filtroQtdMax]
+    .filter(Boolean).length
+
+  const limparFiltros = () => {
+    setFiltroUnidade('')
+    setFiltroPrecoMin('')
+    setFiltroPrecoMax('')
+    setFiltroQtdMin('')
+    setFiltroQtdMax('')
+  }
 
   const handleDeletar = async (id) => {
     setConfirmandoId(null)
@@ -23,17 +49,34 @@ function Materiais() {
     }
   }
 
+  const handleExcluirSelecionados = () => {
+    toast.confirmar(`Remover ${quantidade} material(is) selecionado(s) do estoque?`, async () => {
+      const { sucesso, falhas } = await excluirEmMassa([...selecionados], deletar)
+      cancelar()
+      if (falhas.length === 0) toast.sucesso(`${sucesso} material(is) removido(s) com sucesso!`)
+      else if (sucesso === 0) toast.erro(`Nenhum material removido (${falhas.length} falharam).`)
+      else toast.alerta(`${sucesso} removido(s), ${falhas.length} não puderam ser removidos.`)
+    })
+  }
+
   const zerados = useMemo(
     () => materiais.filter(m => parseFloat(m.quantidade_estoque) <= 0).length,
     [materiais]
   )
 
   const materiaisFiltrados = useMemo(() => {
-    if (!busca.trim()) return materiais
-    return materiais.filter(m =>
-      m.nome.toLowerCase().includes(busca.toLowerCase())
-    )
-  }, [materiais, busca])
+    return materiais.filter(m => {
+      if (busca.trim() && !m.nome.toLowerCase().includes(busca.toLowerCase())) return false
+      if (filtroUnidade && m.unidade_medida !== filtroUnidade) return false
+      const preco = parseFloat(m.preco_unitario)
+      if (filtroPrecoMin && preco < parseFloat(filtroPrecoMin)) return false
+      if (filtroPrecoMax && preco > parseFloat(filtroPrecoMax)) return false
+      const qtd = parseFloat(m.quantidade_estoque)
+      if (filtroQtdMin && qtd < parseFloat(filtroQtdMin)) return false
+      if (filtroQtdMax && qtd > parseFloat(filtroQtdMax)) return false
+      return true
+    })
+  }, [materiais, busca, filtroUnidade, filtroPrecoMin, filtroPrecoMax, filtroQtdMin, filtroQtdMax])
 
   const { pagina, setPagina, tamanhoPagina, mudarTamanhoPagina, totalPaginas, itensPagina } = usePaginacao(materiaisFiltrados)
 
@@ -54,22 +97,63 @@ function Materiais() {
             {subtitulo()}
           </p>
         </div>
-        <button
-          onClick={() => navigate('/materiais/novo')}
-          className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold"
-        >
-          + Novo
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={alternarModo}
+            className="bg-white/10 text-white text-xs px-3 py-2 rounded-full font-semibold"
+          >
+            {selecaoAtiva ? 'Cancelar' : 'Selecionar'}
+          </button>
+          <button
+            onClick={() => navigate('/materiais/novo')}
+            className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold"
+          >
+            + Novo
+          </button>
+        </div>
       </div>
 
       {!carregando && materiais.length > 0 && (
-        <div className="px-6 pt-4">
+        <div className="px-6 pt-4 flex flex-col gap-3">
           <input
             value={busca}
             onChange={e => setBusca(e.target.value)}
             placeholder="Buscar material..."
             className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
           />
+          <PainelFiltros quantidadeAtiva={quantidadeFiltrosAtivos} onLimpar={limparFiltros}>
+            <div>
+              <label className={LABEL}>Unidade</label>
+              <select value={filtroUnidade} onChange={e => setFiltroUnidade(e.target.value)} className={SELECT}>
+                <option value="">Todas</option>
+                {UNIDADES.map(u => <option key={u} value={u}>{u}</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={LABEL}>Preço mín. (R$)</label>
+                <input type="number" min="0" step="0.01" value={filtroPrecoMin}
+                  onChange={e => setFiltroPrecoMin(e.target.value)} className={SELECT} />
+              </div>
+              <div>
+                <label className={LABEL}>Preço máx. (R$)</label>
+                <input type="number" min="0" step="0.01" value={filtroPrecoMax}
+                  onChange={e => setFiltroPrecoMax(e.target.value)} className={SELECT} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={LABEL}>Qtd. mín.</label>
+                <input type="number" min="0" step="0.001" value={filtroQtdMin}
+                  onChange={e => setFiltroQtdMin(e.target.value)} className={SELECT} />
+              </div>
+              <div>
+                <label className={LABEL}>Qtd. máx.</label>
+                <input type="number" min="0" step="0.001" value={filtroQtdMax}
+                  onChange={e => setFiltroQtdMax(e.target.value)} className={SELECT} />
+              </div>
+            </div>
+          </PainelFiltros>
         </div>
       )}
 
@@ -84,7 +168,7 @@ function Materiais() {
         )}
         {!carregando && materiais.length > 0 && materiaisFiltrados.length === 0 && (
           <div className="text-center text-slate-400 text-sm mt-6">
-            Nenhum material encontrado para "{busca}".
+            Nenhum material encontrado para estes critérios.
           </div>
         )}
         {materiaisFiltrados.length > 0 && (
@@ -93,8 +177,23 @@ function Materiais() {
         )}
 
         {itensPagina.map(m => (
-          <div key={m.id} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
-            <p className="text-sm font-semibold text-slate-800">{m.nome}</p>
+          <div
+            key={m.id}
+            onClick={() => selecaoAtiva && alternarItem(m.id)}
+            className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm"
+          >
+            <div className="flex items-start gap-2">
+              {selecaoAtiva && (
+                <input
+                  type="checkbox"
+                  checked={selecionados.has(m.id)}
+                  onChange={() => alternarItem(m.id)}
+                  onClick={e => e.stopPropagation()}
+                  className="w-5 h-5 accent-blue-600 shrink-0 mt-0.5"
+                />
+              )}
+              <p className="text-sm font-semibold text-slate-800 flex-1">{m.nome}</p>
+            </div>
             {m.descricao && (
               <p className="text-xs text-slate-500 mt-1">{m.descricao}</p>
             )}
@@ -110,7 +209,7 @@ function Materiais() {
               </span>
             </div>
 
-            {confirmandoId === m.id ? (
+            {!selecaoAtiva && (confirmandoId === m.id ? (
               <div className="mt-3 pt-3 border-t border-slate-100">
                 <p className="text-xs text-slate-500 mb-2 text-center">Remover este material?</p>
                 <div className="flex gap-2">
@@ -143,12 +242,16 @@ function Materiais() {
                   Remover
                 </button>
               </div>
-            )}
+            ))}
           </div>
         ))}
       </div>
 
-      <Navbar />
+      {selecaoAtiva ? (
+        <BarraSelecao quantidade={quantidade} onExcluir={handleExcluirSelecionados} onCancelar={cancelar} />
+      ) : (
+        <Navbar />
+      )}
     </div>
   )
 }

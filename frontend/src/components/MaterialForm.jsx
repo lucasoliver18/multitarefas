@@ -1,7 +1,7 @@
 import Navbar from './Navbar'
 import { useNavigate } from 'react-router-dom'
+import { UNIDADES as unidades } from '../utils/materiais'
 
-const unidades = ['un', 'kg', 'g', 'L', 'mL', 'm', 'm²', 'm³', 'cx', 'pç', 'rolo']
 const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
 const LABEL = 'text-xs font-semibold text-slate-700 mb-1'
 

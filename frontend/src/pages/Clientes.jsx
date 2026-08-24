@@ -6,16 +6,22 @@ import { useToast } from '../hooks/useToast'
 import { useClientes } from '../hooks/useClientes'
 import { usePaginacao } from '../hooks/usePaginacao'
 import Paginacao from '../components/Paginacao'
+import BarraSelecao from '../components/BarraSelecao'
+import { useSelecaoMultipla } from '../hooks/useSelecaoMultipla'
+import { excluirEmMassa } from '../utils/exclusaoEmMassa'
 import { TAG_LABEL, badgeStatus, labelStatus } from '../utils/status'
 
 function Clientes() {
   const navigate = useNavigate()
   const toast = useToast()
-  const { clientes, carregando, deletar } = useClientes()
+  const { clientes, carregando, buscar, deletar, transferirServicos } = useClientes()
   const [busca, setBusca] = useState('')
   const [expandido, setExpandido] = useState(null)
   const [servicosCliente, setServicosCliente] = useState({})
   const [confirmandoId, setConfirmandoId] = useState(null)
+  const [transferindoCliente, setTransferindoCliente] = useState(null)
+  const [novoClienteId, setNovoClienteId] = useState('')
+  const { ativo: selecaoAtiva, selecionados, alternarModo, alternarItem, cancelar, quantidade } = useSelecaoMultipla()
 
   const handleDeletar = async (id) => {
     setConfirmandoId(null)
@@ -23,8 +29,27 @@ function Clientes() {
     try {
       await deletar(id)
       toast.sucesso('Cliente removido!')
+    } catch (err) {
+      const count = err.response?.status === 422 ? err.response?.data?.servicos_count : null
+      if (count) {
+        setTransferindoCliente({ id, count })
+      } else {
+        toast.erro('Erro ao remover cliente.')
+      }
+    }
+  }
+
+  const handleTransferirEExcluir = async (id) => {
+    try {
+      await transferirServicos(id, novoClienteId)
+      await deletar(id)
+      await buscar()
+      toast.sucesso('Serviços transferidos e cliente removido!')
     } catch {
-      toast.erro('Erro ao remover cliente.')
+      toast.erro('Erro ao transferir/excluir cliente.')
+    } finally {
+      setTransferindoCliente(null)
+      setNovoClienteId('')
     }
   }
 
@@ -35,6 +60,17 @@ function Clientes() {
       const res = await api.get(`/clientes/${id}`)
       setServicosCliente(prev => ({ ...prev, [id]: res.data.servicos || [] }))
     }
+  }
+
+  const handleExcluirSelecionados = () => {
+    toast.confirmar(`Excluir ${quantidade} cliente(s) selecionado(s)?`, async () => {
+      const { sucesso, falhas } = await excluirEmMassa([...selecionados], deletar)
+      cancelar()
+      await buscar()
+      if (falhas.length === 0) toast.sucesso(`${sucesso} cliente(s) excluído(s) com sucesso!`)
+      else if (sucesso === 0) toast.erro(`Nenhum cliente excluído: todos os ${falhas.length} possuem serviços vinculados.`)
+      else toast.alerta(`${sucesso} excluído(s), ${falhas.length} não puderam ser excluídos por terem serviços vinculados.`)
+    })
   }
 
   const clientesFiltrados = useMemo(() =>
@@ -57,12 +93,20 @@ function Clientes() {
               {carregando ? 'Carregando...' : clientes.length === 0 ? 'Nenhum cliente' : clientes.length === 1 ? '1 cliente' : `${clientes.length} clientes`}
             </p>
           </div>
-          <button
-            onClick={() => navigate('/clientes/novo')}
-            className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold"
-          >
-            + Novo
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={alternarModo}
+              className="bg-white/10 text-white text-xs px-3 py-2 rounded-full font-semibold"
+            >
+              {selecaoAtiva ? 'Cancelar' : 'Selecionar'}
+            </button>
+            <button
+              onClick={() => navigate('/clientes/novo')}
+              className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold"
+            >
+              + Novo
+            </button>
+          </div>
         </div>
 
         <div className="mt-4 flex items-center gap-2 bg-white/10 border border-white/20 rounded-xl px-4 py-3">
@@ -96,8 +140,20 @@ function Clientes() {
 
         {itensPagina.map(c => (
           <div key={c.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="p-4 cursor-pointer" onClick={() => expandirCliente(c.id)}>
+            <div
+              className="p-4 cursor-pointer"
+              onClick={() => selecaoAtiva ? alternarItem(c.id) : expandirCliente(c.id)}
+            >
               <div className="flex justify-between items-start">
+                {selecaoAtiva && (
+                  <input
+                    type="checkbox"
+                    checked={selecionados.has(c.id)}
+                    onChange={() => alternarItem(c.id)}
+                    onClick={e => e.stopPropagation()}
+                    className="w-5 h-5 accent-blue-600 shrink-0 mr-3 mt-0.5"
+                  />
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold text-slate-800">{c.nome}</p>
@@ -111,10 +167,48 @@ function Clientes() {
                   {c.email && <p className="text-xs text-slate-500 mt-0.5">✉️ {c.email}</p>}
                   <p className="text-xs text-slate-400 mt-1">{totalLabel(c.servicos_count)}</p>
                 </div>
-                <span className="text-slate-300 text-sm ml-2">{expandido === c.id ? '▲' : '▼'}</span>
+                {!selecaoAtiva && (
+                  <span className="text-slate-300 text-sm ml-2">{expandido === c.id ? '▲' : '▼'}</span>
+                )}
               </div>
 
-              {confirmandoId === c.id ? (
+              {!selecaoAtiva && (transferindoCliente?.id === c.id ? (
+                <div className="mt-3 pt-3 border-t border-slate-100" onClick={e => e.stopPropagation()}>
+                  <p className="text-xs text-slate-500 mb-2">
+                    Este cliente tem {transferindoCliente.count} serviço{transferindoCliente.count !== 1 ? 's' : ''} vinculado{transferindoCliente.count !== 1 ? 's' : ''}.
+                    Escolha outro cliente para transferir os serviços antes de excluir:
+                  </p>
+                  {clientes.filter(o => o.id !== c.id).length === 0 ? (
+                    <p className="text-xs text-amber-600 mb-2">Cadastre outro cliente antes de excluir este.</p>
+                  ) : (
+                    <select
+                      value={novoClienteId}
+                      onChange={e => setNovoClienteId(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-600 mb-2"
+                    >
+                      <option value="">Selecione um cliente...</option>
+                      {clientes.filter(o => o.id !== c.id).map(o => (
+                        <option key={o.id} value={o.id}>{o.nome}</option>
+                      ))}
+                    </select>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleTransferirEExcluir(c.id)}
+                      disabled={!novoClienteId}
+                      className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold disabled:opacity-40"
+                    >
+                      Transferir e excluir
+                    </button>
+                    <button
+                      onClick={() => { setTransferindoCliente(null); setNovoClienteId('') }}
+                      className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              ) : confirmandoId === c.id ? (
                 <div className="mt-3 pt-3 border-t border-slate-100">
                   <p className="text-xs text-slate-500 mb-2 text-center">Remover este cliente?</p>
                   <div className="flex gap-2">
@@ -147,10 +241,10 @@ function Clientes() {
                     Excluir
                   </button>
                 </div>
-              )}
+              ))}
             </div>
 
-            {expandido === c.id && (
+            {!selecaoAtiva && expandido === c.id && (
               <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 flex flex-col gap-2">
                 <p className="text-xs font-semibold text-slate-500 mb-1">Serviços prestados</p>
                 {!servicosCliente[c.id] ? (
@@ -185,7 +279,11 @@ function Clientes() {
         ))}
       </div>
 
-      <Navbar />
+      {selecaoAtiva ? (
+        <BarraSelecao quantidade={quantidade} onExcluir={handleExcluirSelecionados} onCancelar={cancelar} />
+      ) : (
+        <Navbar />
+      )}
     </div>
   )
 }

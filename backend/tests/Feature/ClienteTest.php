@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Cliente;
+use App\Models\Servico;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -86,5 +87,52 @@ class ClienteTest extends TestCase
         $this->deleteJson("/api/clientes/{$cliente->id}")->assertOk();
 
         $this->assertSoftDeleted('clientes', ['id' => $cliente->id]);
+    }
+
+    public function test_nao_deleta_cliente_com_servicos_vinculados(): void
+    {
+        $cliente = Cliente::factory()->create();
+        Servico::factory()->create(['cliente_id' => $cliente->id]);
+
+        $this->deleteJson("/api/clientes/{$cliente->id}")
+             ->assertStatus(422)
+             ->assertJsonFragment(['servicos_count' => 1]);
+
+        $this->assertDatabaseHas('clientes', ['id' => $cliente->id, 'deleted_at' => null]);
+    }
+
+    public function test_transferir_servicos_move_para_outro_cliente(): void
+    {
+        $origem = Cliente::factory()->create();
+        $destino = Cliente::factory()->create();
+        $servico = Servico::factory()->create(['cliente_id' => $origem->id]);
+
+        $this->patchJson("/api/clientes/{$origem->id}/transferir-servicos", ['novo_cliente_id' => $destino->id])
+             ->assertOk()
+             ->assertJsonFragment(['transferidos' => 1]);
+
+        $this->assertDatabaseHas('servicos', ['id' => $servico->id, 'cliente_id' => $destino->id]);
+    }
+
+    public function test_transferir_servicos_rejeita_mesmo_cliente(): void
+    {
+        $cliente = Cliente::factory()->create();
+
+        $this->patchJson("/api/clientes/{$cliente->id}/transferir-servicos", ['novo_cliente_id' => $cliente->id])
+             ->assertUnprocessable();
+    }
+
+    public function test_pode_excluir_cliente_apos_transferir_servicos(): void
+    {
+        $origem = Cliente::factory()->create();
+        $destino = Cliente::factory()->create();
+        Servico::factory()->create(['cliente_id' => $origem->id]);
+
+        $this->patchJson("/api/clientes/{$origem->id}/transferir-servicos", ['novo_cliente_id' => $destino->id])
+             ->assertOk();
+
+        $this->deleteJson("/api/clientes/{$origem->id}")->assertOk();
+
+        $this->assertSoftDeleted('clientes', ['id' => $origem->id]);
     }
 }

@@ -29,5 +29,9 @@ export function useClientes() {
     }
   }, [buscar])
 
-  return { clientes, carregando, buscar, deletar }
+  const transferirServicos = useCallback(async (clienteId, novoClienteId) => {
+    await api.patch(`/clientes/${clienteId}/transferir-servicos`, { novo_cliente_id: novoClienteId })
+  }, [])
+
+  return { clientes, carregando, buscar, deletar, transferirServicos }
 }
