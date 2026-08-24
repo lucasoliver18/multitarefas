@@ -19,7 +19,7 @@ class ServicoController extends Controller
     public function store(StoreServicoRequest $request)
     {
         $data = $request->validated();
-        $data['cliente_id'] = Cliente::firstOrCreate(['nome' => $data['cliente']])->id;
+        $data['cliente'] = Cliente::find($data['cliente_id'])->nome;
         $servico = Servico::create($data);
         return new ServicoResource($servico->load('clienteRelacao'));
     }
@@ -32,8 +32,8 @@ class ServicoController extends Controller
     public function update(UpdateServicoRequest $request, Servico $servico)
     {
         $data = $request->validated();
-        if (!empty($data['cliente'])) {
-            $data['cliente_id'] = Cliente::firstOrCreate(['nome' => $data['cliente']])->id;
+        if (array_key_exists('cliente_id', $data)) {
+            $data['cliente'] = Cliente::find($data['cliente_id'])->nome;
         }
         $servico->update($data);
         return new ServicoResource($servico->load('clienteRelacao'));

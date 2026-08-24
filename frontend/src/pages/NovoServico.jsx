@@ -4,6 +4,7 @@ import api from '../services/api'
 import Navbar from '../components/Navbar'
 import { useToast } from '../hooks/useToast'
 import { useClientes } from '../hooks/useClientes'
+import MiniCadastroCliente from '../components/MiniCadastroCliente'
 
 const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
 const LABEL = 'text-xs font-semibold text-slate-700 mb-1'
@@ -11,11 +12,12 @@ const LABEL = 'text-xs font-semibold text-slate-700 mb-1'
 function NovoServico() {
   const navigate = useNavigate()
   const toast = useToast()
-  const { clientes } = useClientes()
+  const { clientes, buscar } = useClientes()
   const [form, setForm] = useState({
     titulo: '',
     descricao: '',
     cliente: '',
+    cliente_id: null,
     prioridade: 'media',
     status: 'pendente',
     prazo: '',
@@ -24,6 +26,7 @@ function NovoServico() {
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
   const [sugestoes, setSugestoes] = useState([])
+  const [mostrarCadastroCliente, setMostrarCadastroCliente] = useState(false)
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -31,7 +34,8 @@ function NovoServico() {
 
   const handleClienteChange = (e) => {
     const val = e.target.value
-    setForm({ ...form, cliente: val })
+    setForm(prev => ({ ...prev, cliente: val, cliente_id: null }))
+    setMostrarCadastroCliente(false)
     if (val.trim().length >= 1) {
       const filtrados = clientes.filter(c =>
         c.nome.toLowerCase().includes(val.toLowerCase())
@@ -42,15 +46,24 @@ function NovoServico() {
     }
   }
 
-  const selecionarCliente = (nome) => {
-    setForm(prev => ({ ...prev, cliente: nome }))
+  const selecionarCliente = (cliente) => {
+    setForm(prev => ({ ...prev, cliente: cliente.nome, cliente_id: cliente.id }))
     setSugestoes([])
+    setMostrarCadastroCliente(false)
+  }
+
+  const handleClienteCriado = (novoCliente) => {
+    setForm(prev => ({ ...prev, cliente: novoCliente.nome, cliente_id: novoCliente.id }))
+    setMostrarCadastroCliente(false)
+    setSugestoes([])
+    buscar()
+    toast.sucesso('Cliente cadastrado!')
   }
 
   const handleSalvar = async () => {
     setErro('')
-    if (!form.titulo || !form.cliente) {
-      setErro('Título e cliente são obrigatórios!')
+    if (!form.titulo || !form.cliente_id) {
+      setErro('Título e cliente são obrigatórios! Selecione um cliente existente ou cadastre um novo.')
       return
     }
     setLoading(true)
@@ -104,22 +117,40 @@ function NovoServico() {
               placeholder="Ex: Eunice"
               autoComplete="off"
             />
-            {sugestoes.length > 0 && (
+            {!mostrarCadastroCliente && (sugestoes.length > 0 || (form.cliente.trim().length >= 1 && !form.cliente_id)) && (
               <div className="absolute z-10 top-full left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-lg mt-1 overflow-hidden">
                 {sugestoes.map(c => (
                   <button
                     key={c.id}
                     type="button"
-                    onMouseDown={() => selecionarCliente(c.nome)}
+                    onMouseDown={() => selecionarCliente(c)}
                     className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 border-b border-slate-100 last:border-0 flex justify-between items-center"
                   >
                     <span>{c.nome}</span>
                     {c.telefone && <span className="text-xs text-slate-400">{c.telefone}</span>}
                   </button>
                 ))}
+                {form.cliente.trim().length >= 1 && !form.cliente_id && (
+                  <button
+                    type="button"
+                    onMouseDown={() => setMostrarCadastroCliente(true)}
+                    className="w-full text-left px-4 py-2.5 text-sm text-blue-600 font-semibold hover:bg-blue-50"
+                  >
+                    + Cadastrar "{form.cliente}" como novo cliente
+                  </button>
+                )}
               </div>
             )}
           </div>
+          {mostrarCadastroCliente && (
+            <div className="mt-2">
+              <MiniCadastroCliente
+                nomeInicial={form.cliente}
+                onCriado={handleClienteCriado}
+                onCancelar={() => setMostrarCadastroCliente(false)}
+              />
+            </div>
+          )}
         </div>
 
         <div>
