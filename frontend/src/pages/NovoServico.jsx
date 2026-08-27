@@ -5,6 +5,7 @@ import Navbar from '../components/Navbar'
 import { useToast } from '../hooks/useToast'
 import { useClientes } from '../hooks/useClientes'
 import MiniCadastroCliente from '../components/MiniCadastroCliente'
+import { PRIORIDADE_OPCOES } from '../utils/status'
 
 const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
 const LABEL = 'text-xs font-semibold text-slate-700 mb-1'
@@ -167,9 +168,9 @@ function NovoServico() {
         <div>
           <p className={LABEL}>Prioridade</p>
           <select name="prioridade" value={form.prioridade} onChange={handleChange} className={INPUT}>
-            <option value="alta">Alta</option>
-            <option value="media">Média</option>
-            <option value="baixa">Baixa</option>
+            {PRIORIDADE_OPCOES.map(o => (
+              <option key={o.val} value={o.val}>{o.label}</option>
+            ))}
           </select>
         </div>
 

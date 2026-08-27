@@ -13,6 +13,7 @@ class StoreMaterialRequest extends FormRequest
     {
         return [
             'nome'               => ['required', 'string', 'max:255', Rule::unique('materiais', 'nome')->whereNull('deleted_at')],
+            'marca'              => 'nullable|string|max:255',
             'descricao'          => 'nullable|string',
             'unidade_medida'     => 'required|string|max:50',
             'preco_unitario'     => 'required|numeric|min:0',

@@ -16,6 +16,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Ag
 const DIAS_SEMANA = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
 
 const COR_PONTO = { alta: 'bg-red-500', media: 'bg-orange-400', baixa: 'bg-green-400' }
+const TAGS_FIXAS = ['informatica', 'pintura', 'outros']
 
 function Prazos() {
   const navigate = useNavigate()
@@ -41,11 +42,6 @@ function Prazos() {
       toast.erro('Erro ao atualizar status.')
     }
   }
-
-  const todasTags = useMemo(() =>
-    [...new Set(servicos.map(s => s.tag).filter(Boolean))],
-    [servicos]
-  )
 
   const servicosFiltrados = useMemo(() => {
     return servicos.filter(s => {
@@ -217,16 +213,14 @@ function Prazos() {
       )}
 
       <div className="px-6 pt-4 mb-3 flex flex-col gap-2">
-        {todasTags.length > 0 && (
-          <div className="flex gap-2 flex-wrap">
-            {todasTags.map(tag => (
-              <button key={tag} onClick={() => toggleTag(tag)}
-                className={`text-xs px-3 py-1 rounded-full font-medium ${filtroTags.includes(tag) ? 'bg-[#2563eb] text-white' : 'bg-slate-200 text-slate-600'}`}>
-                {TAG_LABEL[tag] || `#${tag}`}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="flex gap-2 flex-wrap">
+          {TAGS_FIXAS.map(tag => (
+            <button key={tag} onClick={() => toggleTag(tag)}
+              className={`text-xs px-3 py-1 rounded-full font-medium ${filtroTags.includes(tag) ? 'bg-[#2563eb] text-white' : 'bg-slate-200 text-slate-600'}`}>
+              {TAG_LABEL[tag] || `#${tag}`}
+            </button>
+          ))}
+        </div>
 
         <div className="flex gap-2 flex-wrap items-center">
           <span className="text-xs text-slate-400">Prioridade:</span>

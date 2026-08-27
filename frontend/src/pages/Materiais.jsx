@@ -66,7 +66,7 @@ function Materiais() {
 
   const materiaisFiltrados = useMemo(() => {
     return materiais.filter(m => {
-      if (busca.trim() && !m.nome.toLowerCase().includes(busca.toLowerCase())) return false
+      if (busca.trim() && !m.nome.toLowerCase().includes(busca.toLowerCase()) && !(m.marca || '').toLowerCase().includes(busca.toLowerCase())) return false
       if (filtroUnidade && m.unidade_medida !== filtroUnidade) return false
       const preco = parseFloat(m.preco_unitario)
       if (filtroPrecoMin && preco < parseFloat(filtroPrecoMin)) return false
@@ -192,7 +192,10 @@ function Materiais() {
                   className="w-5 h-5 accent-blue-600 shrink-0 mt-0.5"
                 />
               )}
-              <p className="text-sm font-semibold text-slate-800 flex-1">{m.nome}</p>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-slate-800">{m.nome}</p>
+                {m.marca && <p className="text-xs text-slate-400 mt-0.5">{m.marca}</p>}
+              </div>
             </div>
             {m.descricao && (
               <p className="text-xs text-slate-500 mt-1">{m.descricao}</p>

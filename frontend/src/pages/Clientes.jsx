@@ -18,6 +18,8 @@ function Clientes() {
   const [busca, setBusca] = useState('')
   const [expandido, setExpandido] = useState(null)
   const [servicosCliente, setServicosCliente] = useState({})
+  const [mostrarTodosServicos, setMostrarTodosServicos] = useState({})
+  const LIMITE_SERVICOS = 10
   const [confirmandoId, setConfirmandoId] = useState(null)
   const [transferindoCliente, setTransferindoCliente] = useState(null)
   const [novoClienteId, setNovoClienteId] = useState('')
@@ -252,26 +254,41 @@ function Clientes() {
                 ) : servicosCliente[c.id].length === 0 ? (
                   <p className="text-xs text-slate-400">Nenhum serviço registrado para este cliente.</p>
                 ) : (
-                  servicosCliente[c.id].map(s => (
-                    <div key={s.id} className="bg-white rounded-xl p-3 border border-slate-100">
-                      <div className="flex justify-between items-start gap-2">
-                        <p className="text-xs font-semibold text-slate-700 flex-1 truncate">{s.titulo}</p>
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${badgeStatus(s.status)}`}>
-                          {labelStatus(s.status)}
-                        </span>
+                  <>
+                    {(mostrarTodosServicos[c.id] ? servicosCliente[c.id] : servicosCliente[c.id].slice(0, LIMITE_SERVICOS)).map(s => (
+                      <div key={s.id} className="bg-white rounded-xl p-3 border border-slate-100">
+                        <div className="flex justify-between items-start gap-2">
+                          <p className="text-xs font-semibold text-slate-700 flex-1 truncate">{s.titulo}</p>
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${badgeStatus(s.status)}`}>
+                            {labelStatus(s.status)}
+                          </span>
+                        </div>
+                        {s.prazo && (
+                          <p className="text-xs text-slate-400 mt-1">
+                            Prazo: {new Date(s.prazo + 'T00:00:00').toLocaleDateString('pt-BR')}
+                          </p>
+                        )}
+                        {s.tag && (
+                          <span className="inline-block bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full mt-1">
+                            {TAG_LABEL[s.tag] || s.tag}
+                          </span>
+                        )}
                       </div>
-                      {s.prazo && (
-                        <p className="text-xs text-slate-400 mt-1">
-                          Prazo: {new Date(s.prazo + 'T00:00:00').toLocaleDateString('pt-BR')}
-                        </p>
-                      )}
-                      {s.tag && (
-                        <span className="inline-block bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full mt-1">
-                          {TAG_LABEL[s.tag] || s.tag}
-                        </span>
-                      )}
-                    </div>
-                  ))
+                    ))}
+                    {servicosCliente[c.id].length > LIMITE_SERVICOS && (
+                      <button
+                        onClick={e => {
+                          e.stopPropagation()
+                          setMostrarTodosServicos(prev => ({ ...prev, [c.id]: !prev[c.id] }))
+                        }}
+                        className="text-xs text-[#2563eb] font-semibold self-center py-1"
+                      >
+                        {mostrarTodosServicos[c.id]
+                          ? 'Mostrar menos'
+                          : `Mostrar todos (${servicosCliente[c.id].length})`}
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             )}

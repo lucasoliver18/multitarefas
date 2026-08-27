@@ -10,6 +10,7 @@ function EditarMaterial() {
   const toast = useToast()
   const [form, setForm] = useState({
     nome: '',
+    marca: '',
     descricao: '',
     unidade_medida: 'un',
     preco_unitario: '',
@@ -26,6 +27,7 @@ function EditarMaterial() {
         const m = res.data
         setForm({
           nome:               m.nome,
+          marca:              m.marca || '',
           descricao:          m.descricao || '',
           unidade_medida:     m.unidade_medida,
           preco_unitario:     m.preco_unitario,

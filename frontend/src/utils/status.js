@@ -11,9 +11,9 @@ export const STATUS_OPCOES = [
 ]
 
 export const PRIORIDADE_OPCOES = [
-  { val: 'alta',  label: '🔴 Alta' },
-  { val: 'media', label: '🟠 Média' },
-  { val: 'baixa', label: '🟢 Baixa' },
+  { val: 'alta',  label: 'Alta' },
+  { val: 'media', label: 'Média' },
+  { val: 'baixa', label: 'Baixa' },
 ]
 
 export const TAG_OPCOES = Object.entries(TAG_LABEL).map(([val, label]) => ({ val, label }))

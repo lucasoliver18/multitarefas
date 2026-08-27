@@ -14,6 +14,7 @@ class Material extends Model
 
     protected $fillable = [
         'nome',
+        'marca',
         'descricao',
         'unidade_medida',
         'preco_unitario',

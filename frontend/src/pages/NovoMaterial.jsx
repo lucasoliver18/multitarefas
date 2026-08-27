@@ -9,6 +9,7 @@ function NovoMaterial() {
   const toast = useToast()
   const [form, setForm] = useState({
     nome: '',
+    marca: '',
     descricao: '',
     unidade_medida: 'un',
     preco_unitario: '',
