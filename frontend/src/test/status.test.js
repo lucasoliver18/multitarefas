@@ -29,19 +29,19 @@ describe('badgeStatus', () => {
 
 describe('labelStatus', () => {
   it('retorna label correto para finalizado', () => {
-    expect(labelStatus('finalizado')).toBe('✔ Finalizado')
+    expect(labelStatus('finalizado')).toBe('Finalizado')
   })
 
   it('retorna label correto para em_andamento', () => {
-    expect(labelStatus('em_andamento')).toBe('🔄 Em andamento')
+    expect(labelStatus('em_andamento')).toBe('Em andamento')
   })
 
   it('retorna label correto para pendente', () => {
-    expect(labelStatus('pendente')).toBe('⏳ Pendente')
+    expect(labelStatus('pendente')).toBe('Pendente')
   })
 
   it('retorna fallback para status desconhecido', () => {
-    expect(labelStatus('invalido')).toBe('⏳ Pendente')
+    expect(labelStatus('invalido')).toBe('Pendente')
   })
 })
 
@@ -61,15 +61,15 @@ describe('borderPrioridade', () => {
 
 describe('labelPrioridade', () => {
   it('retorna label de alta prioridade', () => {
-    expect(labelPrioridade('alta')).toBe('🔴 Alta')
+    expect(labelPrioridade('alta')).toBe('Alta')
   })
 
   it('retorna label de média prioridade', () => {
-    expect(labelPrioridade('media')).toBe('🟠 Média')
+    expect(labelPrioridade('media')).toBe('Média')
   })
 
   it('retorna label de baixa prioridade', () => {
-    expect(labelPrioridade('baixa')).toBe('🟢 Baixa')
+    expect(labelPrioridade('baixa')).toBe('Baixa')
   })
 })
 

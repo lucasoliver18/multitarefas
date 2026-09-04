@@ -1,4 +1,5 @@
 import { Component } from 'react'
+import { AlertTriangle } from 'lucide-react'
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -14,7 +15,7 @@ class ErrorBoundary extends Component {
     if (this.state.erro) {
       return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4 px-6 text-center">
-          <p className="text-4xl">⚠️</p>
+          <AlertTriangle size={40} className="text-amber-500" />
           <p className="text-base font-semibold text-slate-700">Algo deu errado.</p>
           <p className="text-xs text-slate-400">Recarregue a página para continuar.</p>
           <button

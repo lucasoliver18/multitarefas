@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Search, ChevronUp, ChevronDown } from 'lucide-react'
 
 function PainelFiltros({ quantidadeAtiva, onLimpar, children }) {
   const [aberto, setAberto] = useState(false)
@@ -9,10 +10,11 @@ function PainelFiltros({ quantidadeAtiva, onLimpar, children }) {
         onClick={() => setAberto(a => !a)}
         className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-slate-700"
       >
-        <span>
-          🔎 Filtros{quantidadeAtiva > 0 ? ` (${quantidadeAtiva})` : ''}
+        <span className="inline-flex items-center gap-1.5">
+          <Search size={14} />
+          Filtros{quantidadeAtiva > 0 ? ` (${quantidadeAtiva})` : ''}
         </span>
-        <span className="text-slate-400">{aberto ? '▲' : '▼'}</span>
+        {aberto ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
       </button>
 
       {aberto && (

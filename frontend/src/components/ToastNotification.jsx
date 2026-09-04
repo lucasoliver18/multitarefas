@@ -1,12 +1,13 @@
 import { createContext, useContext, useState, useCallback, useRef } from 'react'
+import { Check, X, AlertTriangle, HelpCircle } from 'lucide-react'
 
 export const ToastContext = createContext(null)
 
 const STYLES = {
-  sucesso:   { bg: 'bg-[#16a34a]', icon: '✓' },
-  erro:      { bg: 'bg-[#dc2626]', icon: '✕' },
-  alerta:    { bg: 'bg-[#ca8a04]', icon: '!' },
-  confirmar: { bg: 'bg-[#1e3a5f]', icon: '?' },
+  sucesso:   { bg: 'bg-[#16a34a]', Icone: Check },
+  erro:      { bg: 'bg-[#dc2626]', Icone: X },
+  alerta:    { bg: 'bg-[#ca8a04]', Icone: AlertTriangle },
+  confirmar: { bg: 'bg-[#1e3a5f]', Icone: HelpCircle },
 }
 
 function ToastItem({ toast, onRemove }) {
@@ -14,8 +15,8 @@ function ToastItem({ toast, onRemove }) {
 
   return (
     <div className={`${s.bg} text-white rounded-2xl px-4 py-3 shadow-xl flex items-center gap-3 ${toast.leaving ? 'toast-leave' : 'toast-enter'}`}>
-      <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold shrink-0">
-        {s.icon}
+      <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+        <s.Icone size={14} />
       </span>
       <p className="flex-1 text-sm font-medium leading-snug">{toast.message}</p>
 
@@ -37,9 +38,9 @@ function ToastItem({ toast, onRemove }) {
       ) : (
         <button
           onClick={() => onRemove(toast.id)}
-          className="text-white/60 hover:text-white shrink-0 text-xl leading-none"
+          className="text-white/60 hover:text-white shrink-0"
         >
-          ×
+          <X size={16} />
         </button>
       )}
     </div>

@@ -1,15 +1,23 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Search, X, ChevronUp, ChevronDown, Phone, Mail } from 'lucide-react'
 import api from '../services/api'
 import Navbar from '../components/Navbar'
+import StatusBadge from '../components/StatusBadge'
+import ComboboxAsync from '../components/ComboboxAsync'
+import Select from '../components/Select'
+import PainelFiltros from '../components/PainelFiltros'
 import { useToast } from '../hooks/useToast'
-import { useClientes } from '../hooks/useClientes'
+import { useClientes, buscarClientesPagina } from '../hooks/useClientes'
 import { usePaginacao } from '../hooks/usePaginacao'
 import Paginacao from '../components/Paginacao'
 import BarraSelecao from '../components/BarraSelecao'
 import { useSelecaoMultipla } from '../hooks/useSelecaoMultipla'
 import { excluirEmMassa } from '../utils/exclusaoEmMassa'
-import { TAG_LABEL, badgeStatus, labelStatus } from '../utils/status'
+import { TAG_LABEL } from '../utils/status'
+
+const SELECT = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-600'
+const LABEL = 'text-xs font-semibold text-slate-600 mb-1 block'
 
 function Clientes() {
   const navigate = useNavigate()
@@ -23,7 +31,17 @@ function Clientes() {
   const [confirmandoId, setConfirmandoId] = useState(null)
   const [transferindoCliente, setTransferindoCliente] = useState(null)
   const [novoClienteId, setNovoClienteId] = useState('')
+  const [novoClienteTexto, setNovoClienteTexto] = useState('')
+  const [filtroTipoPessoa, setFiltroTipoPessoa] = useState('')
+  const [filtroServicos, setFiltroServicos] = useState('')
   const { ativo: selecaoAtiva, selecionados, alternarModo, alternarItem, cancelar, quantidade } = useSelecaoMultipla()
+
+  const quantidadeFiltrosAtivos = [filtroTipoPessoa, filtroServicos].filter(Boolean).length
+
+  const limparFiltros = () => {
+    setFiltroTipoPessoa('')
+    setFiltroServicos('')
+  }
 
   const handleDeletar = async (id) => {
     setConfirmandoId(null)
@@ -52,6 +70,7 @@ function Clientes() {
     } finally {
       setTransferindoCliente(null)
       setNovoClienteId('')
+      setNovoClienteTexto('')
     }
   }
 
@@ -76,8 +95,14 @@ function Clientes() {
   }
 
   const clientesFiltrados = useMemo(() =>
-    clientes.filter(c => c.nome.toLowerCase().includes(busca.toLowerCase())),
-    [clientes, busca]
+    clientes.filter(c => {
+      if (!c.nome.toLowerCase().includes(busca.toLowerCase())) return false
+      if (filtroTipoPessoa && c.tipo_pessoa !== filtroTipoPessoa) return false
+      if (filtroServicos === 'com' && !(c.servicos_count > 0)) return false
+      if (filtroServicos === 'sem' && !(c.servicos_count === 0)) return false
+      return true
+    }),
+    [clientes, busca, filtroTipoPessoa, filtroServicos]
   )
 
   const { pagina, setPagina, tamanhoPagina, mudarTamanhoPagina, totalPaginas, itensPagina } = usePaginacao(clientesFiltrados)
@@ -112,7 +137,7 @@ function Clientes() {
         </div>
 
         <div className="mt-4 flex items-center gap-2 bg-white/10 border border-white/20 rounded-xl px-4 py-3">
-          <span className="text-slate-300 text-sm">🔍</span>
+          <Search size={16} className="text-slate-300" />
           <input
             value={busca}
             onChange={e => setBusca(e.target.value)}
@@ -120,7 +145,9 @@ function Clientes() {
             placeholder="Buscar cliente pelo nome..."
           />
           {busca && (
-            <button onClick={() => setBusca('')} className="text-slate-400 text-xs">✕</button>
+            <button onClick={() => setBusca('')} className="text-slate-400">
+              <X size={14} />
+            </button>
           )}
         </div>
       </div>
@@ -129,9 +156,33 @@ function Clientes() {
         {carregando && (
           <div className="text-center text-slate-400 text-sm mt-10">Carregando clientes...</div>
         )}
+
+        {!carregando && clientes.length > 0 && (
+          <PainelFiltros quantidadeAtiva={quantidadeFiltrosAtivos} onLimpar={limparFiltros}>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={LABEL}>Tipo de pessoa</label>
+                <Select value={filtroTipoPessoa} onChange={e => setFiltroTipoPessoa(e.target.value)} className={SELECT}>
+                  <option value="">Todos</option>
+                  <option value="fisica">Pessoa Física</option>
+                  <option value="juridica">Pessoa Jurídica</option>
+                </Select>
+              </div>
+              <div>
+                <label className={LABEL}>Serviços vinculados</label>
+                <Select value={filtroServicos} onChange={e => setFiltroServicos(e.target.value)} className={SELECT}>
+                  <option value="">Todos</option>
+                  <option value="com">Com serviços</option>
+                  <option value="sem">Sem serviços</option>
+                </Select>
+              </div>
+            </div>
+          </PainelFiltros>
+        )}
+
         {!carregando && clientesFiltrados.length === 0 && (
           <div className="text-center text-slate-400 text-sm mt-10">
-            {busca ? 'Nenhum cliente encontrado.' : 'Nenhum cliente cadastrado ainda!'}
+            {busca || quantidadeFiltrosAtivos > 0 ? 'Nenhum cliente encontrado para estes critérios.' : 'Nenhum cliente cadastrado ainda!'}
           </div>
         )}
 
@@ -165,12 +216,14 @@ function Clientes() {
                   </div>
                   {c.cpf && <p className="text-xs text-slate-500 mt-0.5">CPF: {c.cpf}</p>}
                   {c.cnpj && <p className="text-xs text-slate-500 mt-0.5">CNPJ: {c.cnpj}</p>}
-                  {c.telefone && <p className="text-xs text-slate-500 mt-0.5">📞 {c.telefone}</p>}
-                  {c.email && <p className="text-xs text-slate-500 mt-0.5">✉️ {c.email}</p>}
+                  {c.telefone && <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1"><Phone size={11} />{c.telefone}</p>}
+                  {c.email && <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1"><Mail size={11} />{c.email}</p>}
                   <p className="text-xs text-slate-400 mt-1">{totalLabel(c.servicos_count)}</p>
                 </div>
                 {!selecaoAtiva && (
-                  <span className="text-slate-300 text-sm ml-2">{expandido === c.id ? '▲' : '▼'}</span>
+                  <span className="text-slate-300 ml-2">
+                    {expandido === c.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  </span>
                 )}
               </div>
 
@@ -183,16 +236,18 @@ function Clientes() {
                   {clientes.filter(o => o.id !== c.id).length === 0 ? (
                     <p className="text-xs text-amber-600 mb-2">Cadastre outro cliente antes de excluir este.</p>
                   ) : (
-                    <select
-                      value={novoClienteId}
-                      onChange={e => setNovoClienteId(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-600 mb-2"
-                    >
-                      <option value="">Selecione um cliente...</option>
-                      {clientes.filter(o => o.id !== c.id).map(o => (
-                        <option key={o.id} value={o.id}>{o.nome}</option>
-                      ))}
-                    </select>
+                    <div className="mb-2">
+                      <ComboboxAsync
+                        valor={novoClienteTexto}
+                        onChangeTexto={texto => { setNovoClienteTexto(texto); setNovoClienteId('') }}
+                        onSelecionar={o => { setNovoClienteTexto(o.nome); setNovoClienteId(o.id) }}
+                        buscarPagina={(busca, pagina) => buscarClientesPagina(busca, pagina)
+                          .then(r => ({ ...r, itens: r.itens.filter(o => o.id !== c.id) }))}
+                        renderItem={o => <span>{o.nome}</span>}
+                        placeholder="Buscar cliente..."
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-600"
+                      />
+                    </div>
                   )}
                   <div className="flex gap-2">
                     <button
@@ -203,7 +258,7 @@ function Clientes() {
                       Transferir e excluir
                     </button>
                     <button
-                      onClick={() => { setTransferindoCliente(null); setNovoClienteId('') }}
+                      onClick={() => { setTransferindoCliente(null); setNovoClienteId(''); setNovoClienteTexto('') }}
                       className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold"
                     >
                       Cancelar
@@ -259,9 +314,7 @@ function Clientes() {
                       <div key={s.id} className="bg-white rounded-xl p-3 border border-slate-100">
                         <div className="flex justify-between items-start gap-2">
                           <p className="text-xs font-semibold text-slate-700 flex-1 truncate">{s.titulo}</p>
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${badgeStatus(s.status)}`}>
-                            {labelStatus(s.status)}
-                          </span>
+                          <StatusBadge status={s.status} className="px-2 py-0.5" />
                         </div>
                         {s.prazo && (
                           <p className="text-xs text-slate-400 mt-1">

@@ -6,12 +6,26 @@ use App\Http\Requests\StoreMaterialRequest;
 use App\Http\Requests\UpdateMaterialRequest;
 use App\Http\Resources\MaterialResource;
 use App\Models\Material;
+use Illuminate\Http\Request;
 
 class MaterialController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return MaterialResource::collection(Material::orderBy('nome')->get());
+        $query = Material::query();
+
+        if ($request->filled('busca')) {
+            $query->where('nome', 'like', '%' . $request->busca . '%');
+        }
+
+        $query->orderBy('nome');
+
+        if ($request->filled('por_pagina')) {
+            $porPagina = min((int) $request->por_pagina, 100);
+            return MaterialResource::collection($query->paginate($porPagina));
+        }
+
+        return MaterialResource::collection($query->get());
     }
 
     public function store(StoreMaterialRequest $request)

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { Clock, CheckCircle2, XCircle } from 'lucide-react'
 import api from '../services/api'
 import Navbar from '../components/Navbar'
 import { useToast } from '../hooks/useToast'
@@ -12,7 +13,8 @@ const badgeOrcStatus = (s) => ({
   pendente:  'bg-[#fef9c3] text-[#854d0e]',
 }[s] || 'bg-[#fef9c3] text-[#854d0e]')
 
-const labelStatus = { pendente: '⏳ Pendente', aprovado: '✔ Aprovado', reprovado: '✘ Reprovado' }
+const labelStatus = { pendente: 'Pendente', aprovado: 'Aprovado', reprovado: 'Reprovado' }
+const iconeOrcStatus = { pendente: Clock, aprovado: CheckCircle2, reprovado: XCircle }
 
 function Orcamentos() {
   const { servicoId } = useParams()
@@ -95,6 +97,7 @@ function Orcamentos() {
           const valorMateriais = (o.materiais || []).reduce((acc, m) =>
             acc + parseFloat(m.pivot.quantidade) * parseFloat(m.pivot.preco_unitario_snapshot), 0)
           const valorFinal = valorMateriais * (1 + parseFloat(o.margem_lucro) / 100)
+          const IconeStatus = iconeOrcStatus[o.status] || Clock
 
           return (
             <div key={o.id} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
@@ -103,7 +106,8 @@ function Orcamentos() {
                   <p className="text-sm font-semibold text-slate-800">{o.titulo}</p>
                   {o.descricao && <p className="text-xs text-slate-500 mt-1">{o.descricao}</p>}
                 </div>
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${badgeOrcStatus(o.status)}`}>
+                <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${badgeOrcStatus(o.status)}`}>
+                  <IconeStatus size={12} />
                   {labelStatus[o.status]}
                 </span>
               </div>

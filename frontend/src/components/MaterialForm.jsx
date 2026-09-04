@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import Navbar from './Navbar'
+import Select from './Select'
 import { useNavigate } from 'react-router-dom'
 import { UNIDADES as unidades } from '../utils/materiais'
 import { useMateriais } from '../hooks/useMateriais'
@@ -75,9 +76,9 @@ function MaterialForm({ titulo, form, onChange, erro, salvando, onSalvar, botaoL
         <div className="flex gap-3">
           <div className="flex flex-col gap-1 flex-1">
             <label className={LABEL}>Unidade *</label>
-            <select name="unidade_medida" value={form.unidade_medida} onChange={onChange} className={INPUT}>
+            <Select name="unidade_medida" value={form.unidade_medida} onChange={onChange} className={INPUT}>
               {unidades.map(u => <option key={u} value={u}>{u}</option>)}
-            </select>
+            </Select>
           </div>
           <div className="flex flex-col gap-1 flex-1">
             <label className={LABEL}>Qtd. Estoque</label>

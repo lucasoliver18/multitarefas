@@ -16,7 +16,7 @@ class UpdateServicoRequest extends FormRequest
             'cliente_id' => ['sometimes', 'integer', Rule::exists('clientes', 'id')->where(fn ($q) => $q->whereNull('deleted_at'))],
             'prioridade' => 'sometimes|in:alta,media,baixa',
             'status'     => 'sometimes|in:pendente,em_andamento,finalizado',
-            'prazo'      => 'nullable|date',
+            'prazo'      => 'nullable|date_format:Y-m-d',
             'descricao'  => 'nullable|string',
             'tag'        => 'nullable|in:informatica,pintura,outros',
         ];

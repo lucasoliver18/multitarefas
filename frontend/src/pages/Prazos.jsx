@@ -1,28 +1,31 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { NotebookPen, AlertTriangle } from 'lucide-react'
 import Navbar from '../components/Navbar'
+import StatusBadge from '../components/StatusBadge'
 import { useToast } from '../hooks/useToast'
 import { useServicos } from '../hooks/useServicos'
 import {
-  badgeStatus,
-  labelStatus,
   TAG_LABEL,
   STATUS_OPCOES,
+  PRIORIDADE_OPCOES,
   labelPrioridade,
   corTextoPrioridade,
+  corFundoPrioridade,
 } from '../utils/status'
+import { hojeISO, estaVencido } from '../utils/prazos'
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 const DIAS_SEMANA = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
 
-const COR_PONTO = { alta: 'bg-red-500', media: 'bg-orange-400', baixa: 'bg-green-400' }
 const TAGS_FIXAS = ['informatica', 'pintura', 'outros']
+const LIMITE_VENCIDOS = 2
 
 function Prazos() {
   const navigate = useNavigate()
   const toast = useToast()
   const hoje = new Date()
-  const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`
+  const hojeStr = hojeISO()
 
   const { servicos, mudarStatus: mudarStatusHook } = useServicos()
   const [ano, setAno] = useState(hoje.getFullYear())
@@ -53,7 +56,9 @@ function Prazos() {
   }, [servicos, filtroTags, filtroPrioridade, filtroStatus])
 
   const vencidos = useMemo(() =>
-    servicosFiltrados.filter(s => s.prazo && s.status !== 'finalizado' && s.prazo < hojeStr),
+    servicosFiltrados
+      .filter(s => estaVencido(s, hojeStr))
+      .sort((a, b) => a.prazo < b.prazo ? -1 : a.prazo > b.prazo ? 1 : 0),
     [servicosFiltrados, hojeStr]
   )
 
@@ -114,12 +119,11 @@ function Prazos() {
           <p className="text-xs text-slate-500 mt-0.5">Cliente: {s.cliente}</p>
         </div>
         <div className="relative shrink-0">
-          <button
+          <StatusBadge
+            status={s.status}
+            as="button"
             onClick={() => setMenuStatus(prev => prev === s.id ? null : s.id)}
-            className={`text-xs font-semibold px-3 py-1.5 rounded-full ${badgeStatus(s.status)}`}
-          >
-            {labelStatus(s.status)}
-          </button>
+          />
           {menuStatus === s.id && (
             <div className="absolute right-0 top-full mt-1 bg-white rounded-xl border border-slate-200 shadow-lg z-20 min-w-[150px] overflow-hidden">
               {STATUS_OPCOES.filter(o => o.val !== s.status).map(o => (
@@ -137,7 +141,8 @@ function Prazos() {
       </div>
 
       <div className="flex items-center gap-2 mt-2">
-        <span className={`text-xs font-semibold ${corTextoPrioridade(s.prioridade)}`}>
+        <span className={`inline-flex items-center gap-1 text-xs font-semibold ${corTextoPrioridade(s.prioridade)}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${corFundoPrioridade(s.prioridade)}`} />
           {labelPrioridade(s.prioridade)}
         </span>
         {s.tag && (
@@ -150,9 +155,10 @@ function Prazos() {
       <div className="flex gap-2 mt-3">
         <button
           onClick={() => navigate(`/servicos/${s.id}/anotacoes`)}
-          className="flex-1 text-xs bg-amber-50 text-amber-700 border border-amber-200 px-3 py-2 rounded-xl font-semibold text-center"
+          className="flex-1 text-xs bg-amber-50 text-amber-700 border border-amber-200 px-3 py-2 rounded-xl font-semibold text-center inline-flex items-center justify-center gap-1"
         >
-          📝 Anotações
+          <NotebookPen size={13} />
+          Anotações
         </button>
         <button
           onClick={() => navigate(`/editar/${s.id}`)}
@@ -187,11 +193,12 @@ function Prazos() {
       {vencidos.length > 0 && (
         <div className="px-6 pt-4">
           <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
-            <p className="text-sm font-bold text-red-700 mb-3">
-              ⚠ {vencidos.length} prazo{vencidos.length > 1 ? 's' : ''} vencido{vencidos.length > 1 ? 's' : ''}
+            <p className="text-sm font-bold text-red-700 mb-3 inline-flex items-center gap-1.5">
+              <AlertTriangle size={16} />
+              {vencidos.length} prazo{vencidos.length > 1 ? 's' : ''} vencido{vencidos.length > 1 ? 's' : ''}
             </p>
             <div className="flex flex-col gap-2">
-              {vencidos.map(s => (
+              {vencidos.slice(0, LIMITE_VENCIDOS).map(s => (
                 <div key={s.id} className="flex justify-between items-center gap-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-red-800 truncate">{s.titulo}</p>
@@ -208,6 +215,14 @@ function Prazos() {
                 </div>
               ))}
             </div>
+            {vencidos.length > LIMITE_VENCIDOS && (
+              <button
+                onClick={() => navigate('/servicos?vencidos=1')}
+                className="text-xs text-red-700 font-semibold underline mt-3"
+              >
+                Ver todos os {vencidos.length} prazos vencidos
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -224,13 +239,10 @@ function Prazos() {
 
         <div className="flex gap-2 flex-wrap items-center">
           <span className="text-xs text-slate-400">Prioridade:</span>
-          {[
-            { val: 'alta',  label: '🔴 Alta',  ativo: 'bg-red-100 text-red-700 border border-red-300',       inativo: 'bg-slate-100 text-slate-600' },
-            { val: 'media', label: '🟠 Média',  ativo: 'bg-orange-100 text-orange-700 border border-orange-300', inativo: 'bg-slate-100 text-slate-600' },
-            { val: 'baixa', label: '🟢 Baixa',  ativo: 'bg-green-100 text-green-700 border border-green-300',  inativo: 'bg-slate-100 text-slate-600' },
-          ].map(({ val, label, ativo, inativo }) => (
+          {PRIORIDADE_OPCOES.map(({ val, label }) => (
             <button key={val} onClick={() => togglePrioridade(val)}
-              className={`text-xs px-3 py-1 rounded-full font-medium ${filtroPrioridade === val ? ativo : inativo}`}>
+              className={`inline-flex items-center gap-1.5 text-xs px-3 py-1 rounded-full font-medium ${filtroPrioridade === val ? `bg-slate-100 border border-slate-300 ${corTextoPrioridade(val)}` : 'bg-slate-100 text-slate-600'}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${corFundoPrioridade(val)}`} />
               {label}
             </button>
           ))}
@@ -238,11 +250,7 @@ function Prazos() {
 
         <div className="flex gap-2 flex-wrap items-center">
           <span className="text-xs text-slate-400">Status:</span>
-          {[
-            { val: 'pendente',     label: 'Pendente' },
-            { val: 'em_andamento', label: 'Em andamento' },
-            { val: 'finalizado',   label: 'Finalizado' },
-          ].map(({ val, label }) => (
+          {STATUS_OPCOES.map(({ val, label }) => (
             <button key={val} onClick={() => toggleStatus(val)}
               className={`text-xs px-3 py-1 rounded-full font-medium ${filtroStatus === val ? 'bg-[#2563eb] text-white' : 'bg-slate-100 text-slate-600'}`}>
               {label}
@@ -304,7 +312,7 @@ function Prazos() {
                     {pontosUnicos.length > 0 && (
                       <div className="flex gap-0.5 mt-0.5">
                         {pontosUnicos.map(p => (
-                          <div key={p} className={`w-1.5 h-1.5 rounded-full ${COR_PONTO[p]}`} />
+                          <div key={p} className={`w-1.5 h-1.5 rounded-full ${corFundoPrioridade(p)}`} />
                         ))}
                       </div>
                     )}
@@ -353,12 +361,11 @@ function Prazos() {
                     <p className="text-sm font-semibold text-slate-800 truncate">{s.titulo}</p>
                     <p className="text-xs text-slate-500 mt-0.5">{s.cliente}</p>
                   </div>
-                  <span className={`text-xs font-semibold px-3 py-1 rounded-full shrink-0 ${badgeStatus(s.status)}`}>
-                    {labelStatus(s.status)}
-                  </span>
+                  <StatusBadge status={s.status} className="px-3 py-1" />
                 </div>
                 <div className="flex items-center gap-2 mt-2">
-                  <span className={`text-xs font-semibold ${corTextoPrioridade(s.prioridade)}`}>
+                  <span className={`inline-flex items-center gap-1 text-xs font-semibold ${corTextoPrioridade(s.prioridade)}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${corFundoPrioridade(s.prioridade)}`} />
                     {labelPrioridade(s.prioridade)}
                   </span>
                   {s.tag && (

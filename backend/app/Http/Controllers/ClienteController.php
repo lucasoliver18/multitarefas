@@ -20,7 +20,14 @@ class ClienteController extends Controller
             $query->where('nome', 'like', '%' . $request->busca . '%');
         }
 
-        return ClienteResource::collection($query->orderBy('nome')->get());
+        $query->orderBy('nome');
+
+        if ($request->filled('por_pagina')) {
+            $porPagina = min((int) $request->por_pagina, 100);
+            return ClienteResource::collection($query->paginate($porPagina));
+        }
+
+        return ClienteResource::collection($query->get());
     }
 
     public function store(StoreClienteRequest $request)

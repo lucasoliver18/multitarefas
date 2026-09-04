@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { X } from 'lucide-react'
 import api from '../services/api'
 import Navbar from '../components/Navbar'
+import ComboboxAsync from '../components/ComboboxAsync'
 import { useToast } from '../hooks/useToast'
-import { useMateriais } from '../hooks/useMateriais'
+import { buscarMateriaisPagina } from '../hooks/useMateriais'
 import { materiaisComEstoqueInsuficiente } from '../utils/materiais'
 
 const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
@@ -13,10 +15,10 @@ function NovoOrcamento() {
   const { servicoId } = useParams()
   const navigate = useNavigate()
   const toast = useToast()
-  const { materiais } = useMateriais()
   const [servico, setServico] = useState(null)
   const [form, setForm] = useState({ titulo: '', descricao: '', margem_lucro: '0' })
   const [itens, setItens] = useState([])
+  const [buscaMaterial, setBuscaMaterial] = useState('')
   const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
 
@@ -26,12 +28,9 @@ function NovoOrcamento() {
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
-  const adicionarMaterial = (materialId) => {
-    if (!materialId || itens.find(i => i.id === Number(materialId))) return
-    const material = materiais.find(m => m.id === Number(materialId))
-    if (material) {
-      setItens([...itens, { id: material.id, nome: material.nome, unidade_medida: material.unidade_medida, preco_unitario: material.preco_unitario, quantidade_estoque: material.quantidade_estoque, quantidade: '1' }])
-    }
+  const adicionarMaterial = (material) => {
+    if (itens.find(i => i.id === material.id)) return
+    setItens([...itens, { id: material.id, nome: material.nome, unidade_medida: material.unidade_medida, preco_unitario: material.preco_unitario, quantidade_estoque: material.quantidade_estoque, quantidade: '1' }])
   }
 
   const atualizarQuantidade = (id, quantidade) =>
@@ -118,18 +117,20 @@ function NovoOrcamento() {
 
         <div className="flex flex-col gap-2">
           <label className={LABEL}>Materiais</label>
-          <select
-            onChange={(e) => { adicionarMaterial(e.target.value); e.target.value = '' }}
+          <ComboboxAsync
+            valor={buscaMaterial}
+            onChangeTexto={setBuscaMaterial}
+            onSelecionar={m => { adicionarMaterial(m); setBuscaMaterial('') }}
+            buscarPagina={buscarMateriaisPagina}
+            renderItem={m => (
+              <>
+                <span>{m.nome}</span>
+                <span className="text-xs text-slate-400">estoque: {parseFloat(m.quantidade_estoque)} {m.unidade_medida}</span>
+              </>
+            )}
+            placeholder="Buscar material..."
             className={INPUT + ' text-slate-500'}
-            defaultValue=""
-          >
-            <option value="" disabled>Selecionar material...</option>
-            {materiais.map(m => (
-              <option key={m.id} value={m.id}>
-                {m.nome} (estoque: {parseFloat(m.quantidade_estoque)} {m.unidade_medida})
-              </option>
-            ))}
-          </select>
+          />
 
           {itens.length > 0 && (
             <div className="flex flex-col gap-2 mt-1">
@@ -146,7 +147,7 @@ function NovoOrcamento() {
                     className="w-16 border border-slate-200 rounded-lg px-2 py-1 text-xs text-center outline-none focus:border-blue-600"
                   />
                   <span className="text-xs text-slate-400">{item.unidade_medida}</span>
-                  <button onClick={() => removerItem(item.id)} className="text-red-400 text-xs font-bold ml-1">✕</button>
+                  <button onClick={() => removerItem(item.id)} className="text-red-400 ml-1"><X size={14} /></button>
                 </div>
               ))}
             </div>

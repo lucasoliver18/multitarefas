@@ -16,7 +16,7 @@ class StoreServicoRequest extends FormRequest
             'cliente_id' => ['required', 'integer', Rule::exists('clientes', 'id')->where(fn ($q) => $q->whereNull('deleted_at'))],
             'prioridade' => 'required|in:alta,media,baixa',
             'status'     => 'required|in:pendente,em_andamento,finalizado',
-            'prazo'      => 'nullable|date',
+            'prazo'      => 'nullable|date_format:Y-m-d',
             'descricao'  => 'nullable|string',
             'tag'        => 'nullable|in:informatica,pintura,outros',
         ];

@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
+import Select from '../components/Select'
 import { useToast } from '../hooks/useToast'
 import { useMateriais } from '../hooks/useMateriais'
 import { usePaginacao } from '../hooks/usePaginacao'
@@ -27,6 +28,7 @@ function Materiais() {
   const [filtroPrecoMax, setFiltroPrecoMax] = useState('')
   const [filtroQtdMin, setFiltroQtdMin] = useState('')
   const [filtroQtdMax, setFiltroQtdMax] = useState('')
+  const [filtroForaEstoque, setFiltroForaEstoque] = useState(false)
 
   const quantidadeFiltrosAtivos = [filtroUnidade, filtroPrecoMin, filtroPrecoMax, filtroQtdMin, filtroQtdMax]
     .filter(Boolean).length
@@ -37,6 +39,7 @@ function Materiais() {
     setFiltroPrecoMax('')
     setFiltroQtdMin('')
     setFiltroQtdMax('')
+    setFiltroForaEstoque(false)
   }
 
   const handleDeletar = async (id) => {
@@ -72,11 +75,12 @@ function Materiais() {
       if (filtroPrecoMin && preco < parseFloat(filtroPrecoMin)) return false
       if (filtroPrecoMax && preco > parseFloat(filtroPrecoMax)) return false
       const qtd = parseFloat(m.quantidade_estoque)
+      if (filtroForaEstoque && qtd > 0) return false
       if (filtroQtdMin && qtd < parseFloat(filtroQtdMin)) return false
       if (filtroQtdMax && qtd > parseFloat(filtroQtdMax)) return false
       return true
     })
-  }, [materiais, busca, filtroUnidade, filtroPrecoMin, filtroPrecoMax, filtroQtdMin, filtroQtdMax])
+  }, [materiais, busca, filtroUnidade, filtroPrecoMin, filtroPrecoMax, filtroQtdMin, filtroQtdMax, filtroForaEstoque])
 
   const { pagina, setPagina, tamanhoPagina, mudarTamanhoPagina, totalPaginas, itensPagina } = usePaginacao(materiaisFiltrados)
 
@@ -121,13 +125,21 @@ function Materiais() {
             placeholder="Buscar material..."
             className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
           />
+          <button
+            onClick={() => setFiltroForaEstoque(v => !v)}
+            className={`self-start text-xs px-3 py-1.5 rounded-full font-semibold transition-colors ${
+              filtroForaEstoque ? 'bg-red-600 text-white' : 'bg-white border border-slate-200 text-slate-600'
+            }`}
+          >
+            Fora de estoque
+          </button>
           <PainelFiltros quantidadeAtiva={quantidadeFiltrosAtivos} onLimpar={limparFiltros}>
             <div>
               <label className={LABEL}>Unidade</label>
-              <select value={filtroUnidade} onChange={e => setFiltroUnidade(e.target.value)} className={SELECT}>
+              <Select value={filtroUnidade} onChange={e => setFiltroUnidade(e.target.value)} className={SELECT}>
                 <option value="">Todas</option>
                 {UNIDADES.map(u => <option key={u} value={u}>{u}</option>)}
-              </select>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

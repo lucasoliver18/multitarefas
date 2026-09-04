@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '../services/api'
 import Navbar from '../components/Navbar'
+import Select from '../components/Select'
 import { useToast } from '../hooks/useToast'
-import { useClientes } from '../hooks/useClientes'
+import { buscarClientesPagina } from '../hooks/useClientes'
 import MiniCadastroCliente from '../components/MiniCadastroCliente'
-import { PRIORIDADE_OPCOES } from '../utils/status'
+import ComboboxAsync from '../components/ComboboxAsync'
+import { PRIORIDADE_OPCOES, STATUS_OPCOES } from '../utils/status'
+import { dataValida } from '../utils/prazos'
 
 const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
 const LABEL = 'text-xs font-semibold text-slate-700 mb-1'
@@ -14,7 +17,6 @@ function EditarServico() {
   const navigate = useNavigate()
   const { id } = useParams()
   const toast = useToast()
-  const { clientes, buscar } = useClientes()
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
   const [form, setForm] = useState({
@@ -27,7 +29,6 @@ function EditarServico() {
     prazo: '',
     tag: '',
   })
-  const [sugestoes, setSugestoes] = useState([])
   const [mostrarCadastroCliente, setMostrarCadastroCliente] = useState(false)
 
   useEffect(() => {
@@ -50,31 +51,34 @@ function EditarServico() {
     setForm({ ...form, [e.target.name]: e.target.value })
   }
 
-  const handleClienteChange = (e) => {
-    const val = e.target.value
+  // O campo de prazo fica não-controlado durante a digitação (defaultValue/onBlur):
+  // um <input type="date"> controlado (value + onChange) força o React a re-renderizar
+  // a cada tecla, e isso reseta o estado interno dos segmentos dia/mês/ano do seletor
+  // nativo do navegador, embaralhando o valor digitado. Só sincronizamos com o estado
+  // do formulário quando o usuário sai do campo.
+  const handlePrazoBlur = (e) => {
+    if (e.target.validity.badInput) {
+      setErro('Data inválida: verifique se o dia existe no mês selecionado.')
+      e.target.value = form.prazo
+      return
+    }
+    setErro('')
+    setForm(prev => ({ ...prev, prazo: e.target.value }))
+  }
+
+  const handleClienteTexto = (val) => {
     setForm(prev => ({ ...prev, cliente: val, cliente_id: null }))
     setMostrarCadastroCliente(false)
-    if (val.trim().length >= 1) {
-      const filtrados = clientes.filter(c =>
-        c.nome.toLowerCase().includes(val.toLowerCase())
-      )
-      setSugestoes(filtrados.slice(0, 5))
-    } else {
-      setSugestoes([])
-    }
   }
 
   const selecionarCliente = (cliente) => {
     setForm(prev => ({ ...prev, cliente: cliente.nome, cliente_id: cliente.id }))
-    setSugestoes([])
     setMostrarCadastroCliente(false)
   }
 
   const handleClienteCriado = (novoCliente) => {
     setForm(prev => ({ ...prev, cliente: novoCliente.nome, cliente_id: novoCliente.id }))
     setMostrarCadastroCliente(false)
-    setSugestoes([])
-    buscar()
     toast.sucesso('Cliente cadastrado!')
   }
 
@@ -84,13 +88,17 @@ function EditarServico() {
       setErro('Título e cliente são obrigatórios! Selecione um cliente existente ou cadastre um novo.')
       return
     }
+    if (form.prazo && !dataValida(form.prazo)) {
+      setErro('A data informada para o prazo não é válida.')
+      return
+    }
     setLoading(true)
     try {
       await api.put(`/servicos/${id}`, form)
       toast.sucesso('Serviço atualizado!')
       navigate('/servicos')
-    } catch {
-      setErro('Erro ao atualizar serviço. Tente novamente.')
+    } catch (e) {
+      setErro(e.response?.data?.errors?.prazo?.[0] || e.response?.data?.message || 'Erro ao atualizar serviço. Tente novamente.')
     } finally {
       setLoading(false)
     }
@@ -118,40 +126,25 @@ function EditarServico() {
 
         <div className="flex flex-col gap-1">
           <label className={LABEL}>Cliente *</label>
-          <div className="relative">
-            <input
-              name="cliente"
-              value={form.cliente}
-              onChange={handleClienteChange}
-              onBlur={() => setTimeout(() => setSugestoes([]), 150)}
+          {!mostrarCadastroCliente && (
+            <ComboboxAsync
+              valor={form.cliente}
+              onChangeTexto={handleClienteTexto}
+              onSelecionar={selecionarCliente}
+              buscarPagina={buscarClientesPagina}
+              renderItem={c => (
+                <>
+                  <span>{c.nome}</span>
+                  {c.telefone && <span className="text-xs text-slate-400">{c.telefone}</span>}
+                </>
+              )}
               className={INPUT}
-              autoComplete="off"
+              acaoExtra={form.cliente_id ? null : {
+                label: `+ Cadastrar "${form.cliente}" como novo cliente`,
+                onClick: () => setMostrarCadastroCliente(true),
+              }}
             />
-            {!mostrarCadastroCliente && (sugestoes.length > 0 || (form.cliente.trim().length >= 1 && !form.cliente_id)) && (
-              <div className="absolute z-10 top-full left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-lg mt-1 overflow-hidden">
-                {sugestoes.map(c => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onMouseDown={() => selecionarCliente(c)}
-                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 border-b border-slate-100 last:border-0 flex justify-between items-center"
-                  >
-                    <span>{c.nome}</span>
-                    {c.telefone && <span className="text-xs text-slate-400">{c.telefone}</span>}
-                  </button>
-                ))}
-                {form.cliente.trim().length >= 1 && !form.cliente_id && (
-                  <button
-                    type="button"
-                    onMouseDown={() => setMostrarCadastroCliente(true)}
-                    className="w-full text-left px-4 py-2.5 text-sm text-blue-600 font-semibold hover:bg-blue-50"
-                  >
-                    + Cadastrar "{form.cliente}" como novo cliente
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+          )}
           {mostrarCadastroCliente && (
             <div className="mt-2">
               <MiniCadastroCliente
@@ -176,35 +169,42 @@ function EditarServico() {
 
         <div className="flex flex-col gap-1">
           <label className={LABEL}>Prioridade</label>
-          <select name="prioridade" value={form.prioridade} onChange={handleChange} className={INPUT}>
+          <Select name="prioridade" value={form.prioridade} onChange={handleChange} className={INPUT}>
             {PRIORIDADE_OPCOES.map(o => (
               <option key={o.val} value={o.val}>{o.label}</option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div className="flex flex-col gap-1">
           <label className={LABEL}>Status</label>
-          <select name="status" value={form.status} onChange={handleChange} className={INPUT}>
-            <option value="pendente">⏳ Pendente</option>
-            <option value="em_andamento">🔄 Em andamento</option>
-            <option value="finalizado">✔ Finalizado</option>
-          </select>
+          <Select name="status" value={form.status} onChange={handleChange} className={INPUT}>
+            {STATUS_OPCOES.map(o => (
+              <option key={o.val} value={o.val}>{o.label}</option>
+            ))}
+          </Select>
         </div>
 
         <div className="flex flex-col gap-1">
           <label className={LABEL}>Prazo</label>
-          <input type="date" name="prazo" value={form.prazo} onChange={handleChange} className={INPUT} />
+          <input
+            key={form.prazo}
+            type="date"
+            name="prazo"
+            defaultValue={form.prazo}
+            onBlur={handlePrazoBlur}
+            className={INPUT}
+          />
         </div>
 
         <div className="flex flex-col gap-1">
           <label className={LABEL}>Tag</label>
-          <select name="tag" value={form.tag} onChange={handleChange} className={INPUT}>
+          <Select name="tag" value={form.tag} onChange={handleChange} className={INPUT}>
             <option value="">Nenhuma</option>
             <option value="informatica">Informática</option>
             <option value="pintura">Pintura</option>
             <option value="outros">Outros</option>
-          </select>
+          </Select>
         </div>
 
         <div className="flex gap-3 mt-2">

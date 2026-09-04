@@ -35,3 +35,16 @@ export function useClientes() {
 
   return { clientes, carregando, buscar, deletar, transferirServicos }
 }
+
+/**
+ * Busca paginada/filtrada de clientes, para uso em combobox assíncrono
+ * (ComboboxAsync). Função independente do hook para não disparar o fetch
+ * completo de useClientes() quando só se precisa buscar sob demanda.
+ */
+export async function buscarClientesPagina(busca, pagina) {
+  const res = await api.get('/clientes', { params: { busca, por_pagina: 20, page: pagina } })
+  return {
+    itens: res.data.data ?? [],
+    temMais: (res.data.meta?.current_page ?? 1) < (res.data.meta?.last_page ?? 1),
+  }
+}

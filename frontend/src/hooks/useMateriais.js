@@ -31,3 +31,15 @@ export function useMateriais() {
 
   return { materiais, carregando, buscar, deletar }
 }
+
+/**
+ * Busca paginada/filtrada de materiais, para uso em combobox assíncrono
+ * (ComboboxAsync), sem disparar o fetch completo de useMateriais().
+ */
+export async function buscarMateriaisPagina(busca, pagina) {
+  const res = await api.get('/materiais', { params: { busca, por_pagina: 20, page: pagina } })
+  return {
+    itens: res.data.data ?? [],
+    temMais: (res.data.meta?.current_page ?? 1) < (res.data.meta?.last_page ?? 1),
+  }
+}

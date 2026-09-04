@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { X, Check, XCircle } from 'lucide-react'
 import api from '../services/api'
 import Navbar from '../components/Navbar'
+import ComboboxAsync from '../components/ComboboxAsync'
 import { useToast } from '../hooks/useToast'
+import { buscarMateriaisPagina } from '../hooks/useMateriais'
 import { materiaisComEstoqueInsuficiente } from '../utils/materiais'
 
 const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
@@ -12,9 +15,9 @@ function EditarOrcamento() {
   const { servicoId, id } = useParams()
   const navigate = useNavigate()
   const toast = useToast()
-  const [todosMateriaisList, setTodosMateriaisList] = useState([])
   const [form, setForm] = useState({ titulo: '', descricao: '', margem_lucro: '0' })
   const [itens, setItens] = useState([])
+  const [buscaMaterial, setBuscaMaterial] = useState('')
   const [statusAtual, setStatusAtual] = useState('pendente')
   const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
@@ -25,7 +28,6 @@ function EditarOrcamento() {
       api.get('/materiais'),
       api.get(`/orcamentos/${id}`),
     ]).then(([resMat, resOrc]) => {
-      setTodosMateriaisList(resMat.data)
       const o = resOrc.data
       setForm({ titulo: o.titulo, descricao: o.descricao || '', margem_lucro: o.margem_lucro })
       setStatusAtual(o.status)
@@ -42,12 +44,9 @@ function EditarOrcamento() {
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
-  const adicionarMaterial = (materialId) => {
-    if (!materialId || itens.find(i => i.id === Number(materialId))) return
-    const material = todosMateriaisList.find(m => m.id === Number(materialId))
-    if (material) {
-      setItens([...itens, { id: material.id, nome: material.nome, unidade_medida: material.unidade_medida, preco_unitario: material.preco_unitario, quantidade_estoque: material.quantidade_estoque, quantidade: '1' }])
-    }
+  const adicionarMaterial = (material) => {
+    if (itens.find(i => i.id === material.id)) return
+    setItens([...itens, { id: material.id, nome: material.nome, unidade_medida: material.unidade_medida, preco_unitario: material.preco_unitario, quantidade_estoque: material.quantidade_estoque, quantidade: '1' }])
   }
 
   const atualizarQuantidade = (id, quantidade) =>
@@ -159,18 +158,20 @@ function EditarOrcamento() {
 
         <div className="flex flex-col gap-2">
           <label className={LABEL}>Materiais</label>
-          <select
-            onChange={(e) => { adicionarMaterial(e.target.value); e.target.value = '' }}
+          <ComboboxAsync
+            valor={buscaMaterial}
+            onChangeTexto={setBuscaMaterial}
+            onSelecionar={m => { adicionarMaterial(m); setBuscaMaterial('') }}
+            buscarPagina={buscarMateriaisPagina}
+            renderItem={m => (
+              <>
+                <span>{m.nome}</span>
+                <span className="text-xs text-slate-400">estoque: {parseFloat(m.quantidade_estoque)} {m.unidade_medida}</span>
+              </>
+            )}
+            placeholder="Buscar material..."
             className={INPUT + ' text-slate-500'}
-            defaultValue=""
-          >
-            <option value="" disabled>Adicionar material...</option>
-            {todosMateriaisList.map(m => (
-              <option key={m.id} value={m.id}>
-                {m.nome} (estoque: {parseFloat(m.quantidade_estoque)} {m.unidade_medida})
-              </option>
-            ))}
-          </select>
+          />
 
           {itens.length > 0 && (
             <div className="flex flex-col gap-2 mt-1">
@@ -187,7 +188,7 @@ function EditarOrcamento() {
                     className="w-16 border border-slate-200 rounded-lg px-2 py-1 text-xs text-center outline-none focus:border-blue-600"
                   />
                   <span className="text-xs text-slate-400">{item.unidade_medida}</span>
-                  <button onClick={() => removerItem(item.id)} className="text-red-400 text-xs font-bold ml-1">✕</button>
+                  <button onClick={() => removerItem(item.id)} className="text-red-400 ml-1"><X size={14} /></button>
                 </div>
               ))}
             </div>
@@ -217,17 +218,19 @@ function EditarOrcamento() {
           {statusAtual !== 'aprovado' && (
             <button
               onClick={aprovar}
-              className="flex-1 bg-[#16a34a] hover:bg-green-700 text-white text-sm font-semibold py-3 rounded-xl transition-colors"
+              className="flex-1 bg-[#16a34a] hover:bg-green-700 text-white text-sm font-semibold py-3 rounded-xl transition-colors inline-flex items-center justify-center gap-1.5"
             >
-              ✔ Aprovar
+              <Check size={16} />
+              Aprovar
             </button>
           )}
           {statusAtual !== 'reprovado' && (
             <button
               onClick={reprovar}
-              className="flex-1 bg-[#dc2626] hover:bg-red-700 text-white text-sm font-semibold py-3 rounded-xl transition-colors"
+              className="flex-1 bg-[#dc2626] hover:bg-red-700 text-white text-sm font-semibold py-3 rounded-xl transition-colors inline-flex items-center justify-center gap-1.5"
             >
-              ✘ Reprovar
+              <XCircle size={16} />
+              Reprovar
             </button>
           )}
         </div>
