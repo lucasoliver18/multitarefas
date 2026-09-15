@@ -45,5 +45,5 @@ cd frontend
 npm run dev -- --host
 
 ## Acesso pelo celular:
-http://100.111.249.50:5173 (notebook)
-http://100.86.53.126:5173 (desktop)
+http://SEU_IP_LOCAL:5173 (notebook)
+http://SEU_IP_LOCAL:5173 (desktop)
