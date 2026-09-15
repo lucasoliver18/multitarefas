@@ -36,7 +36,6 @@
   .wrap{max-width:1080px; margin:0 auto; padding:0 24px;}
   .prose{max-width:680px;}
 
-  /* NAV */
   nav{
     position:sticky; top:0; z-index:50;
     background:rgba(246,247,250,.9);
@@ -54,7 +53,6 @@
   }
   nav a.navlink:hover{color:var(--navy);}
 
-  /* HERO */
   header.hero{
     background:linear-gradient(180deg, var(--navy) 0%, var(--navy-dark) 100%);
     color:#fff;
@@ -88,7 +86,6 @@
 
   section:nth-of-type(even){background:#fff; border-top:1px solid var(--line); border-bottom:1px solid var(--line);}
 
-  /* cards grid generic */
   .grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:20px;}
   .grid-2{display:grid; grid-template-columns:repeat(2,1fr); gap:20px;}
   @media (max-width:760px){
@@ -116,7 +113,6 @@
     white-space:nowrap;
   }
 
-  /* use case list */
   .usecase{
     display:grid; grid-template-columns:220px 1fr; gap:20px;
     padding:20px 0; border-bottom:1px solid var(--line);
@@ -208,20 +204,16 @@
 </head>
 <body>
 
-<!-- ============================================================ -->
-<!-- EDITE SEUS DADOS AQUI — o resto da página usa essas variáveis -->
-<!-- ============================================================ -->
 <script>
 const DATA = {
   aluno: "Lucas José Gomes Oliveira",
   matricula: "241072103",
   professor: "Matheus Vinícius Pires da Silva Garvão",
   empresa: "INFOOSEG Sistemas de Segurança e Informática",
-  repoUrl: "https://github.com/lucasoliver18/multitarefas/", // link do repositório no GitHub
+  repoUrl: "https://github.com/lucasoliver18/multitarefas/",
   relatorioUrl: "https://docs.google.com/document/d/10HWpZTEar7bkuRXGen5eXJxNKe-paifW/edit?usp=sharing&ouid=117345354633195315279&rtpof=true&sd=true",
-  videoYoutubeId: "", // cole só o ID do vídeo do YouTube aqui (ex: dQw4w9WgXcQ). Deixe vazio se ainda não gravou.
+  videoYoutubeId: "",
 
-  // Datas reais/previstas de cada caso de uso — troque "PREENCHER" pelas datas certas
   cronograma: [
     { caso: "Suc_GerenciarServiços",   desc: "Cadastro, edição, priorização e status dos serviços.", data: "Junho/2026", status: "done" },
     { caso: "Suc_GerenciarMateriais",  desc: "Cadastro e controle de estoque de materiais.",          data: "Julho/2026", status: "done" },
