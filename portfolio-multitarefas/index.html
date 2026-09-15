@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiTarefas — Portfólio do Projeto de Estágio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy: #1e3a5f;
+    --navy-dark: #142943;
+    --amber: #f59e0b;
+    --bg: #f6f7fa;
+    --ink: #16213a;
+    --muted: #5b6577;
+    --line: #e3e7ee;
+    --card: #ffffff;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter', system-ui, sans-serif;
+    line-height:1.6;
+  }
+  h1,h2,h3{
+    font-family:'Manrope', sans-serif;
+    line-height:1.15;
+    margin:0 0 .5em;
+  }
+  a{color:var(--navy);}
+  .wrap{max-width:1080px; margin:0 auto; padding:0 24px;}
+  .prose{max-width:680px;}
+
+  /* NAV */
+  nav{
+    position:sticky; top:0; z-index:50;
+    background:rgba(246,247,250,.9);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);
+  }
+  nav .wrap{
+    display:flex; align-items:center; gap:24px;
+    height:60px; overflow-x:auto;
+  }
+  nav .brand{font-family:'Manrope'; font-weight:800; color:var(--navy); white-space:nowrap; margin-right:8px;}
+  nav a.navlink{
+    font-size:14px; font-weight:600; color:var(--muted);
+    text-decoration:none; white-space:nowrap;
+  }
+  nav a.navlink:hover{color:var(--navy);}
+
+  /* HERO */
+  header.hero{
+    background:linear-gradient(180deg, var(--navy) 0%, var(--navy-dark) 100%);
+    color:#fff;
+    padding:72px 0 0;
+    overflow:hidden;
+  }
+  .hero-grid{
+    display:grid; grid-template-columns:1.1fr .9fr; gap:40px;
+    align-items:end;
+  }
+  .hero h1{font-size:44px; font-weight:800; color:#fff; max-width:11ch;}
+  .hero p.tag{
+    font-size:19px; color:#cdd8e8; max-width:46ch; margin-bottom:28px;
+  }
+  .hero .meta{display:flex; gap:28px; flex-wrap:wrap; margin-bottom:40px;}
+  .hero .meta div{font-size:14px; color:#9fb0c8;}
+  .hero .meta strong{display:block; color:#fff; font-size:15px; font-weight:600;}
+  .phone-shot{
+    display:flex; justify-content:center;
+  }
+  .phone-shot img{
+    width:230px; border-radius:22px;
+    box-shadow:0 30px 60px -20px rgba(0,0,0,.5);
+    border:5px solid #0d1b2e;
+    display:block;
+  }
+
+  section{padding:72px 0;}
+  section .eyebrow-free-title{font-size:30px; margin-bottom:14px;}
+  section > .wrap > p.lede{color:var(--muted); font-size:17px; margin-bottom:36px; max-width:680px;}
+
+  section:nth-of-type(even){background:#fff; border-top:1px solid var(--line); border-bottom:1px solid var(--line);}
+
+  /* cards grid generic */
+  .grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:20px;}
+  .grid-2{display:grid; grid-template-columns:repeat(2,1fr); gap:20px;}
+  @media (max-width:760px){
+    .grid-3, .grid-2{grid-template-columns:1fr;}
+    .hero-grid{grid-template-columns:1fr;}
+    .hero h1{font-size:34px; max-width:none;}
+  }
+
+  .stat-card{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:22px;
+  }
+  .stat-card h3{font-size:17px; margin-bottom:6px;}
+  .stat-card p{color:var(--muted); font-size:14.5px; margin:0;}
+
+  .tech-figure{max-width:100%; border-radius:8px; margin-top:8px;}
+
+  /* use case list */
+  .usecase{
+    display:grid; grid-template-columns:220px 1fr; gap:20px;
+    padding:20px 0; border-bottom:1px solid var(--line);
+  }
+  .usecase:last-child{border-bottom:none;}
+  .usecase h3{font-size:16px; color:var(--navy); font-family:'Inter'; font-weight:700; margin:0;}
+  .usecase p{margin:0; color:var(--muted); font-size:15px;}
+  @media (max-width:640px){ .usecase{grid-template-columns:1fr; gap:4px;} }
+
+  table.timeline{
+    width:100%; border-collapse:collapse; margin-top:8px;
+    background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:hidden;
+  }
+  table.timeline th, table.timeline td{
+    text-align:left; padding:14px 16px; border-bottom:1px solid var(--line); font-size:14.5px;
+  }
+  table.timeline th{background:#eef2f7; color:var(--navy); font-family:'Manrope'; font-size:13px;}
+  table.timeline tr:last-child td{border-bottom:none;}
+  .status-pill{
+    display:inline-block; padding:3px 10px; border-radius:999px; font-size:12.5px; font-weight:600;
+  }
+  .status-done{background:#dcfce7; color:#166534;}
+  .status-progress{background:#fef3c7; color:#92400e;}
+  .status-planned{background:#e2e8f0; color:#475569;}
+
+  .doc-card{
+    background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden;
+  }
+  .doc-card img{width:100%; display:block; border-bottom:1px solid var(--line);}
+  .doc-card .doc-body{padding:16px 18px;}
+  .doc-card h3{font-size:15px; margin:0 0 4px;}
+  .doc-card a.doc-link{font-size:13.5px; font-weight:600;}
+
+  .screens-grid{
+    display:grid; grid-template-columns:repeat(5,1fr); gap:18px;
+  }
+  @media (max-width:900px){ .screens-grid{grid-template-columns:repeat(2,1fr);} }
+  .screen-item img{
+    width:100%; border-radius:10px; border:1px solid var(--line); display:block;
+  }
+  .screen-item p{text-align:center; font-size:13.5px; color:var(--muted); margin:8px 0 0;}
+
+  .video-frame{
+    position:relative; padding-bottom:56.25%; height:0; border-radius:12px; overflow:hidden;
+    background:#0d1b2e; border:1px solid var(--line);
+  }
+  .video-frame iframe{position:absolute; top:0; left:0; width:100%; height:100%; border:0;}
+  .video-placeholder{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    color:#9fb0c8; font-size:14px; gap:8px; text-align:center; padding:20px;
+  }
+
+  .report-cta{
+    display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;
+    background:var(--navy); color:#fff; border-radius:14px; padding:28px 32px;
+  }
+  .report-cta h3{color:#fff; margin:0 0 4px; font-size:19px;}
+  .report-cta p{margin:0; color:#cdd8e8; font-size:14.5px;}
+  .btn{
+    background:var(--amber); color:#1a1200; font-weight:700; text-decoration:none;
+    padding:12px 22px; border-radius:8px; font-size:14.5px; white-space:nowrap;
+  }
+
+  .author-card{
+    display:flex; gap:22px; align-items:center; background:var(--card); border:1px solid var(--line);
+    border-radius:14px; padding:26px 30px; flex-wrap:wrap;
+  }
+  .author-avatar{
+    width:64px; height:64px; border-radius:50%; background:var(--navy); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-family:'Manrope'; font-weight:800; font-size:22px;
+    flex-shrink:0;
+  }
+  .author-fields{display:flex; gap:36px; flex-wrap:wrap;}
+  .author-fields div p{margin:0 0 2px; font-size:12.5px; color:var(--muted); text-transform:none;}
+  .author-fields div strong{font-size:15.5px;}
+
+  footer{padding:36px 0 60px; text-align:center; color:var(--muted); font-size:13.5px;}
+
+  .fill-me{outline:2px dashed #f59e0b; outline-offset:3px; background:#fffbeb;}
+</style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- EDITE SEUS DADOS AQUI — o resto da página usa essas variáveis -->
+<!-- ============================================================ -->
+<script>
+const DATA = {
+  aluno: "Lucas José Gomes Oliveira",
+  matricula: "241072103",
+  professor: "Matheus Vinícius Pires da Silva Garvão",
+  empresa: "INFOOSEG Sistemas de Segurança e Informática",
+  repoUrl: "https://github.com/SEU-USUARIO/multitarefas", // link do repositório no GitHub
+  relatorioUrl: "https://drive.google.com/drive/folders/1TJzfii2LjFu1KBhlf67WUe7HWuZF7mFQ?usp=sharing",
+  videoYoutubeId: "", // cole só o ID do vídeo do YouTube aqui (ex: dQw4w9WgXcQ). Deixe vazio se ainda não gravou.
+
+  // Datas reais/previstas de cada caso de uso — troque "PREENCHER" pelas datas certas
+  cronograma: [
+    { caso: "Suc_GerenciarServiços",   desc: "Cadastro, edição, priorização e status dos serviços.", data: "PREENCHER", status: "done" },
+    { caso: "Suc_GerenciarMateriais",  desc: "Cadastro e controle de estoque de materiais.",          data: "PREENCHER", status: "done" },
+    { caso: "Suc_GerenciarClientes",   desc: "Cadastro de clientes (PF/PJ), CPF/CNPJ, transferência de serviços.", data: "PREENCHER", status: "done" },
+    { caso: "Suc_GerenciarOrçamentos", desc: "Criação, aprovação e reprovação de orçamentos com controle de estoque.", data: "PREENCHER", status: "done" },
+    { caso: "Suc_GerenciarCronograma", desc: "Calendário mensal de prazos dos serviços.",              data: "PREENCHER", status: "done" },
+  ],
+};
+</script>
+
+<nav>
+  <div class="wrap">
+    <span class="brand">MultiTarefas</span>
+    <a class="navlink" href="#inicio">Início</a>
+    <a class="navlink" href="#projeto">Sobre o Projeto</a>
+    <a class="navlink" href="#casos-de-uso">Casos de Uso</a>
+    <a class="navlink" href="#documentacao">Documentação</a>
+    <a class="navlink" href="#telas">Telas &amp; Vídeo</a>
+    <a class="navlink" href="#relatorio">Relatório</a>
+    <a class="navlink" href="#autor">Autor</a>
+  </div>
+</nav>
+
+<header class="hero" id="inicio">
+  <div class="wrap hero-grid">
+    <div>
+      <h1>MultiTarefas</h1>
+      <p class="tag">Sistema de gestão de serviços para pequenas empresas — substitui bloco de notas e WhatsApp por um PWA mobile-first que organiza serviços, orçamentos, materiais e clientes num só lugar.</p>
+      <div class="meta">
+        <div><strong>PWA mobile-first</strong>React + Laravel</div>
+        <div><strong id="metaEmpresa"></strong>Empresa parceira</div>
+        <div><strong>Estágio obrigatório</strong>Engenharia de Software — UniFil</div>
+      </div>
+    </div>
+    <div class="phone-shot">
+      <img src="assets/tela-home.png" alt="Tela de início do MultiTarefas">
+    </div>
+  </div>
+  <div style="height:56px"></div>
+</header>
+
+<section id="projeto">
+  <div class="wrap">
+    <h2 class="eyebrow-free-title">Sobre o projeto</h2>
+    <p class="lede">O que o sistema resolve, com o que foi construído e como as peças se encaixam.</p>
+
+    <div class="grid-3" style="margin-bottom:40px;">
+      <div class="stat-card">
+        <h3>O problema</h3>
+        <p>Na <span id="empresaProjeto"></span>, todo o atendimento a clientes era feito de forma manual — anotações em bloco de notas e combinados por WhatsApp. Sem padronização, sem controle de prazos e sem um método pra montar orçamentos, o resultado eram atrasos e prejuízo.</p>
+      </div>
+      <div class="stat-card">
+        <h3>A solução</h3>
+        <p>Um app web instalável (PWA) que centraliza serviços, orçamentos, estoque de materiais e clientes — com prioridade, prazos e cálculo automático de orçamento com base em materiais e margem de lucro.</p>
+      </div>
+      <div class="stat-card">
+        <h3>Arquitetura</h3>
+        <p>Frontend React consumindo uma API REST em Laravel, com MySQL como banco relacional. Comunicação via HTTP/Axios, com validação estrita no servidor e soft delete em todos os módulos.</p>
+      </div>
+    </div>
+
+    <h3 style="font-size:19px; margin-bottom:14px;">Tecnologias utilizadas</h3>
+    <img class="tech-figure" src="assets/tecnologias.png" alt="Tecnologias utilizadas no MultiTarefas">
+  </div>
+</section>
+
+<section id="casos-de-uso">
+  <div class="wrap">
+    <h2 class="eyebrow-free-title">Casos de uso e cronograma</h2>
+    <p class="lede">As cinco frentes funcionais do sistema, e quando cada uma foi (ou será) concluída.</p>
+
+    <div style="margin-bottom:48px;">
+      <div class="usecase">
+        <h3>Suc_GerenciarServiços</h3>
+        <p>Criação, edição, visualização, filtragem e remoção (soft delete) dos serviços, incluindo prioridade, prazo e vínculo com o cliente.</p>
+      </div>
+      <div class="usecase">
+        <h3>Suc_GerenciarOrçamentos</h3>
+        <p>Propostas financeiras vinculadas aos serviços, com cálculo automático do valor final, status (Pendente/Aprovado/Reprovado) e dedução/restauração de estoque.</p>
+      </div>
+      <div class="usecase">
+        <h3>Suc_GerenciarClientes</h3>
+        <p>Cadastro, edição, visualização e remoção de clientes (pessoa física ou jurídica), com CPF/CNPJ validados e busca por nome em tempo real.</p>
+      </div>
+      <div class="usecase">
+        <h3>Suc_GerenciarMateriais</h3>
+        <p>Cadastro e controle do estoque de materiais utilizados nos serviços, com atualização automática conforme movimentação dos orçamentos.</p>
+      </div>
+      <div class="usecase">
+        <h3>Suc_GerenciarCronograma</h3>
+        <p>Exibição dos prazos dos serviços em um calendário mensal navegável, com visualização por data de entrega.</p>
+      </div>
+    </div>
+
+    <h3 style="font-size:19px; margin-bottom:14px;">Cronograma de desenvolvimento</h3>
+    <table class="timeline">
+      <thead>
+        <tr><th>Caso de uso</th><th>Descrição</th><th>Data</th><th>Status</th></tr>
+      </thead>
+      <tbody id="cronogramaBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<section id="documentacao">
+  <div class="wrap">
+    <h2 class="eyebrow-free-title">Documentação técnica</h2>
+    <p class="lede">Todos os diagramas UML produzidos durante o estágio, atualizados conforme o código real do sistema.</p>
+
+    <div class="grid-3" style="margin-bottom:20px;">
+      <div class="doc-card">
+        <img src="assets/diagrama-caso-de-uso.png" alt="Diagrama de Caso de Uso">
+        <div class="doc-body"><h3>Diagrama de Caso de Uso</h3></div>
+      </div>
+      <div class="doc-card">
+        <img src="assets/diagrama-der.png" alt="Diagrama de Entidade e Relacionamento">
+        <div class="doc-body"><h3>Entidade e Relacionamento (DER)</h3></div>
+      </div>
+      <div class="doc-card">
+        <img src="assets/diagrama-classe.png" alt="Diagrama de Classe">
+        <div class="doc-body"><h3>Diagrama de Classe</h3></div>
+      </div>
+      <div class="doc-card">
+        <img src="assets/sequencia-servicos.png" alt="Diagrama de Sequência — Serviços">
+        <div class="doc-body"><h3>Sequência — Gerenciar Serviços</h3></div>
+      </div>
+      <div class="doc-card">
+        <img src="assets/sequencia-orcamentos.png" alt="Diagrama de Sequência — Orçamentos">
+        <div class="doc-body"><h3>Sequência — Gerenciar Orçamentos</h3></div>
+      </div>
+      <div class="doc-card">
+        <img src="assets/sequencia-materiais.png" alt="Diagrama de Sequência — Materiais">
+        <div class="doc-body"><h3>Sequência — Gerenciar Materiais</h3></div>
+      </div>
+      <div class="doc-card">
+        <img src="assets/sequencia-cronograma.png" alt="Diagrama de Sequência — Cronograma">
+        <div class="doc-body"><h3>Sequência — Gerenciar Cronograma</h3></div>
+      </div>
+      <div class="doc-card">
+        <img src="assets/estado-servicos.png" alt="Diagrama de Estado — Serviço">
+        <div class="doc-body"><h3>Estado — Serviço</h3></div>
+      </div>
+      <div class="doc-card">
+        <img src="assets/estado-orcamentos.png" alt="Diagrama de Estado — Orçamento">
+        <div class="doc-body"><h3>Estado — Orçamento</h3></div>
+      </div>
+      <div class="doc-card">
+        <img src="assets/implantacao.png" alt="Diagrama de Implantação">
+        <div class="doc-body"><h3>Diagrama de Implantação</h3></div>
+      </div>
+      <div class="doc-card">
+        <img src="assets/bpmn-asis.png" alt="Workflow AS-IS em BPMN">
+        <div class="doc-body"><h3>Workflow AS-IS (BPMN)</h3></div>
+      </div>
+      <div class="doc-card">
+        <img src="assets/cronograma-gantt.png" alt="Cronograma de estágio em Gantt">
+        <div class="doc-body"><h3>Cronograma de estágio (Gantt)</h3></div>
+      </div>
+    </div>
+    <p style="font-size:13.5px; color:var(--muted);">Clique com o botão direito → "Abrir imagem em nova guia" para ver qualquer diagrama em tamanho grande.</p>
+  </div>
+</section>
+
+<section id="telas">
+  <div class="wrap">
+    <h2 class="eyebrow-free-title">Telas do sistema</h2>
+    <p class="lede">Interface construída com React, Vite e Tailwind CSS, seguindo Thumb-Driven Design.</p>
+
+    <div class="screens-grid" style="margin-bottom:56px;">
+      <div class="screen-item"><img src="assets/tela-home.png" alt="Tela Início"><p>Início (Home)</p></div>
+      <div class="screen-item"><img src="assets/tela-prazos.png" alt="Tela Prazos"><p>Prazos</p></div>
+      <div class="screen-item"><img src="assets/tela-servicos.png" alt="Tela Serviços"><p>Serviços</p></div>
+      <div class="screen-item"><img src="assets/tela-orcamentos.png" alt="Tela Orçamentos"><p>Orçamentos</p></div>
+      <div class="screen-item"><img src="assets/tela-materiais.png" alt="Tela Materiais"><p>Materiais</p></div>
+      <div class="screen-item"><img src="assets/tela-clientes.png" alt="Tela Clientes"><p>Clientes</p></div>
+      <div class="screen-item"><img src="assets/tela-novo-servico.png" alt="Tela Novo Serviço"><p>Novo Serviço</p></div>
+      <div class="screen-item"><img src="assets/tela-novo-orcamento.png" alt="Tela Novo Orçamento"><p>Novo Orçamento</p></div>
+      <div class="screen-item"><img src="assets/tela-novo-material.png" alt="Tela Novo Material"><p>Novo Material</p></div>
+      <div class="screen-item"><img src="assets/tela-novo-cliente.png" alt="Tela Novo Cliente"><p>Novo Cliente</p></div>
+    </div>
+
+    <h3 style="font-size:19px; margin-bottom:14px;">Vídeo demonstrativo</h3>
+    <div class="video-frame" id="videoFrame">
+      <div class="video-placeholder">
+        <strong style="color:#fff; font-size:15px;">Vídeo ainda não adicionado</strong>
+        <span>Grave uma demonstração das principais funcionalidades (máx. 5 min) e cole o ID do YouTube em <code>DATA.videoYoutubeId</code> no topo do arquivo.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="relatorio">
+  <div class="wrap">
+    <h2 class="eyebrow-free-title">Relatório de estágio</h2>
+    <p class="lede">Documento completo com introdução, justificativa, diagramas, telas e cronograma.</p>
+    <div class="report-cta">
+      <div>
+        <h3>Relatório de Estágio — MultiTarefas.pdf</h3>
+        <p>Versão atualizada, correspondente às atividades desenvolvidas até a data desta entrega.</p>
+      </div>
+      <a class="btn" id="relatorioBtn" href="#" target="_blank" rel="noopener">Abrir PDF</a>
+    </div>
+  </div>
+</section>
+
+<section id="autor">
+  <div class="wrap">
+    <h2 class="eyebrow-free-title">Identificação do aluno</h2>
+    <div class="author-card">
+      <div class="author-avatar" id="authorInitial"></div>
+      <div class="author-fields">
+        <div><p>Nome completo</p><strong id="authorNome"></strong></div>
+        <div><p>Matrícula</p><strong id="authorMatricula"></strong></div>
+        <div><p>Professor orientador</p><strong id="authorProfessor"></strong></div>
+        <div><p>Repositório do código</p><strong><a id="authorRepo" href="#" target="_blank" rel="noopener">GitHub</a></strong></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  MultiTarefas — Portfólio do Projeto de Estágio · Centro Universitário Filadélfia (UniFil) · 2026
+</footer>
+
+<script>
+  document.getElementById("metaEmpresa").textContent = DATA.empresa;
+  document.getElementById("empresaProjeto").textContent = DATA.empresa;
+
+  const cBody = document.getElementById("cronogramaBody");
+  const statusMap = { done: ["Concluído","status-done"], progress: ["Em andamento","status-progress"], planned: ["Planejado","status-planned"] };
+  DATA.cronograma.forEach(item => {
+    const [label, cls] = statusMap[item.status] || statusMap.planned;
+    const tr = document.createElement("tr");
+    const dataCellClass = item.data.includes("PREENCHER") ? ' class="fill-me"' : '';
+    tr.innerHTML = `<td>${item.caso}</td><td>${item.desc}</td><td${dataCellClass}>${item.data}</td><td><span class="status-pill ${cls}">${label}</span></td>`;
+    cBody.appendChild(tr);
+  });
+
+  if (DATA.videoYoutubeId) {
+    document.getElementById("videoFrame").innerHTML =
+      `<iframe src="https://www.youtube.com/embed/${DATA.videoYoutubeId}" title="Vídeo demonstrativo MultiTarefas" allowfullscreen></iframe>`;
+  }
+
+  const relBtn = document.getElementById("relatorioBtn");
+  relBtn.href = DATA.relatorioUrl;
+  if (DATA.relatorioUrl.includes("PREENCHER")) relBtn.classList.add("fill-me");
+
+  document.getElementById("authorNome").textContent = DATA.aluno;
+  document.getElementById("authorInitial").textContent = DATA.aluno.trim()[0] || "?";
+  const matEl = document.getElementById("authorMatricula");
+  matEl.textContent = DATA.matricula;
+  if (DATA.matricula.includes("PREENCHER")) matEl.classList.add("fill-me");
+  const profEl = document.getElementById("authorProfessor");
+  profEl.textContent = DATA.professor;
+  if (DATA.professor.includes("PREENCHER")) profEl.classList.add("fill-me");
+  const repoEl = document.getElementById("authorRepo");
+  repoEl.href = DATA.repoUrl;
+  repoEl.textContent = DATA.repoUrl.replace("https://github.com/","github.com/");
+</script>
+
+</body>
+</html>
