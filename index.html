@@ -36,7 +36,6 @@
   .wrap{max-width:1080px; margin:0 auto; padding:0 24px;}
   .prose{max-width:680px;}
 
-  /* NAV */
   nav{
     position:sticky; top:0; z-index:50;
     background:rgba(246,247,250,.9);
@@ -54,7 +53,6 @@
   }
   nav a.navlink:hover{color:var(--navy);}
 
-  /* HERO */
   header.hero{
     background:linear-gradient(180deg, var(--navy) 0%, var(--navy-dark) 100%);
     color:#fff;
@@ -88,7 +86,6 @@
 
   section:nth-of-type(even){background:#fff; border-top:1px solid var(--line); border-bottom:1px solid var(--line);}
 
-  /* cards grid generic */
   .grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:20px;}
   .grid-2{display:grid; grid-template-columns:repeat(2,1fr); gap:20px;}
   @media (max-width:760px){
@@ -104,9 +101,18 @@
   .stat-card h3{font-size:17px; margin-bottom:6px;}
   .stat-card p{color:var(--muted); font-size:14.5px; margin:0;}
 
-  .tech-figure{max-width:100%; border-radius:8px; margin-top:8px;}
+  .tech-categories{display:flex; flex-direction:column; gap:32px; margin-top:8px;}
+  .tech-cat-title{
+    font-family:'Manrope', sans-serif; font-weight:800; font-size:13px;
+    text-transform:uppercase; letter-spacing:.04em; color:var(--navy); margin:0 0 12px;
+  }
+  .tech-badges{display:flex; flex-wrap:wrap; gap:10px;}
+  .tech-badge{
+    display:inline-flex; align-items:center; padding:8px 16px; border-radius:999px;
+    font-family:'Inter', sans-serif; font-weight:700; font-size:13.5px; color:#fff;
+    white-space:nowrap;
+  }
 
-  /* use case list */
   .usecase{
     display:grid; grid-template-columns:220px 1fr; gap:20px;
     padding:20px 0; border-bottom:1px solid var(--line);
@@ -139,6 +145,14 @@
   .doc-card .doc-body{padding:16px 18px;}
   .doc-card h3{font-size:15px; margin:0 0 4px;}
   .doc-card a.doc-link{font-size:13.5px; font-weight:600;}
+  .doc-card a.doc-card-link{
+    display:block; color:inherit; text-decoration:none;
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .doc-card a.doc-card-link:hover{
+    transform:translateY(-4px);
+    box-shadow:0 14px 28px -14px rgba(20,41,67,.35);
+  }
 
   .screens-grid{
     display:grid; grid-template-columns:repeat(5,1fr); gap:18px;
@@ -190,26 +204,22 @@
 </head>
 <body>
 
-<!-- ============================================================ -->
-<!-- EDITE SEUS DADOS AQUI — o resto da página usa essas variáveis -->
-<!-- ============================================================ -->
 <script>
 const DATA = {
   aluno: "Lucas José Gomes Oliveira",
   matricula: "241072103",
   professor: "Matheus Vinícius Pires da Silva Garvão",
   empresa: "INFOOSEG Sistemas de Segurança e Informática",
-  repoUrl: "https://github.com/SEU-USUARIO/multitarefas", // link do repositório no GitHub
-  relatorioUrl: "https://drive.google.com/drive/folders/1TJzfii2LjFu1KBhlf67WUe7HWuZF7mFQ?usp=sharing",
-  videoYoutubeId: "", // cole só o ID do vídeo do YouTube aqui (ex: dQw4w9WgXcQ). Deixe vazio se ainda não gravou.
+  repoUrl: "https://github.com/lucasoliver18/multitarefas/",
+  relatorioUrl: "https://docs.google.com/document/d/10HWpZTEar7bkuRXGen5eXJxNKe-paifW/edit?usp=sharing&ouid=117345354633195315279&rtpof=true&sd=true",
+  videoYoutubeId: "",
 
-  // Datas reais/previstas de cada caso de uso — troque "PREENCHER" pelas datas certas
   cronograma: [
-    { caso: "Suc_GerenciarServiços",   desc: "Cadastro, edição, priorização e status dos serviços.", data: "PREENCHER", status: "done" },
-    { caso: "Suc_GerenciarMateriais",  desc: "Cadastro e controle de estoque de materiais.",          data: "PREENCHER", status: "done" },
-    { caso: "Suc_GerenciarClientes",   desc: "Cadastro de clientes (PF/PJ), CPF/CNPJ, transferência de serviços.", data: "PREENCHER", status: "done" },
-    { caso: "Suc_GerenciarOrçamentos", desc: "Criação, aprovação e reprovação de orçamentos com controle de estoque.", data: "PREENCHER", status: "done" },
-    { caso: "Suc_GerenciarCronograma", desc: "Calendário mensal de prazos dos serviços.",              data: "PREENCHER", status: "done" },
+    { caso: "Suc_GerenciarServiços",   desc: "Cadastro, edição, priorização e status dos serviços.", data: "Junho/2026", status: "done" },
+    { caso: "Suc_GerenciarMateriais",  desc: "Cadastro e controle de estoque de materiais.",          data: "Julho/2026", status: "done" },
+    { caso: "Suc_GerenciarClientes",   desc: "Cadastro de clientes (PF/PJ), CPF/CNPJ, transferência de serviços.", data: "Julho/2026", status: "done" },
+    { caso: "Suc_GerenciarOrçamentos", desc: "Criação, aprovação e reprovação de orçamentos com controle de estoque.", data: "Junho/2026", status: "done" },
+    { caso: "Suc_GerenciarCronograma", desc: "Calendário mensal de prazos dos serviços.",              data: "Junho/2026", status: "done" },
   ],
 };
 </script>
@@ -231,7 +241,7 @@ const DATA = {
   <div class="wrap hero-grid">
     <div>
       <h1>MultiTarefas</h1>
-      <p class="tag">Sistema de gestão de serviços para pequenas empresas, substituí bloco de notas e WhatsApp por um PWA mobile-first que organiza serviços, orçamentos, materiais e clientes num só lugar.</p>
+      <p class="tag">Sistema de gestão de serviços para pequenas empresas, substitui bloco de notas e WhatsApp por um PWA mobile-first que organiza serviços, orçamentos, materiais e clientes num só lugar.</p>
       <div class="meta">
         <div><strong>PWA mobile-first</strong>React + Laravel</div>
         <div><strong id="metaEmpresa"></strong>Empresa parceira</div>
@@ -266,7 +276,49 @@ const DATA = {
     </div>
 
     <h3 style="font-size:19px; margin-bottom:14px;">Tecnologias utilizadas</h3>
-    <img class="tech-figure" src="assets/tecnologias.png" alt="Tecnologias utilizadas no MultiTarefas">
+    <div class="tech-categories">
+      <div class="tech-category">
+        <h3 class="tech-cat-title">Backend</h3>
+        <div class="tech-badges">
+          <span class="tech-badge" style="background:#777BB4;">PHP 8.3</span>
+          <span class="tech-badge" style="background:#FF2D20;">Laravel 13</span>
+          <span class="tech-badge" style="background:#4A5568;">Eloquent ORM</span>
+          <span class="tech-badge" style="background:#4479A1;">MySQL 8.0</span>
+          <span class="tech-badge" style="background:#885630;">Composer</span>
+        </div>
+      </div>
+      <div class="tech-category">
+        <h3 class="tech-cat-title">Frontend</h3>
+        <div class="tech-badges">
+          <span class="tech-badge" style="background:#61DAFB; color:#1a1a2e;">React 19</span>
+          <span class="tech-badge" style="background:#646CFF;">Vite</span>
+          <span class="tech-badge" style="background:#06B6D4;">Tailwind CSS 4</span>
+          <span class="tech-badge" style="background:#CA4245;">React Router</span>
+          <span class="tech-badge" style="background:#5A29E4;">Axios</span>
+          <span class="tech-badge" style="background:#F97316;">Lucide React</span>
+        </div>
+      </div>
+      <div class="tech-category">
+        <h3 class="tech-cat-title">Testes automatizados</h3>
+        <div class="tech-badges">
+          <span class="tech-badge" style="background:#3B82F6;">PHPUnit</span>
+          <span class="tech-badge" style="background:#6E9F18;">Vitest</span>
+          <span class="tech-badge" style="background:#E33332;">Testing Library</span>
+          <span class="tech-badge" style="background:#4B32C3;">ESLint</span>
+        </div>
+      </div>
+      <div class="tech-category">
+        <h3 class="tech-cat-title">Ferramentas e infraestrutura</h3>
+        <div class="tech-badges">
+          <span class="tech-badge" style="background:#181717;">Git &amp; GitHub</span>
+          <span class="tech-badge" style="background:#339933;">Node.js</span>
+          <span class="tech-badge" style="background:#009639;">Nginx</span>
+          <span class="tech-badge" style="background:#E95420;">Ubuntu 22.04 LTS</span>
+          <span class="tech-badge" style="background:#2D5F8B;">Astah UML</span>
+          <span class="tech-badge" style="background:#0F766E;">brModelo</span>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -315,55 +367,77 @@ const DATA = {
 
     <div class="grid-3" style="margin-bottom:20px;">
       <div class="doc-card">
-        <img src="assets/diagrama-caso-de-uso.png" alt="Diagrama de Caso de Uso">
-        <div class="doc-body"><h3>Diagrama de Caso de Uso</h3></div>
+        <a class="doc-card-link" href="https://docs.google.com/document/d/1YaGRaYhMcAwjrSOcITupeFyO4WrKCbY7mNGvevekWGY/edit?usp=sharing" target="_blank" rel="noopener">
+          <img src="assets/diagrama-caso-de-uso.png" alt="Diagrama de Caso de Uso">
+          <div class="doc-body"><h3>Diagrama de Caso de Uso</h3></div>
+        </a>
       </div>
       <div class="doc-card">
-        <img src="assets/diagrama-der.png" alt="Diagrama de Entidade e Relacionamento">
-        <div class="doc-body"><h3>Entidade e Relacionamento (DER)</h3></div>
+        <a class="doc-card-link" href="https://docs.google.com/document/d/19Kn_FTO7iFqz9u0VBpkW5JvomT-GUF1d2hggIZ_5I_E/edit?usp=sharing" target="_blank" rel="noopener">
+          <img src="assets/diagrama-der.png" alt="Diagrama de Entidade e Relacionamento">
+          <div class="doc-body"><h3>Entidade e Relacionamento (DER)</h3></div>
+        </a>
       </div>
       <div class="doc-card">
-        <img src="assets/diagrama-classe.png" alt="Diagrama de Classe">
-        <div class="doc-body"><h3>Diagrama de Classe</h3></div>
+        <a class="doc-card-link" href="https://docs.google.com/document/d/1fr81FPabCJqEs1_wyLaLYYAdbPbuUyGmNLno_XpDmBI/edit?usp=sharing" target="_blank" rel="noopener">
+          <img src="assets/diagrama-classe.png" alt="Diagrama de Classe">
+          <div class="doc-body"><h3>Diagrama de Classe</h3></div>
+        </a>
       </div>
       <div class="doc-card">
-        <img src="assets/sequencia-servicos.png" alt="Diagrama de Sequência — Serviços">
-        <div class="doc-body"><h3>Sequência — Gerenciar Serviços</h3></div>
+        <a class="doc-card-link" href="https://docs.google.com/document/d/1IcKXnR_NmU0TfogMEYfc9WTQMzwob5wgKJMZ5BoOOcI/edit?usp=sharing" target="_blank" rel="noopener">
+          <img src="assets/sequencia-servicos.png" alt="Diagrama de Sequência — Serviços">
+          <div class="doc-body"><h3>Sequência — Gerenciar Serviços</h3></div>
+        </a>
       </div>
       <div class="doc-card">
-        <img src="assets/sequencia-orcamentos.png" alt="Diagrama de Sequência — Orçamentos">
-        <div class="doc-body"><h3>Sequência — Gerenciar Orçamentos</h3></div>
+        <a class="doc-card-link" href="https://docs.google.com/document/d/106YwWEeK6ztSH3w9WbdQRhJes8Cl8nuXsNkdDHczEvw/edit?usp=sharing" target="_blank" rel="noopener">
+          <img src="assets/sequencia-orcamentos.png" alt="Diagrama de Sequência — Orçamentos">
+          <div class="doc-body"><h3>Sequência — Gerenciar Orçamentos</h3></div>
+        </a>
       </div>
       <div class="doc-card">
-        <img src="assets/sequencia-materiais.png" alt="Diagrama de Sequência — Materiais">
-        <div class="doc-body"><h3>Sequência — Gerenciar Materiais</h3></div>
+        <a class="doc-card-link" href="https://docs.google.com/document/d/1IVsveXLNuRbDrAqSV5LCTx-bbVJXds6NHa6s3o99i8Q/edit?usp=sharing" target="_blank" rel="noopener">
+          <img src="assets/sequencia-materiais.png" alt="Diagrama de Sequência — Materiais">
+          <div class="doc-body"><h3>Sequência — Gerenciar Materiais</h3></div>
+        </a>
       </div>
       <div class="doc-card">
-        <img src="assets/sequencia-cronograma.png" alt="Diagrama de Sequência — Cronograma">
-        <div class="doc-body"><h3>Sequência — Gerenciar Cronograma</h3></div>
+        <a class="doc-card-link" href="https://docs.google.com/document/d/1KjDNXKcoWEe5MVD1KMbeBOh1wRby4_bdhJ0Mxm7_9_s/edit?usp=sharing" target="_blank" rel="noopener">
+          <img src="assets/sequencia-cronograma.png" alt="Diagrama de Sequência — Cronograma">
+          <div class="doc-body"><h3>Sequência — Gerenciar Cronograma</h3></div>
+        </a>
       </div>
       <div class="doc-card">
-        <img src="assets/estado-servicos.png" alt="Diagrama de Estado — Serviço">
-        <div class="doc-body"><h3>Estado — Serviço</h3></div>
+        <a class="doc-card-link" href="https://docs.google.com/document/d/1UpJDKuwygJC1mZKq1l8FqMPm89GJzGWutgp6aKCdhss/edit?usp=sharing" target="_blank" rel="noopener">
+          <img src="assets/estado-servicos.png" alt="Diagrama de Estado — Serviço">
+          <div class="doc-body"><h3>Estado — Serviço</h3></div>
+        </a>
       </div>
       <div class="doc-card">
-        <img src="assets/estado-orcamentos.png" alt="Diagrama de Estado — Orçamento">
-        <div class="doc-body"><h3>Estado — Orçamento</h3></div>
+        <a class="doc-card-link" href="https://docs.google.com/document/d/1emIFENr7pIavAgCkYP066ZfTGPDg1oKxnw-Qob5kboc/edit?usp=sharing" target="_blank" rel="noopener">
+          <img src="assets/estado-orcamentos.png" alt="Diagrama de Estado — Orçamento">
+          <div class="doc-body"><h3>Estado — Orçamento</h3></div>
+        </a>
       </div>
       <div class="doc-card">
-        <img src="assets/implantacao.png" alt="Diagrama de Implantação">
-        <div class="doc-body"><h3>Diagrama de Implantação</h3></div>
+        <a class="doc-card-link" href="https://docs.google.com/document/d/1wBxDRPpzygX9gOfARfQ7NWUlH7UTSxcOz8SZC1i3Vwk/edit?usp=sharing" target="_blank" rel="noopener">
+          <img src="assets/implantacao.png" alt="Diagrama de Implantação">
+          <div class="doc-body"><h3>Diagrama de Implantação</h3></div>
+        </a>
       </div>
       <div class="doc-card">
-        <img src="assets/bpmn-asis.png" alt="Workflow AS-IS em BPMN">
-        <div class="doc-body"><h3>Workflow AS-IS (BPMN)</h3></div>
+        <a class="doc-card-link" href="https://docs.google.com/document/d/1cJHm_RR3VPlYtggbNuL7Vodhi0WNWiusHlOl6WYR8tc/edit?usp=sharing" target="_blank" rel="noopener">
+          <img src="assets/bpmn-asis.png" alt="Workflow AS-IS em BPMN">
+          <div class="doc-body"><h3>Workflow AS-IS (BPMN)</h3></div>
+        </a>
       </div>
       <div class="doc-card">
         <img src="assets/cronograma-gantt.png" alt="Cronograma de estágio em Gantt">
         <div class="doc-body"><h3>Cronograma de estágio (Gantt)</h3></div>
       </div>
     </div>
-    <p style="font-size:13.5px; color:var(--muted);">Para melhor visualização basta clicar encima das imagens, para visualizar o diagrama em melhor qualidade.</p>
+    <p style="font-size:13.5px; color:var(--muted);">Clique com o botão direito → "Abrir imagem em nova guia" para ver qualquer diagrama em tamanho grande.</p>
   </div>
 </section>
 
