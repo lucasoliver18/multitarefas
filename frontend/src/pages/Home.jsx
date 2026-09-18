@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { LogOut } from 'lucide-react'
 import Navbar from '../components/Navbar'
 import { useServicos } from '../hooks/useServicos'
+import { useAuth } from '../hooks/useAuth'
 import { badgeStatus, labelStatus } from '../utils/status'
 
 function RingProgresso({ diasRestantes }) {
@@ -62,6 +64,8 @@ function Home() {
   const { servicos } = useServicos()
   const [periodo, setPeriodo] = useState('1m')
   const navigate = useNavigate()
+  const { user, logout } = useAuth()
+  const primeiroNome = user?.name?.split(' ')[0] || ''
 
   const hoje = useMemo(() => {
     const d = new Date()
@@ -106,13 +110,20 @@ function Home() {
 
       <div className="page-header bg-[#1e3a5f] px-6 pb-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#2563eb] flex items-center justify-center text-white font-bold text-sm shrink-0">
-            L
-          </div>
-          <div>
-            <h1 className="text-base font-bold text-white">Olá, Lucas!</h1>
+          {user?.avatar ? (
+            <img src={user.avatar} alt="" className="w-10 h-10 rounded-full shrink-0 object-cover" referrerPolicy="no-referrer" />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-[#2563eb] flex items-center justify-center text-white font-bold text-sm shrink-0">
+              {primeiroNome.charAt(0).toUpperCase() || '?'}
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-base font-bold text-white truncate">Olá, {primeiroNome}!</h1>
             <p className="text-xs text-slate-300">Pronto para mais um dia?</p>
           </div>
+          <button onClick={logout} aria-label="Sair" className="text-slate-300 hover:text-white shrink-0 p-1">
+            <LogOut size={18} />
+          </button>
         </div>
 
         <div className="flex gap-1.5 mt-4">

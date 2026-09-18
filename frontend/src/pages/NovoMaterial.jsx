@@ -14,6 +14,7 @@ function NovoMaterial() {
     unidade_medida: 'un',
     preco_unitario: '',
     quantidade_estoque: '',
+    quantidade_minima: '',
   })
   const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
@@ -33,6 +34,7 @@ function NovoMaterial() {
       await api.post('/materiais', {
         ...form,
         quantidade_estoque: form.quantidade_estoque === '' ? 0 : form.quantidade_estoque,
+        quantidade_minima: form.quantidade_minima === '' ? null : form.quantidade_minima,
       })
       toast.sucesso('Material adicionado ao estoque!')
       navigate('/materiais')

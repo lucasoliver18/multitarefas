@@ -15,6 +15,7 @@ function EditarMaterial() {
     unidade_medida: 'un',
     preco_unitario: '',
     quantidade_estoque: '',
+    quantidade_minima: '',
   })
   const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
@@ -32,6 +33,7 @@ function EditarMaterial() {
           unidade_medida:     m.unidade_medida,
           preco_unitario:     m.preco_unitario,
           quantidade_estoque: m.quantidade_estoque,
+          quantidade_minima:  m.quantidade_minima ?? '',
         })
       })
       .catch(() => setErroCarregamento(true))
@@ -53,6 +55,7 @@ function EditarMaterial() {
       await api.put(`/materiais/${id}`, {
         ...form,
         quantidade_estoque: form.quantidade_estoque === '' ? 0 : form.quantidade_estoque,
+        quantidade_minima: form.quantidade_minima === '' ? null : form.quantidade_minima,
       })
       toast.sucesso('Material atualizado com sucesso!')
       navigate('/materiais')

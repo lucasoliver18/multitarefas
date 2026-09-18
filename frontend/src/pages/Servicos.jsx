@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { User, Calendar, NotebookPen, Receipt, List, LayoutList, AlertTriangle } from 'lucide-react'
+import { User, Calendar, NotebookPen, Receipt, List, LayoutList, Kanban, AlertTriangle } from 'lucide-react'
 import Navbar from '../components/Navbar'
 import StatusBadge from '../components/StatusBadge'
 import Select from '../components/Select'
@@ -8,7 +8,6 @@ import { useToast } from '../hooks/useToast'
 import { useServicos } from '../hooks/useServicos'
 import { usePaginacao } from '../hooks/usePaginacao'
 import { useServicosOrdenados } from '../hooks/useServicosOrdenados'
-import { usePreferenciaVisualizacao } from '../hooks/usePreferenciaVisualizacao'
 import Paginacao from '../components/Paginacao'
 import PainelFiltros from '../components/PainelFiltros'
 import BarraSelecao from '../components/BarraSelecao'
@@ -37,7 +36,8 @@ function Servicos() {
   const [menuStatus, setMenuStatus] = useState(null)
   const [confirmandoId, setConfirmandoId] = useState(null)
   const { ativo: selecaoAtiva, selecionados, alternarModo, alternarItem, cancelar, quantidade } = useSelecaoMultipla()
-  const [visualizacao, setVisualizacao] = usePreferenciaVisualizacao('servicos_visualizacao', 'lista')
+  // Sempre inicia em Kanban ao entrar na tela (não persiste a última escolhida)
+  const [visualizacao, setVisualizacao] = useState('kanban')
   const [searchParams, setSearchParams] = useSearchParams()
   const hojeStr = hojeISO()
 
@@ -79,6 +79,12 @@ function Servicos() {
   }, [servicos, filtroSituacaoPrazo, hojeStr, filtroStatus, filtroPrioridade, filtroTag, filtroPrazoDe, filtroPrazoAte])
 
   const servicosOrdenados = useServicosOrdenados(servicosFiltrados)
+
+  const servicosPorStatus = useMemo(() => {
+    const grupos = { pendente: [], em_andamento: [], finalizado: [] }
+    servicosOrdenados.forEach(s => { (grupos[s.status] ?? grupos.pendente).push(s) })
+    return grupos
+  }, [servicosOrdenados])
 
   const { pagina, setPagina, tamanhoPagina, mudarTamanhoPagina, totalPaginas, itensPagina } = usePaginacao(servicosOrdenados)
 
@@ -133,6 +139,55 @@ function Servicos() {
       </div>
     )
   }
+
+  const ServicoCardKanban = ({ s }) => (
+    <div
+      onClick={() => selecaoAtiva ? alternarItem(s.id) : navigate(`/editar/${s.id}`)}
+      className={`bg-white rounded-xl p-3 border border-slate-100 border-l-4 ${borderPrioridade(s.prioridade)} shadow-sm cursor-pointer`}
+    >
+      <div className="flex justify-between items-start gap-2">
+        {selecaoAtiva && (
+          <input
+            type="checkbox"
+            checked={selecionados.has(s.id)}
+            onChange={() => alternarItem(s.id)}
+            onClick={e => e.stopPropagation()}
+            className="w-4 h-4 accent-blue-600 shrink-0 mt-0.5"
+          />
+        )}
+        <p className="text-xs font-semibold text-slate-800 leading-snug flex-1">{s.titulo}</p>
+        {!selecaoAtiva && (
+          <div className="relative shrink-0" onClick={e => e.stopPropagation()}>
+            <StatusBadge
+              status={s.status}
+              as="button"
+              className="px-2 py-0.5"
+              onClick={() => setMenuStatus(prev => prev === s.id ? null : s.id)}
+            />
+            <MenuStatusServico s={s} />
+          </div>
+        )}
+      </div>
+      <p className="text-xs text-slate-400 mt-1 truncate">{s.cliente}</p>
+      <div className="flex items-center gap-2 mt-2 flex-wrap">
+        <span className={`inline-flex items-center gap-1 text-xs font-medium ${corTextoPrioridade(s.prioridade)}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${corFundoPrioridade(s.prioridade)}`} />
+          {labelPrioridade(s.prioridade)}
+        </span>
+        {s.tag && (
+          <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">
+            {TAG_LABEL[s.tag] || s.tag}
+          </span>
+        )}
+      </div>
+      {s.prazo && (
+        <p className={`text-xs mt-1.5 inline-flex items-center gap-1 ${estaVencido(s, hojeStr) ? 'text-red-600 font-semibold' : 'text-slate-400'}`}>
+          <Calendar size={11} />
+          {estaVencido(s, hojeStr) ? 'Atrasado' : new Date(s.prazo + 'T00:00:00').toLocaleDateString('pt-BR')}
+        </p>
+      )}
+    </div>
+  )
 
   const ServicoLinhaCompacta = ({ s }) => (
     <div
@@ -342,6 +397,15 @@ function Servicos() {
           <div className="flex justify-end">
             <div className="inline-flex bg-slate-200/70 rounded-full p-1 gap-1">
               <button
+                onClick={() => setVisualizacao('kanban')}
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${
+                  visualizacao === 'kanban' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'
+                }`}
+              >
+                <Kanban size={13} />
+                Board
+              </button>
+              <button
                 onClick={() => setVisualizacao('lista')}
                 className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${
                   visualizacao === 'lista' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'
@@ -417,12 +481,37 @@ function Servicos() {
           </div>
         )}
 
-        {servicosFiltrados.length > 0 && (
+        {visualizacao !== 'kanban' && servicosFiltrados.length > 0 && (
           <Paginacao pagina={pagina} setPagina={setPagina} tamanhoPagina={tamanhoPagina}
             mudarTamanhoPagina={mudarTamanhoPagina} totalPaginas={totalPaginas} />
         )}
 
-        {itensPagina.map(s => (
+        {visualizacao === 'kanban' && servicosFiltrados.length > 0 && (
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-6 px-6 snap-x snap-mandatory">
+            {STATUS_OPCOES.map(coluna => {
+              const itens = servicosPorStatus[coluna.val] || []
+              const IconeColuna = STATUS_ICONE[coluna.val]
+              return (
+                <div key={coluna.val} className="snap-start shrink-0 w-[85%] max-w-[320px] flex flex-col gap-3">
+                  <div className="flex items-center gap-1.5 px-1">
+                    <IconeColuna size={14} className="text-slate-500" />
+                    <span className="text-sm font-bold text-slate-700">{coluna.label}</span>
+                    <span className="text-xs text-slate-400 bg-slate-100 rounded-full px-2 py-0.5 ml-auto">{itens.length}</span>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {itens.length === 0 ? (
+                      <div className="text-center text-xs text-slate-300 py-8 border border-dashed border-slate-200 rounded-xl">
+                        Nenhum serviço
+                      </div>
+                    ) : itens.map(s => <ServicoCardKanban key={s.id} s={s} />)}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {visualizacao !== 'kanban' && itensPagina.map(s => (
           visualizacao === 'lista'
             ? <ServicoLinhaCompacta key={s.id} s={s} />
             : <ServicoCardDetalhado key={s.id} s={s} />

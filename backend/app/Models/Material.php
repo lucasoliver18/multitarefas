@@ -19,6 +19,7 @@ class Material extends Model
         'unidade_medida',
         'preco_unitario',
         'quantidade_estoque',
+        'quantidade_minima',
     ];
 
     public function orcamentos()

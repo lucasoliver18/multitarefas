@@ -16,6 +16,7 @@ class MaterialResource extends JsonResource
             'unidade_medida'     => $this->unidade_medida,
             'preco_unitario'     => $this->preco_unitario,
             'quantidade_estoque' => $this->quantidade_estoque,
+            'quantidade_minima'  => $this->quantidade_minima,
         ];
     }
 }

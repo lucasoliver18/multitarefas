@@ -2,3 +2,7 @@ export const UNIDADES = ['un', 'kg', 'g', 'L', 'mL', 'm', 'm²', 'm³', 'cx', 'p
 
 export const materiaisComEstoqueInsuficiente = (itens) =>
   itens.filter(i => i.quantidade_estoque != null && parseFloat(i.quantidade || 0) > parseFloat(i.quantidade_estoque))
+
+export const estaComEstoqueBaixo = (material) =>
+  material.quantidade_minima != null &&
+  parseFloat(material.quantidade_estoque) <= parseFloat(material.quantidade_minima)

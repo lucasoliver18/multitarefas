@@ -29,13 +29,13 @@ function Navbar() {
             aria-label={item.titulo}
             className="flex flex-col items-center gap-1 flex-1 min-w-0"
           >
-            <Icone size={20} className={isActive(item.path) ? 'text-[#3b82f6]' : 'text-slate-400'} aria-hidden="true" />
+            <Icone size={20} className={isActive(item.path) ? 'text-white' : 'text-slate-400'} aria-hidden="true" />
             {/* Rótulo via CSS attr() para não sofrer autocomplete do navegador */}
             <span
               data-titulo={item.titulo}
               aria-hidden="true"
               className={`nav-label text-xs font-semibold block text-center overflow-hidden whitespace-nowrap ${
-                isActive(item.path) ? 'text-[#3b82f6]' : 'text-slate-400'
+                isActive(item.path) ? 'text-white' : 'text-slate-400'
               }`}
             />
           </button>

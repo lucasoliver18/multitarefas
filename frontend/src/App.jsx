@@ -1,6 +1,10 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { GoogleOAuthProvider } from '@react-oauth/google'
 import { ToastProvider } from './components/ToastNotification'
+import { AuthProvider } from './components/AuthProvider'
+import RotaProtegida from './components/RotaProtegida'
 import ErrorBoundary from './components/ErrorBoundary'
+import Login from './pages/Login'
 import Home from './pages/Home'
 import Prazos from './pages/Prazos'
 import NovoServico from './pages/NovoServico'
@@ -20,31 +24,39 @@ import Anotacoes from './pages/Anotacoes'
 function App() {
   return (
     <ErrorBoundary>
-      <ToastProvider>
-        <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/prazos" element={<Prazos />} />
-          <Route path="/servicos" element={<Servicos />} />
-          <Route path="/novo" element={<NovoServico />} />
-          <Route path="/editar/:id" element={<EditarServico />} />
+      <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+        <ToastProvider>
+          <BrowserRouter>
+            <AuthProvider>
+              <Routes>
+                <Route path="/login" element={<Login />} />
 
-          <Route path="/materiais" element={<Materiais />} />
-          <Route path="/materiais/novo" element={<NovoMaterial />} />
-          <Route path="/materiais/editar/:id" element={<EditarMaterial />} />
+                <Route element={<RotaProtegida />}>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/prazos" element={<Prazos />} />
+                  <Route path="/servicos" element={<Servicos />} />
+                  <Route path="/novo" element={<NovoServico />} />
+                  <Route path="/editar/:id" element={<EditarServico />} />
 
-          <Route path="/orcamentos/:servicoId" element={<Orcamentos />} />
-          <Route path="/orcamentos/:servicoId/novo" element={<NovoOrcamento />} />
-          <Route path="/orcamentos/:servicoId/editar/:id" element={<EditarOrcamento />} />
+                  <Route path="/materiais" element={<Materiais />} />
+                  <Route path="/materiais/novo" element={<NovoMaterial />} />
+                  <Route path="/materiais/editar/:id" element={<EditarMaterial />} />
 
-          <Route path="/clientes" element={<Clientes />} />
-          <Route path="/clientes/novo" element={<NovoCliente />} />
-          <Route path="/clientes/editar/:id" element={<EditarCliente />} />
+                  <Route path="/orcamentos/:servicoId" element={<Orcamentos />} />
+                  <Route path="/orcamentos/:servicoId/novo" element={<NovoOrcamento />} />
+                  <Route path="/orcamentos/:servicoId/editar/:id" element={<EditarOrcamento />} />
 
-          <Route path="/servicos/:id/anotacoes" element={<Anotacoes />} />
-        </Routes>
-        </BrowserRouter>
-      </ToastProvider>
+                  <Route path="/clientes" element={<Clientes />} />
+                  <Route path="/clientes/novo" element={<NovoCliente />} />
+                  <Route path="/clientes/editar/:id" element={<EditarCliente />} />
+
+                  <Route path="/servicos/:id/anotacoes" element={<Anotacoes />} />
+                </Route>
+              </Routes>
+            </AuthProvider>
+          </BrowserRouter>
+        </ToastProvider>
+      </GoogleOAuthProvider>
     </ErrorBoundary>
   )
 }

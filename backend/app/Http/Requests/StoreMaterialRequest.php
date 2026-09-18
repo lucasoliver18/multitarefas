@@ -18,6 +18,7 @@ class StoreMaterialRequest extends FormRequest
             'unidade_medida'     => 'required|string|max:50',
             'preco_unitario'     => 'required|numeric|min:0',
             'quantidade_estoque' => 'nullable|numeric|min:0',
+            'quantidade_minima'  => 'nullable|numeric|min:0',
         ];
     }
 }

@@ -24,6 +24,8 @@ export const PRIORIDADE_OPCOES = [
   { val: 'baixa', label: 'Baixa' },
 ]
 
+export const PESO_PRIORIDADE = { alta: 0, media: 1, baixa: 2 }
+
 export const TAG_OPCOES = Object.entries(TAG_LABEL).map(([val, label]) => ({ val, label }))
 
 export const badgeStatus = (s) => ({

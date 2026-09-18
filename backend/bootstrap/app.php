@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -22,6 +23,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(prepend: [
             ThrottleRequests::class.':api',
         ]);
+
+        // API pura, sem tela de login no Laravel: nunca redirecionar convidados,
+        // sempre deixar a exceção virar uma resposta 401.
+        $middleware->redirectGuestsTo(fn () => null);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->render(function (ThrottleRequestsException $e, Request $request) {
@@ -29,6 +34,14 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'message' => 'Muitas requisições. Tente novamente em instantes.',
                 ], 429);
+            }
+        });
+
+        $exceptions->render(function (AuthenticationException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'message' => 'Não autenticado.',
+                ], 401);
             }
         });
     })->create();

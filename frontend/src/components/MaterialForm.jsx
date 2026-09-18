@@ -97,6 +97,21 @@ function MaterialForm({ titulo, form, onChange, erro, salvando, onSalvar, botaoL
         </div>
 
         <div className="flex flex-col gap-1">
+          <label className={LABEL}>Estoque mínimo</label>
+          <input
+            name="quantidade_minima"
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="0.001"
+            value={form.quantidade_minima}
+            onChange={onChange}
+            placeholder="Ex: 5 (avisa quando o estoque chegar nesse nível)"
+            className={INPUT}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
           <label className={LABEL}>Preço Unitário (R$) *</label>
           <input
             name="preco_unitario"

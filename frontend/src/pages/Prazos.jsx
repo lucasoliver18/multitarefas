@@ -9,6 +9,7 @@ import {
   TAG_LABEL,
   STATUS_OPCOES,
   PRIORIDADE_OPCOES,
+  PESO_PRIORIDADE,
   labelPrioridade,
   corTextoPrioridade,
   corFundoPrioridade,
@@ -58,7 +59,12 @@ function Prazos() {
   const vencidos = useMemo(() =>
     servicosFiltrados
       .filter(s => estaVencido(s, hojeStr))
-      .sort((a, b) => a.prazo < b.prazo ? -1 : a.prazo > b.prazo ? 1 : 0),
+      .sort((a, b) => {
+        const prioA = PESO_PRIORIDADE[a.prioridade] ?? 1
+        const prioB = PESO_PRIORIDADE[b.prioridade] ?? 1
+        if (prioA !== prioB) return prioA - prioB
+        return a.prazo < b.prazo ? -1 : a.prazo > b.prazo ? 1 : 0
+      }),
     [servicosFiltrados, hojeStr]
   )
 

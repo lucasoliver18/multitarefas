@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { AlertTriangle } from 'lucide-react'
 import Navbar from '../components/Navbar'
 import Select from '../components/Select'
 import { useToast } from '../hooks/useToast'
@@ -10,7 +11,7 @@ import PainelFiltros from '../components/PainelFiltros'
 import BarraSelecao from '../components/BarraSelecao'
 import { useSelecaoMultipla } from '../hooks/useSelecaoMultipla'
 import { excluirEmMassa } from '../utils/exclusaoEmMassa'
-import { UNIDADES } from '../utils/materiais'
+import { UNIDADES, estaComEstoqueBaixo } from '../utils/materiais'
 
 const SELECT = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-600'
 const LABEL = 'text-xs font-semibold text-slate-600 mb-1 block'
@@ -22,6 +23,7 @@ function Materiais() {
   const [confirmandoId, setConfirmandoId] = useState(null)
   const [busca, setBusca] = useState('')
   const { ativo: selecaoAtiva, selecionados, alternarModo, alternarItem, cancelar, quantidade } = useSelecaoMultipla()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [filtroUnidade, setFiltroUnidade] = useState('')
   const [filtroPrecoMin, setFiltroPrecoMin] = useState('')
@@ -29,6 +31,7 @@ function Materiais() {
   const [filtroQtdMin, setFiltroQtdMin] = useState('')
   const [filtroQtdMax, setFiltroQtdMax] = useState('')
   const [filtroForaEstoque, setFiltroForaEstoque] = useState(false)
+  const [filtroEstoqueBaixo, setFiltroEstoqueBaixo] = useState(() => searchParams.get('estoqueBaixo') === '1')
 
   const quantidadeFiltrosAtivos = [filtroUnidade, filtroPrecoMin, filtroPrecoMax, filtroQtdMin, filtroQtdMax]
     .filter(Boolean).length
@@ -40,6 +43,7 @@ function Materiais() {
     setFiltroQtdMin('')
     setFiltroQtdMax('')
     setFiltroForaEstoque(false)
+    setFiltroEstoqueBaixo(false)
   }
 
   const handleDeletar = async (id) => {
@@ -67,6 +71,11 @@ function Materiais() {
     [materiais]
   )
 
+  const baixos = useMemo(
+    () => materiais.filter(estaComEstoqueBaixo).length,
+    [materiais]
+  )
+
   const materiaisFiltrados = useMemo(() => {
     return materiais.filter(m => {
       if (busca.trim() && !m.nome.toLowerCase().includes(busca.toLowerCase()) && !(m.marca || '').toLowerCase().includes(busca.toLowerCase())) return false
@@ -76,11 +85,12 @@ function Materiais() {
       if (filtroPrecoMax && preco > parseFloat(filtroPrecoMax)) return false
       const qtd = parseFloat(m.quantidade_estoque)
       if (filtroForaEstoque && qtd > 0) return false
+      if (filtroEstoqueBaixo && !estaComEstoqueBaixo(m)) return false
       if (filtroQtdMin && qtd < parseFloat(filtroQtdMin)) return false
       if (filtroQtdMax && qtd > parseFloat(filtroQtdMax)) return false
       return true
     })
-  }, [materiais, busca, filtroUnidade, filtroPrecoMin, filtroPrecoMax, filtroQtdMin, filtroQtdMax, filtroForaEstoque])
+  }, [materiais, busca, filtroUnidade, filtroPrecoMin, filtroPrecoMax, filtroQtdMin, filtroQtdMax, filtroForaEstoque, filtroEstoqueBaixo])
 
   const { pagina, setPagina, tamanhoPagina, mudarTamanhoPagina, totalPaginas, itensPagina } = usePaginacao(materiaisFiltrados)
 
@@ -88,7 +98,11 @@ function Materiais() {
     if (carregando) return 'Carregando...'
     if (materiais.length === 0) return 'Estoque vazio'
     const total = materiais.length === 1 ? '1 item' : `${materiais.length} itens`
-    return zerados > 0 ? `${total} • ${zerados} zerado${zerados > 1 ? 's' : ''}` : total
+    const avisos = [
+      zerados > 0 ? `${zerados} zerado${zerados > 1 ? 's' : ''}` : null,
+      baixos > 0 ? `${baixos} baix${baixos > 1 ? 'os' : 'o'}` : null,
+    ].filter(Boolean)
+    return avisos.length > 0 ? `${total} • ${avisos.join(' • ')}` : total
   }
 
   return (
@@ -97,7 +111,7 @@ function Materiais() {
       <div className="page-header bg-[#1e3a5f] px-6 pb-5 flex justify-between items-center">
         <div>
           <h1 className="text-lg font-bold text-white">Materiais</h1>
-          <p className={`text-xs mt-0.5 ${zerados > 0 && !carregando ? 'text-red-300' : 'text-slate-300'}`}>
+          <p className={`text-xs mt-0.5 ${(zerados > 0 || baixos > 0) && !carregando ? 'text-red-300' : 'text-slate-300'}`}>
             {subtitulo()}
           </p>
         </div>
@@ -125,14 +139,24 @@ function Materiais() {
             placeholder="Buscar material..."
             className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
           />
-          <button
-            onClick={() => setFiltroForaEstoque(v => !v)}
-            className={`self-start text-xs px-3 py-1.5 rounded-full font-semibold transition-colors ${
-              filtroForaEstoque ? 'bg-red-600 text-white' : 'bg-white border border-slate-200 text-slate-600'
-            }`}
-          >
-            Fora de estoque
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setFiltroForaEstoque(v => !v)}
+              className={`text-xs px-3 py-1.5 rounded-full font-semibold transition-colors ${
+                filtroForaEstoque ? 'bg-red-600 text-white' : 'bg-white border border-slate-200 text-slate-600'
+              }`}
+            >
+              Fora de estoque
+            </button>
+            <button
+              onClick={() => { setFiltroEstoqueBaixo(v => !v); setSearchParams({}) }}
+              className={`text-xs px-3 py-1.5 rounded-full font-semibold transition-colors ${
+                filtroEstoqueBaixo ? 'bg-amber-500 text-white' : 'bg-white border border-slate-200 text-slate-600'
+              }`}
+            >
+              Estoque baixo
+            </button>
+          </div>
           <PainelFiltros quantidadeAtiva={quantidadeFiltrosAtivos} onLimpar={limparFiltros}>
             <div>
               <label className={LABEL}>Unidade</label>
@@ -212,16 +236,27 @@ function Materiais() {
             {m.descricao && (
               <p className="text-xs text-slate-500 mt-1">{m.descricao}</p>
             )}
-            <div className="flex gap-3 mt-2">
+            <div className="flex gap-3 mt-2 flex-wrap items-center">
               <span className="text-xs text-slate-500">
                 Estoque:{' '}
-                <span className={`font-semibold ${parseFloat(m.quantidade_estoque) <= 0 ? 'text-red-500' : 'text-slate-800'}`}>
+                <span className={`font-semibold ${parseFloat(m.quantidade_estoque) <= 0 ? 'text-red-500' : estaComEstoqueBaixo(m) ? 'text-amber-600' : 'text-slate-800'}`}>
                   {parseFloat(m.quantidade_estoque)} {m.unidade_medida}
                 </span>
               </span>
               <span className="text-xs text-slate-500">
                 Preço: <span className="font-semibold text-slate-800">R$ {parseFloat(m.preco_unitario).toFixed(2)}</span>
               </span>
+              {parseFloat(m.quantidade_estoque) <= 0 ? (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
+                  <AlertTriangle size={11} />
+                  Fora de estoque
+                </span>
+              ) : estaComEstoqueBaixo(m) && (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                  <AlertTriangle size={11} />
+                  Estoque baixo
+                </span>
+              )}
             </div>
 
             {!selecaoAtiva && (confirmandoId === m.id ? (

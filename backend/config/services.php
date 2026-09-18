@@ -23,4 +23,11 @@ return [
         ],
     ],
 
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        // E-mails autorizados a entrar no sistema, separados por vírgula.
+        // Sem essa lista preenchida, ninguém consegue logar.
+        'allowed_emails' => array_filter(array_map('trim', explode(',', env('GOOGLE_ALLOWED_EMAILS', '')))),
+    ],
+
 ];

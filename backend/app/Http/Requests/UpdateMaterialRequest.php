@@ -20,6 +20,7 @@ class UpdateMaterialRequest extends FormRequest
             'unidade_medida'     => 'sometimes|string|max:50',
             'preco_unitario'     => 'sometimes|numeric|min:0',
             'quantidade_estoque' => 'nullable|numeric|min:0',
+            'quantidade_minima'  => 'nullable|numeric|min:0',
         ];
     }
 }
