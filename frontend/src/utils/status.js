@@ -1,4 +1,4 @@
-import { Clock, RefreshCw, CheckCircle2 } from 'lucide-react'
+import { Clock, RefreshCw, CheckCircle2, CircleDollarSign } from 'lucide-react'
 
 export const TAG_LABEL = {
   informatica: 'Informática',
@@ -54,3 +54,15 @@ export const corTextoPrioridade = (p) =>
 
 export const corFundoPrioridade = (p) =>
   p === 'alta' ? 'bg-red-500' : p === 'media' ? 'bg-orange-400' : 'bg-green-400'
+
+export const PAGO_OPCOES = [
+  { val: '1', label: 'Pago' },
+  { val: '0', label: 'Não pago' },
+]
+
+export const ICONE_PAGO = CircleDollarSign
+
+export const badgePago = (pago) =>
+  pago ? 'bg-[#dcfce7] text-[#166534]' : 'bg-slate-100 text-slate-500'
+
+export const labelPago = (pago) => pago ? 'Pago' : 'Não pago'

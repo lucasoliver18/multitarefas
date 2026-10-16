@@ -17,8 +17,13 @@ class Servico extends Model
         'cliente_id',
         'prioridade',
         'status',
+        'pago',
         'prazo',
         'tag',
+    ];
+
+    protected $casts = [
+        'pago' => 'boolean',
     ];
 
     public function clienteRelacao()

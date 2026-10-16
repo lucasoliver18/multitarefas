@@ -34,5 +34,10 @@ export function useServicos() {
     setServicos(prev => prev.map(s => s.id === id ? { ...s, status: novoStatus } : s))
   }, [])
 
-  return { servicos, carregando, buscar, deletar, mudarStatus }
+  const mudarPago = useCallback(async (id, novoPago) => {
+    await api.patch(`/servicos/${id}`, { pago: novoPago })
+    setServicos(prev => prev.map(s => s.id === id ? { ...s, pago: novoPago } : s))
+  }, [])
+
+  return { servicos, carregando, buscar, deletar, mudarStatus, mudarPago }
 }

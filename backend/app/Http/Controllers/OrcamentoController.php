@@ -79,6 +79,10 @@ class OrcamentoController extends Controller
 
     public function aprovar(Orcamento $orcamento)
     {
+        if ($orcamento->status === 'reprovado') {
+            return response()->json(['message' => 'Orçamento reprovado não pode ser alterado.'], 422);
+        }
+
         if ($orcamento->status === 'aprovado') {
             return response()->json(['message' => 'Orçamento já está aprovado.'], 422);
         }
@@ -112,6 +116,24 @@ class OrcamentoController extends Controller
                 $material->decrement('quantidade_estoque', $material->pivot->quantidade);
             }
             $orcamento->update(['status' => 'aprovado']);
+
+            // Não faz sentido ter dois orçamentos aprovados para o mesmo serviço:
+            // ao aprovar um, todos os outros (ainda não reprovados) do mesmo serviço
+            // são reprovados automaticamente.
+            $outros = Orcamento::where('servico_id', $orcamento->servico_id)
+                ->where('id', '!=', $orcamento->id)
+                ->where('status', '!=', 'reprovado')
+                ->with('materiais')
+                ->get();
+
+            foreach ($outros as $outro) {
+                if ($outro->status === 'aprovado') {
+                    foreach ($outro->materiais as $material) {
+                        $material->increment('quantidade_estoque', $material->pivot->quantidade);
+                    }
+                }
+                $outro->update(['status' => 'reprovado']);
+            }
         });
 
         return new OrcamentoResource($orcamento->load('materiais'));

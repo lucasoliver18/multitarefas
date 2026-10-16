@@ -23,6 +23,7 @@ function NovoServico() {
     cliente_id: null,
     prioridade: 'media',
     status: 'pendente',
+    pago: false,
     prazo: '',
     tag: '',
   })
@@ -177,6 +178,16 @@ function NovoServico() {
             className={INPUT}
           />
         </div>
+
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={form.pago}
+            onChange={e => setForm(prev => ({ ...prev, pago: e.target.checked }))}
+            className="w-4 h-4 accent-blue-600"
+          />
+          <span className="text-xs font-semibold text-slate-700">Serviço já pago pelo cliente</span>
+        </label>
 
         <div>
           <p className={LABEL}>Tag</p>

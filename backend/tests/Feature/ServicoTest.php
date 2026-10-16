@@ -103,6 +103,31 @@ class ServicoTest extends TestCase
              ->assertJsonFragment(['status' => 'finalizado']);
     }
 
+    public function test_pode_marcar_servico_como_pago(): void
+    {
+        $servico = Servico::factory()->create(['pago' => false]);
+
+        $this->patchJson("/api/servicos/{$servico->id}", ['pago' => true])
+             ->assertOk()
+             ->assertJsonFragment(['pago' => true]);
+
+        $this->assertTrue($servico->fresh()->pago);
+    }
+
+    public function test_servico_nasce_nao_pago_por_padrao(): void
+    {
+        $cliente = Cliente::factory()->create();
+
+        $res = $this->postJson('/api/servicos', [
+            'titulo'     => 'Serviço novo',
+            'cliente_id' => $cliente->id,
+            'prioridade' => 'media',
+            'status'     => 'pendente',
+        ])->assertCreated()->json();
+
+        $this->assertFalse($res['pago']);
+    }
+
     public function test_deletar_servico_usa_soft_delete(): void
     {
         $servico = Servico::factory()->create();

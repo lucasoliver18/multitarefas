@@ -19,7 +19,7 @@ function Navbar() {
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 w-full bg-[#1e3a5f] flex justify-around items-center py-3 px-2 z-50">
+    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[var(--app-max-width)] bg-[#1e3a5f] flex justify-around items-center py-3 px-2 z-50">
       {items.map((item) => {
         const Icone = item.icon
         return (

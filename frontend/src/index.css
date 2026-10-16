@@ -44,6 +44,39 @@ html, body {
   overflow-x: hidden;
 }
 
+/* Largura da "moldura" do app. Por padrão (auto), vira uma moldura de
+   celular só em telas largas; o toggle Celular/Desktop na tela inicial
+   força um dos dois modos independente do tamanho da janela, via o
+   atributo data-view-mode no <html>. */
+:root {
+  --app-max-width: 100%;
+}
+
+@media (min-width: 480px) {
+  :root {
+    --app-max-width: 480px;
+  }
+}
+
+html[data-view-mode="mobile"] {
+  --app-max-width: 480px;
+}
+
+html[data-view-mode="desktop"] {
+  --app-max-width: none;
+}
+
+body {
+  background-color: #cbd5e1;
+}
+
+#root {
+  max-width: var(--app-max-width);
+  min-height: 100vh;
+  margin: 0 auto;
+  box-shadow: 0 0 40px rgba(15, 23, 42, 0.15);
+}
+
 /* Page header: accounts for iOS safe area (notch/dynamic island) */
 .page-header {
   padding-top: calc(2.5rem + env(safe-area-inset-top, 0px));

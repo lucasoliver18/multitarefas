@@ -15,6 +15,7 @@ class ServicoResource extends JsonResource
             'cliente_id' => $this->cliente_id,
             'prioridade' => $this->prioridade,
             'status'     => $this->status,
+            'pago'       => (bool) $this->pago,
             'prazo'      => $this->prazo,
             'tag'        => $this->tag,
             'descricao'  => $this->descricao,

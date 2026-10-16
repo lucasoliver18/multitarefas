@@ -1,6 +1,6 @@
 function BarraSelecao({ quantidade, onExcluir, onCancelar }) {
   return (
-    <div className="fixed bottom-0 left-0 right-0 w-full bg-[#1e3a5f] flex items-center justify-between py-3 px-4 z-50">
+    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[var(--app-max-width)] bg-[#1e3a5f] flex items-center justify-between py-3 px-4 z-50">
       <span className="text-white text-sm font-semibold">
         {quantidade} selecionado{quantidade !== 1 ? 's' : ''}
       </span>

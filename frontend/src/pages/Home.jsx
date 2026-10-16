@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LogOut } from 'lucide-react'
+import { LogOut, Smartphone, Monitor } from 'lucide-react'
 import Navbar from '../components/Navbar'
 import { useServicos } from '../hooks/useServicos'
 import { useAuth } from '../hooks/useAuth'
 import { badgeStatus, labelStatus } from '../utils/status'
+import { lerModoSalvo, salvarModo, aplicarModo } from '../utils/viewMode'
 
 function RingProgresso({ diasRestantes }) {
   const r = 18
@@ -66,6 +67,14 @@ function Home() {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
   const primeiroNome = user?.name?.split(' ')[0] || ''
+  const [modoVisualizacao, setModoVisualizacao] = useState(lerModoSalvo)
+
+  const escolherModoVisualizacao = (modo) => {
+    const novoModo = modoVisualizacao === modo ? 'auto' : modo
+    salvarModo(novoModo)
+    aplicarModo(novoModo)
+    setModoVisualizacao(novoModo)
+  }
 
   const hoje = useMemo(() => {
     const d = new Date()
@@ -120,6 +129,24 @@ function Home() {
           <div className="flex-1 min-w-0">
             <h1 className="text-base font-bold text-white truncate">Olá, {primeiroNome}!</h1>
             <p className="text-xs text-slate-300">Pronto para mais um dia?</p>
+          </div>
+          <div className="inline-flex bg-white/10 rounded-full p-1 gap-1 shrink-0">
+            <button
+              onClick={() => escolherModoVisualizacao('mobile')}
+              aria-label="Visualizar como celular"
+              aria-pressed={modoVisualizacao === 'mobile'}
+              className={`p-1.5 rounded-full transition-colors ${modoVisualizacao === 'mobile' ? 'bg-white text-[#1e3a5f]' : 'text-slate-300'}`}
+            >
+              <Smartphone size={15} />
+            </button>
+            <button
+              onClick={() => escolherModoVisualizacao('desktop')}
+              aria-label="Visualizar como desktop"
+              aria-pressed={modoVisualizacao === 'desktop'}
+              className={`p-1.5 rounded-full transition-colors ${modoVisualizacao === 'desktop' ? 'bg-white text-[#1e3a5f]' : 'text-slate-300'}`}
+            >
+              <Monitor size={15} />
+            </button>
           </div>
           <button onClick={logout} aria-label="Sair" className="text-slate-300 hover:text-white shrink-0 p-1">
             <LogOut size={18} />

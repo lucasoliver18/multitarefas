@@ -94,4 +94,59 @@ class OrcamentoTest extends TestCase
         $this->patchJson("/api/orcamentos/{$orcamento->id}/aprovar")
              ->assertUnprocessable();
     }
+
+    public function test_nao_aprova_orcamento_reprovado(): void
+    {
+        $orcamento = Orcamento::factory()->create(['status' => 'reprovado']);
+
+        $this->patchJson("/api/orcamentos/{$orcamento->id}/aprovar")
+             ->assertUnprocessable();
+
+        $this->assertEquals('reprovado', $orcamento->fresh()->status);
+    }
+
+    public function test_nao_reprova_orcamento_ja_reprovado(): void
+    {
+        $orcamento = Orcamento::factory()->create(['status' => 'reprovado']);
+
+        $this->patchJson("/api/orcamentos/{$orcamento->id}/reprovar")
+             ->assertUnprocessable();
+    }
+
+    public function test_aprovar_reprova_automaticamente_os_outros_orcamentos_do_servico(): void
+    {
+        $servico = Servico::factory()->create();
+        $aprovado = Orcamento::factory()->create(['servico_id' => $servico->id, 'status' => 'pendente']);
+        $pendente1 = Orcamento::factory()->create(['servico_id' => $servico->id, 'status' => 'pendente']);
+        $pendente2 = Orcamento::factory()->create(['servico_id' => $servico->id, 'status' => 'pendente']);
+        $jaReprovado = Orcamento::factory()->create(['servico_id' => $servico->id, 'status' => 'reprovado']);
+
+        $this->patchJson("/api/orcamentos/{$aprovado->id}/aprovar")->assertOk();
+
+        $this->assertEquals('aprovado', $aprovado->fresh()->status);
+        $this->assertEquals('reprovado', $pendente1->fresh()->status);
+        $this->assertEquals('reprovado', $pendente2->fresh()->status);
+        $this->assertEquals('reprovado', $jaReprovado->fresh()->status);
+    }
+
+    public function test_aprovar_restaura_estoque_de_outro_orcamento_que_estava_aprovado(): void
+    {
+        $servico  = Servico::factory()->create();
+        $material = Material::factory()->create(['quantidade_estoque' => 10]);
+
+        $antigoAprovado = Orcamento::factory()->create(['servico_id' => $servico->id, 'status' => 'aprovado']);
+        $antigoAprovado->materiais()->attach($material->id, [
+            'quantidade'              => 4,
+            'preco_unitario_snapshot' => $material->preco_unitario,
+        ]);
+        $material->decrement('quantidade_estoque', 4);
+
+        $novoOrcamento = Orcamento::factory()->create(['servico_id' => $servico->id, 'status' => 'pendente']);
+
+        $this->patchJson("/api/orcamentos/{$novoOrcamento->id}/aprovar")->assertOk();
+
+        $this->assertEquals('reprovado', $antigoAprovado->fresh()->status);
+        $this->assertEquals('aprovado', $novoOrcamento->fresh()->status);
+        $this->assertEquals(10, $material->fresh()->quantidade_estoque);
+    }
 }

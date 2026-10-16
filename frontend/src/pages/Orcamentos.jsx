@@ -36,23 +36,42 @@ function Orcamentos() {
     }).finally(() => setCarregando(false))
   }, [servicoId])
 
+  const recarregarOrcamentos = async () => {
+    const res = await api.get(`/servicos/${servicoId}/orcamentos`)
+    setOrcamentos(res.data)
+  }
+
   const reprovar = async (id) => {
     setConfirmando(null)
     try {
-      const res = await api.patch(`/orcamentos/${id}/reprovar`)
-      setOrcamentos(prev => prev.map(o => o.id === id ? res.data : o))
+      await api.patch(`/orcamentos/${id}/reprovar`)
+      await recarregarOrcamentos()
       toast.sucesso('Orçamento reprovado.')
     } catch (e) {
       toast.erro(e.response?.data?.message || 'Erro ao reprovar orçamento.')
     }
   }
 
+  const perguntarEmAndamento = () => {
+    if (!servico || servico.status === 'em_andamento') return
+    toast.confirmar('Orçamento aprovado! Deseja marcar o serviço como "Em andamento"?', async () => {
+      try {
+        const res = await api.patch(`/servicos/${servicoId}`, { status: 'em_andamento' })
+        setServico(res.data)
+        toast.sucesso('Serviço marcado como Em andamento!')
+      } catch {
+        toast.erro('Erro ao atualizar status do serviço.')
+      }
+    })
+  }
+
   const aprovar = async (id) => {
     setConfirmando(null)
     try {
-      const res = await api.patch(`/orcamentos/${id}/aprovar`)
-      setOrcamentos(prev => prev.map(o => o.id === id ? res.data : o))
+      await api.patch(`/orcamentos/${id}/aprovar`)
+      await recarregarOrcamentos()
       toast.sucesso('Orçamento aprovado!')
+      perguntarEmAndamento()
     } catch (e) {
       toast.erro(e.response?.data?.message || 'Erro ao aprovar orçamento.')
     }
@@ -156,7 +175,7 @@ function Orcamentos() {
                 </div>
               ) : (
                 <div className="flex justify-end gap-2 mt-3 flex-wrap">
-                  {o.status !== 'aprovado' && (
+                  {o.status === 'pendente' && (
                     <button
                       onClick={() => setConfirmando({ id: o.id, acao: 'aprovar' })}
                       className="text-xs bg-[#16a34a] text-white px-3 py-1.5 rounded-full font-semibold"

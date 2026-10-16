@@ -24,15 +24,21 @@ import {
   STATUS_OPCOES,
   PRIORIDADE_OPCOES,
   TAG_OPCOES,
+  PAGO_OPCOES,
+  ICONE_PAGO,
+  badgePago,
+  labelPago,
 } from '../utils/status'
 
 const SELECT = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-600'
 const LABEL = 'text-xs font-semibold text-slate-600 mb-1 block'
+const LIMITE_KANBAN_INICIAL = 3
+const INCREMENTO_KANBAN = 3
 
 function Servicos() {
   const navigate = useNavigate()
   const toast = useToast()
-  const { servicos, carregando, buscar, deletar, mudarStatus } = useServicos()
+  const { servicos, carregando, buscar, deletar, mudarStatus, mudarPago } = useServicos()
   const [menuStatus, setMenuStatus] = useState(null)
   const [confirmandoId, setConfirmandoId] = useState(null)
   const { ativo: selecaoAtiva, selecionados, alternarModo, alternarItem, cancelar, quantidade } = useSelecaoMultipla()
@@ -49,8 +55,19 @@ function Servicos() {
   const [filtroSituacaoPrazo, setFiltroSituacaoPrazo] = useState(() =>
     searchParams.get('vencidos') === '1' ? 'atrasado' : ''
   )
+  const [filtroPago, setFiltroPago] = useState('')
+  const [limiteColuna, setLimiteColuna] = useState({})
 
-  const quantidadeFiltrosAtivos = [filtroStatus, filtroPrioridade, filtroTag, filtroPrazoDe, filtroPrazoAte, filtroSituacaoPrazo]
+  // Reseta os limites de "carregar mais" do quadro sempre que os filtros mudam,
+  // ajustando o estado durante a renderização em vez de usar um efeito.
+  const filtrosChave = JSON.stringify([filtroStatus, filtroPrioridade, filtroTag, filtroPago, filtroPrazoDe, filtroPrazoAte, filtroSituacaoPrazo])
+  const [filtrosChaveAnterior, setFiltrosChaveAnterior] = useState(filtrosChave)
+  if (filtrosChaveAnterior !== filtrosChave) {
+    setFiltrosChaveAnterior(filtrosChave)
+    setLimiteColuna({})
+  }
+
+  const quantidadeFiltrosAtivos = [filtroStatus, filtroPrioridade, filtroTag, filtroPrazoDe, filtroPrazoAte, filtroSituacaoPrazo, filtroPago]
     .filter(Boolean).length
 
   const limparFiltros = () => {
@@ -60,6 +77,7 @@ function Servicos() {
     setFiltroPrazoDe('')
     setFiltroPrazoAte('')
     setFiltroSituacaoPrazo('')
+    setFiltroPago('')
   }
 
   const servicosFiltrados = useMemo(() => {
@@ -69,6 +87,7 @@ function Servicos() {
       if (filtroStatus && s.status !== filtroStatus) return false
       if (filtroPrioridade && s.prioridade !== filtroPrioridade) return false
       if (filtroTag && s.tag !== filtroTag) return false
+      if (filtroPago && String(Number(!!s.pago)) !== filtroPago) return false
       if ((filtroPrazoDe || filtroPrazoAte) ) {
         if (!s.prazo) return false
         if (filtroPrazoDe && s.prazo < filtroPrazoDe) return false
@@ -76,7 +95,7 @@ function Servicos() {
       }
       return true
     })
-  }, [servicos, filtroSituacaoPrazo, hojeStr, filtroStatus, filtroPrioridade, filtroTag, filtroPrazoDe, filtroPrazoAte])
+  }, [servicos, filtroSituacaoPrazo, hojeStr, filtroStatus, filtroPrioridade, filtroTag, filtroPago, filtroPrazoDe, filtroPrazoAte])
 
   const servicosOrdenados = useServicosOrdenados(servicosFiltrados)
 
@@ -108,6 +127,25 @@ function Servicos() {
       toast.erro('Erro ao atualizar status.')
     }
   }
+
+  const handleMudarPago = async (id, novoPago) => {
+    try {
+      await mudarPago(id, novoPago)
+      toast.sucesso(novoPago ? 'Serviço marcado como pago!' : 'Serviço marcado como não pago.')
+    } catch {
+      toast.erro('Erro ao atualizar situação de pagamento.')
+    }
+  }
+
+  const PagoBadge = ({ s }) => (
+    <button
+      onClick={e => { e.stopPropagation(); handleMudarPago(s.id, !s.pago) }}
+      className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${badgePago(s.pago)}`}
+    >
+      <ICONE_PAGO size={11} />
+      {labelPago(s.pago)}
+    </button>
+  )
 
   const handleExcluirSelecionados = () => {
     toast.confirmar(`Excluir ${quantidade} serviço(s) selecionado(s)?`, async () => {
@@ -143,9 +181,9 @@ function Servicos() {
   const ServicoCardKanban = ({ s }) => (
     <div
       onClick={() => selecaoAtiva ? alternarItem(s.id) : navigate(`/editar/${s.id}`)}
-      className={`bg-white rounded-xl p-3 border border-slate-100 border-l-4 ${borderPrioridade(s.prioridade)} shadow-sm cursor-pointer`}
+      className={`bg-white rounded-xl p-2 border border-slate-100 border-l-4 ${borderPrioridade(s.prioridade)} shadow-sm cursor-pointer min-w-0`}
     >
-      <div className="flex justify-between items-start gap-2">
+      <div className="flex items-start gap-1.5">
         {selecaoAtiva && (
           <input
             type="checkbox"
@@ -155,19 +193,19 @@ function Servicos() {
             className="w-4 h-4 accent-blue-600 shrink-0 mt-0.5"
           />
         )}
-        <p className="text-xs font-semibold text-slate-800 leading-snug flex-1">{s.titulo}</p>
-        {!selecaoAtiva && (
-          <div className="relative shrink-0" onClick={e => e.stopPropagation()}>
-            <StatusBadge
-              status={s.status}
-              as="button"
-              className="px-2 py-0.5"
-              onClick={() => setMenuStatus(prev => prev === s.id ? null : s.id)}
-            />
-            <MenuStatusServico s={s} />
-          </div>
-        )}
+        <p className="text-xs font-semibold text-slate-800 leading-snug flex-1 break-words">{s.titulo}</p>
       </div>
+      {!selecaoAtiva && (
+        <div className="relative mt-1.5" onClick={e => e.stopPropagation()}>
+          <StatusBadge
+            status={s.status}
+            as="button"
+            className="px-2 py-0.5"
+            onClick={() => setMenuStatus(prev => prev === s.id ? null : s.id)}
+          />
+          <MenuStatusServico s={s} />
+        </div>
+      )}
       <p className="text-xs text-slate-400 mt-1 truncate">{s.cliente}</p>
       <div className="flex items-center gap-2 mt-2 flex-wrap">
         <span className={`inline-flex items-center gap-1 text-xs font-medium ${corTextoPrioridade(s.prioridade)}`}>
@@ -179,12 +217,25 @@ function Servicos() {
             {TAG_LABEL[s.tag] || s.tag}
           </span>
         )}
+        {!selecaoAtiva && <PagoBadge s={s} />}
       </div>
       {s.prazo && (
         <p className={`text-xs mt-1.5 inline-flex items-center gap-1 ${estaVencido(s, hojeStr) ? 'text-red-600 font-semibold' : 'text-slate-400'}`}>
           <Calendar size={11} />
           {estaVencido(s, hojeStr) ? 'Atrasado' : new Date(s.prazo + 'T00:00:00').toLocaleDateString('pt-BR')}
         </p>
+      )}
+      {!selecaoAtiva && (
+        <div className="flex justify-end mt-1.5 pt-1.5 border-t border-slate-100" onClick={e => e.stopPropagation()}>
+          <button
+            onClick={() => navigate(`/orcamentos/${s.id}`)}
+            aria-label="Orçamentos"
+            className="inline-flex items-center gap-1 text-xs text-indigo-600 font-semibold px-1.5 py-0.5 rounded-lg hover:bg-indigo-50"
+          >
+            <Receipt size={12} />
+            Orçamentos
+          </button>
+        </div>
       )}
     </div>
   )
@@ -215,6 +266,18 @@ function Servicos() {
             {new Date(s.prazo + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
           </span>
         )
+      )}
+      {!selecaoAtiva && s.pago && (
+        <ICONE_PAGO size={13} className="text-green-600 shrink-0" aria-label="Pago" />
+      )}
+      {!selecaoAtiva && (
+        <button
+          onClick={e => { e.stopPropagation(); navigate(`/orcamentos/${s.id}`) }}
+          aria-label="Orçamentos"
+          className="p-1 text-indigo-600 shrink-0"
+        >
+          <Receipt size={14} />
+        </button>
       )}
       {!selecaoAtiva && (
         <div className="relative shrink-0" onClick={e => e.stopPropagation()}>
@@ -277,6 +340,7 @@ function Servicos() {
               {TAG_LABEL[s.tag] || s.tag}
             </span>
           )}
+          {!selecaoAtiva && <PagoBadge s={s} />}
         </div>
       </div>
 
@@ -403,7 +467,7 @@ function Servicos() {
                 }`}
               >
                 <Kanban size={13} />
-                Board
+                Quadro
               </button>
               <button
                 onClick={() => setVisualizacao('lista')}
@@ -472,6 +536,15 @@ function Servicos() {
                 <input type="date" value={filtroPrazoAte} onChange={e => setFiltroPrazoAte(e.target.value)} className={SELECT} />
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={LABEL}>Pagamento</label>
+                <Select value={filtroPago} onChange={e => setFiltroPago(e.target.value)} className={SELECT}>
+                  <option value="">Todos</option>
+                  {PAGO_OPCOES.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
+                </Select>
+              </div>
+            </div>
           </PainelFiltros>
         )}
 
@@ -487,24 +560,37 @@ function Servicos() {
         )}
 
         {visualizacao === 'kanban' && servicosFiltrados.length > 0 && (
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-6 px-6 snap-x snap-mandatory">
+          <div className="grid grid-cols-3 gap-2">
             {STATUS_OPCOES.map(coluna => {
-              const itens = servicosPorStatus[coluna.val] || []
+              const todosItens = servicosPorStatus[coluna.val] || []
+              const limite = limiteColuna[coluna.val] ?? LIMITE_KANBAN_INICIAL
+              const itens = todosItens.slice(0, limite)
+              const restantes = todosItens.length - itens.length
               const IconeColuna = STATUS_ICONE[coluna.val]
               return (
-                <div key={coluna.val} className="snap-start shrink-0 w-[85%] max-w-[320px] flex flex-col gap-3">
-                  <div className="flex items-center gap-1.5 px-1">
-                    <IconeColuna size={14} className="text-slate-500" />
-                    <span className="text-sm font-bold text-slate-700">{coluna.label}</span>
-                    <span className="text-xs text-slate-400 bg-slate-100 rounded-full px-2 py-0.5 ml-auto">{itens.length}</span>
+                <div key={coluna.val} className="min-w-0 flex flex-col gap-2">
+                  <div className="flex flex-col items-start gap-1 px-0.5">
+                    <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-700 leading-tight">
+                      <IconeColuna size={12} className="text-slate-500 shrink-0" />
+                      {coluna.label}
+                    </span>
+                    <span className="text-[10px] text-slate-400 bg-slate-100 rounded-full px-1.5 py-0.5">{todosItens.length}</span>
                   </div>
                   <div className="flex flex-col gap-2">
                     {itens.length === 0 ? (
-                      <div className="text-center text-xs text-slate-300 py-8 border border-dashed border-slate-200 rounded-xl">
+                      <div className="text-center text-[10px] text-slate-300 py-6 px-1 border border-dashed border-slate-200 rounded-xl">
                         Nenhum serviço
                       </div>
                     ) : itens.map(s => <ServicoCardKanban key={s.id} s={s} />)}
                   </div>
+                  {restantes > 0 && (
+                    <button
+                      onClick={() => setLimiteColuna(prev => ({ ...prev, [coluna.val]: limite + INCREMENTO_KANBAN }))}
+                      className="text-[10px] text-blue-600 font-semibold text-center py-1.5 border border-dashed border-blue-200 rounded-xl"
+                    >
+                      Carregar mais ({restantes})
+                    </button>
+                  )}
                 </div>
               )
             })}
