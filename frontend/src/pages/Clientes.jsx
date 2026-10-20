@@ -124,13 +124,13 @@ function Clientes() {
           <div className="flex items-center gap-2">
             <button
               onClick={alternarModo}
-              className="bg-white/10 text-white text-xs px-3 py-2 rounded-full font-semibold transition-all active:scale-[0.96]"
+              className="bg-white/10 text-white text-xs px-3 py-2 rounded-full font-semibold transition-all hover:bg-white/20 active:scale-[0.96]"
             >
               {selecaoAtiva ? 'Cancelar' : 'Selecionar'}
             </button>
             <button
               onClick={() => navigate('/clientes/novo')}
-              className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold transition-all active:scale-[0.96]"
+              className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold transition-all hover:bg-[#1e3a5f] active:scale-[0.96]"
             >
               + Novo
             </button>
@@ -146,7 +146,7 @@ function Clientes() {
             placeholder="Buscar cliente pelo nome..."
           />
           {busca && (
-            <button onClick={() => setBusca('')} className="text-slate-400">
+            <button onClick={() => setBusca('')} className="text-slate-400 hover:text-white active:scale-90 transition-all">
               <X size={14} />
             </button>
           )}
@@ -163,8 +163,8 @@ function Clientes() {
             <div className="inline-flex bg-slate-200/70 rounded-full p-1 gap-1">
               <button
                 onClick={() => setVisualizacao('lista')}
-                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${
-                  visualizacao === 'lista' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-all active:scale-95 ${
+                  visualizacao === 'lista' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:bg-white/60 hover:text-slate-700'
                 }`}
               >
                 <List size={13} />
@@ -172,8 +172,8 @@ function Clientes() {
               </button>
               <button
                 onClick={() => setVisualizacao('grade')}
-                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${
-                  visualizacao === 'grade' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-all active:scale-95 ${
+                  visualizacao === 'grade' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:bg-white/60 hover:text-slate-700'
                 }`}
               >
                 <LayoutGrid size={13} />
@@ -282,13 +282,13 @@ function Clientes() {
                       <button
                         onClick={() => handleTransferirEExcluir(c.id)}
                         disabled={!novoClienteId}
-                        className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold disabled:opacity-40 transition-all active:scale-[0.96]"
+                        className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold disabled:opacity-40 transition-all hover:bg-red-700 active:scale-[0.96]"
                       >
                         Transferir e excluir
                       </button>
                       <button
                         onClick={() => { setTransferindoCliente(null); setNovoClienteId(''); setNovoClienteTexto('') }}
-                        className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold transition-all active:scale-[0.96]"
+                        className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold transition-all hover:bg-slate-200 active:scale-[0.96]"
                       >
                         Cancelar
                       </button>
@@ -300,13 +300,13 @@ function Clientes() {
                     <div className={grade ? 'flex flex-col gap-2' : 'flex gap-2'}>
                       <button
                         onClick={e => { e.stopPropagation(); handleDeletar(c.id) }}
-                        className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold transition-all active:scale-[0.96]"
+                        className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold transition-all hover:bg-red-700 active:scale-[0.96]"
                       >
                         Sim, remover
                       </button>
                       <button
                         onClick={e => { e.stopPropagation(); setConfirmandoId(null) }}
-                        className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold transition-all active:scale-[0.96]"
+                        className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold transition-all hover:bg-slate-200 active:scale-[0.96]"
                       >
                         Cancelar
                       </button>
@@ -316,13 +316,13 @@ function Clientes() {
                   <div className={`mt-3 ${grade ? 'flex flex-col gap-2' : 'flex justify-end gap-2'}`}>
                     <button
                       onClick={e => { e.stopPropagation(); navigate(`/clientes/editar/${c.id}`) }}
-                      className={`text-xs bg-[#2563eb] text-white px-3 py-1.5 rounded-full font-semibold transition-all active:scale-[0.96] ${grade ? 'w-full' : ''}`}
+                      className={`text-xs bg-[#2563eb] text-white px-3 py-1.5 rounded-full font-semibold transition-all hover:bg-[#1e3a5f] active:scale-[0.96] ${grade ? 'w-full' : ''}`}
                     >
                       Editar
                     </button>
                     <button
                       onClick={e => { e.stopPropagation(); setConfirmandoId(c.id) }}
-                      className={`text-xs bg-[#dc2626] text-white px-3 py-1.5 rounded-full font-semibold transition-all active:scale-[0.96] ${grade ? 'w-full' : ''}`}
+                      className={`text-xs bg-[#dc2626] text-white px-3 py-1.5 rounded-full font-semibold transition-all hover:bg-red-700 active:scale-[0.96] ${grade ? 'w-full' : ''}`}
                     >
                       Excluir
                     </button>
@@ -363,7 +363,7 @@ function Clientes() {
                             e.stopPropagation()
                             setMostrarTodosServicos(prev => ({ ...prev, [c.id]: !prev[c.id] }))
                           }}
-                          className="text-xs text-[#2563eb] font-semibold self-center py-1"
+                          className="text-xs text-[#2563eb] font-semibold self-center py-1 hover:text-[#1e3a5f] active:scale-95 transition-all"
                         >
                           {mostrarTodosServicos[c.id]
                             ? 'Mostrar menos'

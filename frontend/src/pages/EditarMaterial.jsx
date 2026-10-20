@@ -79,7 +79,7 @@ function EditarMaterial() {
         <p className="text-slate-500 text-sm text-center">Material não encontrado ou erro ao carregar.</p>
         <button
           onClick={() => navigate('/materiais')}
-          className="text-xs bg-[#2563eb] text-white px-4 py-2 rounded-full font-semibold"
+          className="text-xs bg-[#2563eb] text-white px-4 py-2 rounded-full font-semibold transition-all hover:bg-[#1e3a5f] active:scale-[0.96]"
         >
           Voltar aos materiais
         </button>

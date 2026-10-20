@@ -28,7 +28,7 @@ function MaterialForm({ titulo, form, onChange, salvando, onSalvar, botaoLabel }
     <div className="min-h-screen bg-slate-50 flex flex-col">
 
       <div className="page-header bg-[#1e3a5f] px-6 pb-5">
-        <button onClick={() => navigate('/materiais')} className="text-xs text-slate-300 mb-3">
+        <button onClick={() => navigate('/materiais')} className="text-xs text-slate-300 mb-3 hover:text-white active:scale-95 transition-all">
           ← Voltar
         </button>
         <h1 className="text-lg font-bold text-white">{titulo}</h1>

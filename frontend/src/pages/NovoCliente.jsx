@@ -50,7 +50,7 @@ function NovoCliente() {
     <div className="min-h-screen bg-slate-50 flex flex-col">
 
       <div className="page-header bg-[#1e3a5f] px-6 pb-5">
-        <button onClick={() => navigate('/clientes')} className="text-xs text-slate-300 mb-3">← Voltar</button>
+        <button onClick={() => navigate('/clientes')} className="text-xs text-slate-300 mb-3 hover:text-white active:scale-95 transition-all">← Voltar</button>
         <h1 className="text-lg font-bold text-white">Novo Cliente</h1>
       </div>
 
@@ -68,14 +68,14 @@ function NovoCliente() {
             <button
               type="button"
               onClick={() => setForm({ ...form, tipo_pessoa: 'fisica' })}
-              className={`flex-1 text-sm font-semibold py-3 rounded-xl border ${form.tipo_pessoa === 'fisica' ? 'bg-[#2563eb] text-white border-[#2563eb]' : 'bg-white text-slate-600 border-slate-200'}`}
+              className={`flex-1 text-sm font-semibold py-3 rounded-xl border transition-all active:scale-[0.97] ${form.tipo_pessoa === 'fisica' ? 'bg-[#2563eb] text-white border-[#2563eb] hover:bg-[#1e3a5f]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
             >
               Pessoa Física
             </button>
             <button
               type="button"
               onClick={() => setForm({ ...form, tipo_pessoa: 'juridica' })}
-              className={`flex-1 text-sm font-semibold py-3 rounded-xl border ${form.tipo_pessoa === 'juridica' ? 'bg-[#2563eb] text-white border-[#2563eb]' : 'bg-white text-slate-600 border-slate-200'}`}
+              className={`flex-1 text-sm font-semibold py-3 rounded-xl border transition-all active:scale-[0.97] ${form.tipo_pessoa === 'juridica' ? 'bg-[#2563eb] text-white border-[#2563eb] hover:bg-[#1e3a5f]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
             >
               Pessoa Jurídica
             </button>

@@ -58,7 +58,7 @@ function EstoqueEditor({ quantidade, unidade, onAlterar }) {
         onClick={() => alterar(-1)}
         disabled={valor <= 0}
         aria-label="Diminuir estoque"
-        className="w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-40 shrink-0"
+        className="w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 active:scale-90 transition-all disabled:opacity-40 disabled:active:scale-100 shrink-0"
       >
         <Minus size={12} />
       </button>
@@ -79,7 +79,7 @@ function EstoqueEditor({ quantidade, unidade, onAlterar }) {
         <button
           type="button"
           onClick={iniciarEdicao}
-          className="min-w-[3.5rem] text-center text-xs font-semibold text-slate-800 hover:underline"
+          className="min-w-[3.5rem] text-center text-xs font-semibold text-slate-800 hover:underline hover:text-blue-700 active:scale-95 transition-all"
         >
           {valor} {unidade}
         </button>
@@ -89,7 +89,7 @@ function EstoqueEditor({ quantidade, unidade, onAlterar }) {
         type="button"
         onClick={() => alterar(1)}
         aria-label="Aumentar estoque"
-        className="w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 shrink-0"
+        className="w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 active:scale-90 transition-all shrink-0"
       >
         <Plus size={12} />
       </button>

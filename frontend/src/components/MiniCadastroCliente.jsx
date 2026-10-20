@@ -57,14 +57,14 @@ function MiniCadastroCliente({ nomeInicial, onCriado, onCancelar }) {
           <button
             type="button"
             onClick={() => setForm({ ...form, tipo_pessoa: 'fisica' })}
-            className={`flex-1 text-xs font-semibold py-2 rounded-lg border ${form.tipo_pessoa === 'fisica' ? 'bg-[#2563eb] text-white border-[#2563eb]' : 'bg-white text-slate-600 border-slate-200'}`}
+            className={`flex-1 text-xs font-semibold py-2 rounded-lg border transition-all active:scale-[0.97] ${form.tipo_pessoa === 'fisica' ? 'bg-[#2563eb] text-white border-[#2563eb] hover:bg-[#1e3a5f]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
           >
             Pessoa Física
           </button>
           <button
             type="button"
             onClick={() => setForm({ ...form, tipo_pessoa: 'juridica' })}
-            className={`flex-1 text-xs font-semibold py-2 rounded-lg border ${form.tipo_pessoa === 'juridica' ? 'bg-[#2563eb] text-white border-[#2563eb]' : 'bg-white text-slate-600 border-slate-200'}`}
+            className={`flex-1 text-xs font-semibold py-2 rounded-lg border transition-all active:scale-[0.97] ${form.tipo_pessoa === 'juridica' ? 'bg-[#2563eb] text-white border-[#2563eb] hover:bg-[#1e3a5f]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
           >
             Pessoa Jurídica
           </button>

@@ -109,7 +109,7 @@ function EditarServico() {
     <div className="min-h-screen bg-slate-50 flex flex-col">
 
       <div className="page-header bg-[#1e3a5f] px-6 pb-5">
-        <button onClick={() => navigate('/servicos')} className="text-xs text-slate-300 mb-3">← Voltar</button>
+        <button onClick={() => navigate('/servicos')} className="text-xs text-slate-300 mb-3 hover:text-white active:scale-95 transition-all">← Voltar</button>
         <h1 className="text-lg font-bold text-white">Editar Serviço</h1>
         <p className="text-xs text-slate-300 mt-0.5">Atualize os dados do serviço</p>
       </div>

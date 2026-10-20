@@ -8,7 +8,7 @@ function PainelFiltros({ quantidadeAtiva, onLimpar, children }) {
     <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
       <button
         onClick={() => setAberto(a => !a)}
-        className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-slate-700"
+        className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 active:bg-slate-100"
       >
         <span className="inline-flex items-center gap-1.5">
           <Search size={14} />
@@ -23,7 +23,7 @@ function PainelFiltros({ quantidadeAtiva, onLimpar, children }) {
           {quantidadeAtiva > 0 && (
             <button
               onClick={onLimpar}
-              className="self-start text-xs text-blue-600 font-semibold"
+              className="self-start text-xs text-blue-600 font-semibold hover:text-blue-800 active:scale-95 transition-all"
             >
               Limpar filtros
             </button>

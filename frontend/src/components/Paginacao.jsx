@@ -42,7 +42,7 @@ function Paginacao({ pagina, setPagina, tamanhoPagina, mudarTamanhoPagina, total
         <button
           onClick={() => setPagina(p => Math.max(1, p - 1))}
           disabled={pagina <= 1}
-          className="text-xs bg-white border border-slate-200 rounded-lg px-3 py-1.5 font-semibold text-slate-600 disabled:opacity-40"
+          className="text-xs bg-white border border-slate-200 rounded-lg px-3 py-1.5 font-semibold text-slate-600 transition-all hover:bg-slate-50 active:scale-95 disabled:opacity-40 disabled:active:scale-100"
         >
           ← Anterior
         </button>
@@ -50,7 +50,7 @@ function Paginacao({ pagina, setPagina, tamanhoPagina, mudarTamanhoPagina, total
         <button
           onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))}
           disabled={pagina >= totalPaginas}
-          className="text-xs bg-white border border-slate-200 rounded-lg px-3 py-1.5 font-semibold text-slate-600 disabled:opacity-40"
+          className="text-xs bg-white border border-slate-200 rounded-lg px-3 py-1.5 font-semibold text-slate-600 transition-all hover:bg-slate-50 active:scale-95 disabled:opacity-40 disabled:active:scale-100"
         >
           Próxima →
         </button>

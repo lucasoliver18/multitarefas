@@ -27,7 +27,7 @@ function Navbar() {
             key={item.path}
             onClick={() => navigate(item.path)}
             aria-label={item.titulo}
-            className="flex flex-col items-center gap-1 flex-1 min-w-0"
+            className="flex flex-col items-center gap-1 flex-1 min-w-0 py-1 rounded-lg transition-all hover:bg-white/10 active:scale-90"
           >
             <Icone size={20} className={isActive(item.path) ? 'text-white' : 'text-slate-400'} aria-hidden="true" />
             {/* Rótulo via CSS attr() para não sofrer autocomplete do navegador */}

@@ -70,7 +70,7 @@ function ComboboxAsync({
               key={itemKey(item)}
               type="button"
               onMouseDown={() => onSelecionar(item)}
-              className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 border-b border-slate-100 last:border-0 flex justify-between items-center"
+              className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition-colors border-b border-slate-100 last:border-0 flex justify-between items-center"
             >
               {renderItem(item)}
             </button>
@@ -93,7 +93,7 @@ function ComboboxAsync({
             <button
               type="button"
               onMouseDown={acaoExtra.onClick}
-              className="w-full text-left px-4 py-2.5 text-sm text-blue-600 font-semibold hover:bg-blue-50 flex items-center gap-2"
+              className="w-full text-left px-4 py-2.5 text-sm text-blue-600 font-semibold hover:bg-blue-50 active:bg-blue-100 transition-colors flex items-center gap-2"
             >
               <UserPlus size={14} />
               {acaoExtra.label}

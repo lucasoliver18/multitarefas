@@ -186,7 +186,7 @@ function Servicos() {
   const PagoBadge = ({ s }) => (
     <button
       onClick={e => { e.stopPropagation(); handleMudarPago(s.id, !s.pago) }}
-      className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${badgePago(s.pago)}`}
+      className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full cursor-pointer transition-all hover:brightness-95 active:scale-95 ${badgePago(s.pago)}`}
     >
       <ICONE_PAGO size={11} />
       {labelPago(s.pago)}
@@ -223,7 +223,7 @@ function Servicos() {
             <button
               key={o.val}
               onClick={() => confirmarMudarStatus(s, o.val)}
-              className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-slate-50 border-b border-slate-100 last:border-0 flex items-center gap-2"
+              className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition-colors border-b border-slate-100 last:border-0 flex items-center gap-2"
             >
               <Icone size={12} />
               {o.label}
@@ -314,7 +314,7 @@ function Servicos() {
           <button
             onClick={() => navigate(`/orcamentos/${s.id}`)}
             aria-label="Orçamentos"
-            className="inline-flex items-center gap-1 text-xs text-indigo-600 font-semibold px-1.5 py-0.5 rounded-lg hover:bg-indigo-50"
+            className="inline-flex items-center gap-1 text-xs text-indigo-600 font-semibold px-1.5 py-0.5 rounded-lg hover:bg-indigo-50 active:scale-95 transition-all"
           >
             <Receipt size={12} />
             Orçamentos
@@ -364,7 +364,7 @@ function Servicos() {
         <button
           onClick={e => { e.stopPropagation(); navigate(`/orcamentos/${s.id}`) }}
           aria-label="Orçamentos"
-          className="p-1 text-indigo-600 shrink-0"
+          className="p-1 text-indigo-600 shrink-0 rounded-lg hover:bg-indigo-50 active:scale-90 transition-all"
         >
           <Receipt size={14} />
         </button>
@@ -429,20 +429,20 @@ function Servicos() {
           <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-3 gap-2">
             <button
               onClick={() => navigate(`/editar/${s.id}`)}
-              className="text-xs bg-[#2563eb] text-white py-2 rounded-xl font-semibold transition-all active:scale-[0.96]"
+              className="text-xs bg-[#2563eb] text-white py-2 rounded-xl font-semibold transition-all hover:bg-[#1e3a5f] active:scale-[0.96]"
             >
               Editar
             </button>
             <button
               onClick={() => navigate(`/servicos/${s.id}/anotacoes`)}
-              className="text-xs bg-amber-50 text-amber-700 border border-amber-100 py-2 rounded-xl font-semibold inline-flex items-center justify-center gap-1 transition-all active:scale-[0.96]"
+              className="text-xs bg-amber-50 text-amber-700 border border-amber-100 py-2 rounded-xl font-semibold inline-flex items-center justify-center gap-1 transition-all hover:bg-amber-100 active:scale-[0.96]"
             >
               <NotebookPen size={13} />
               Anotações
             </button>
             <button
               onClick={() => navigate(`/orcamentos/${s.id}`)}
-              className="text-xs bg-indigo-50 text-indigo-700 border border-indigo-100 py-2 rounded-xl font-semibold inline-flex items-center justify-center gap-1 transition-all active:scale-[0.96]"
+              className="text-xs bg-indigo-50 text-indigo-700 border border-indigo-100 py-2 rounded-xl font-semibold inline-flex items-center justify-center gap-1 transition-all hover:bg-indigo-100 active:scale-[0.96]"
             >
               <Receipt size={13} />
               Orçamentos
@@ -455,13 +455,13 @@ function Servicos() {
               <div className="flex gap-2">
                 <button
                   onClick={() => handleDeletar(s.id)}
-                  className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold transition-all active:scale-[0.96]"
+                  className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold transition-all hover:bg-red-700 active:scale-[0.96]"
                 >
                   Sim, excluir
                 </button>
                 <button
                   onClick={() => setConfirmandoId(null)}
-                  className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold transition-all active:scale-[0.96]"
+                  className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold transition-all hover:bg-slate-200 active:scale-[0.96]"
                 >
                   Cancelar
                 </button>
@@ -507,13 +507,13 @@ function Servicos() {
           <div className="flex items-center gap-2">
             <button
               onClick={alternarModo}
-              className="bg-white/10 text-white text-xs px-3 py-2 rounded-full font-semibold"
+              className="bg-white/10 text-white text-xs px-3 py-2 rounded-full font-semibold transition-all hover:bg-white/20 active:scale-[0.96]"
             >
               {selecaoAtiva ? 'Cancelar' : 'Selecionar'}
             </button>
             <button
               onClick={() => navigate('/novo')}
-              className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold"
+              className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold transition-all hover:bg-[#1e3a5f] active:scale-[0.96]"
             >
               + Novo
             </button>
@@ -529,7 +529,7 @@ function Servicos() {
             placeholder="Buscar serviço pelo título ou cliente..."
           />
           {busca && (
-            <button onClick={() => setBusca('')} className="text-slate-400">
+            <button onClick={() => setBusca('')} className="text-slate-400 hover:text-white active:scale-90 transition-all">
               <X size={14} />
             </button>
           )}
@@ -558,7 +558,7 @@ function Servicos() {
             </span>
             <button
               onClick={() => { setFiltroSituacaoPrazo(''); setSearchParams({}) }}
-              className="text-xs text-red-700 underline font-medium shrink-0"
+              className="text-xs text-red-700 underline font-medium shrink-0 hover:text-red-900 active:scale-95 transition-all"
             >
               Ver todos os serviços
             </button>
@@ -570,8 +570,8 @@ function Servicos() {
             <div className="inline-flex bg-slate-200/70 rounded-full p-1 gap-1">
               <button
                 onClick={() => setVisualizacao('kanban')}
-                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${
-                  visualizacao === 'kanban' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-all active:scale-95 ${
+                  visualizacao === 'kanban' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:bg-white/60 hover:text-slate-700'
                 }`}
               >
                 <Kanban size={13} />
@@ -579,8 +579,8 @@ function Servicos() {
               </button>
               <button
                 onClick={() => setVisualizacao('lista')}
-                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${
-                  visualizacao === 'lista' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-all active:scale-95 ${
+                  visualizacao === 'lista' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:bg-white/60 hover:text-slate-700'
                 }`}
               >
                 <List size={13} />
@@ -588,8 +588,8 @@ function Servicos() {
               </button>
               <button
                 onClick={() => setVisualizacao('detalhado')}
-                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${
-                  visualizacao === 'detalhado' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-all active:scale-95 ${
+                  visualizacao === 'detalhado' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:bg-white/60 hover:text-slate-700'
                 }`}
               >
                 <LayoutList size={13} />
@@ -703,7 +703,7 @@ function Servicos() {
                     {restantes > 0 && (
                       <button
                         onClick={() => setLimiteColuna(prev => ({ ...prev, [coluna.val]: limite + INCREMENTO_KANBAN }))}
-                        className="text-[10px] text-blue-600 font-semibold text-center py-1.5 border border-dashed border-blue-200 rounded-xl"
+                        className="text-[10px] text-blue-600 font-semibold text-center py-1.5 border border-dashed border-blue-200 rounded-xl hover:bg-blue-50 active:scale-[0.97] transition-all"
                       >
                         Carregar mais ({restantes})
                       </button>

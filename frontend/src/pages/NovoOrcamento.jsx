@@ -89,7 +89,7 @@ function NovoOrcamento() {
     <div className="min-h-screen bg-slate-50 flex flex-col">
 
       <div className="page-header bg-[#1e3a5f] px-6 pb-5">
-        <button onClick={() => navigate(`/orcamentos/${servicoId}`)} className="text-xs text-slate-300 mb-3">← Voltar</button>
+        <button onClick={() => navigate(`/orcamentos/${servicoId}`)} className="text-xs text-slate-300 mb-3 hover:text-white active:scale-95 transition-all">← Voltar</button>
         <h1 className="text-lg font-bold text-white">Novo Orçamento</h1>
         {servico && <p className="text-xs text-slate-300 mt-0.5">{servico.titulo}</p>}
       </div>
@@ -144,7 +144,7 @@ function NovoOrcamento() {
                     className="w-16 border border-slate-200 rounded-lg px-2 py-1 text-xs text-center outline-none focus:border-blue-600"
                   />
                   <span className="text-xs text-slate-400">{item.unidade_medida}</span>
-                  <button onClick={() => removerItem(item.id)} className="text-red-400 ml-1"><X size={14} /></button>
+                  <button onClick={() => removerItem(item.id)} className="text-red-400 ml-1 hover:text-red-600 active:scale-90 transition-all"><X size={14} /></button>
                 </div>
               ))}
             </div>

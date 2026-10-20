@@ -24,13 +24,13 @@ function ToastItem({ toast, onRemove }) {
         <div className="flex flex-col gap-1.5 shrink-0">
           <button
             onClick={() => { toast.onConfirm?.(); onRemove(toast.id) }}
-            className="text-xs bg-white text-[#1e3a5f] font-bold px-3 py-1 rounded-full whitespace-nowrap"
+            className="text-xs bg-white text-[#1e3a5f] font-bold px-3 py-1 rounded-full whitespace-nowrap transition-all hover:bg-slate-100 active:scale-95"
           >
             Confirmar
           </button>
           <button
             onClick={() => { toast.onCancel?.(); onRemove(toast.id) }}
-            className="text-xs bg-white/20 text-white font-semibold px-3 py-1 rounded-full whitespace-nowrap"
+            className="text-xs bg-white/20 text-white font-semibold px-3 py-1 rounded-full whitespace-nowrap transition-all hover:bg-white/30 active:scale-95"
           >
             Cancelar
           </button>
@@ -38,7 +38,7 @@ function ToastItem({ toast, onRemove }) {
       ) : (
         <button
           onClick={() => onRemove(toast.id)}
-          className="text-white/60 hover:text-white shrink-0"
+          className="text-white/60 hover:text-white active:scale-90 transition-all shrink-0"
         >
           <X size={16} />
         </button>

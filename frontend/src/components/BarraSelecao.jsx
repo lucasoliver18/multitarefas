@@ -7,14 +7,14 @@ function BarraSelecao({ quantidade, onExcluir, onCancelar }) {
       <div className="flex gap-2">
         <button
           onClick={onCancelar}
-          className="text-xs bg-white/10 text-white px-3 py-2 rounded-full font-semibold"
+          className="text-xs bg-white/10 text-white px-3 py-2 rounded-full font-semibold transition-all hover:bg-white/20 active:scale-[0.96]"
         >
           Cancelar
         </button>
         <button
           onClick={onExcluir}
           disabled={quantidade === 0}
-          className="text-xs bg-[#dc2626] text-white px-3 py-2 rounded-full font-semibold disabled:opacity-40"
+          className="text-xs bg-[#dc2626] text-white px-3 py-2 rounded-full font-semibold transition-all hover:bg-red-700 active:scale-[0.96] disabled:opacity-40 disabled:active:scale-100"
         >
           Excluir selecionados
         </button>

@@ -135,7 +135,7 @@ function Home() {
               onClick={() => escolherModoVisualizacao('mobile')}
               aria-label="Visualizar como celular"
               aria-pressed={modoVisualizacao === 'mobile'}
-              className={`p-1.5 rounded-full transition-colors ${modoVisualizacao === 'mobile' ? 'bg-white text-[#1e3a5f]' : 'text-slate-300'}`}
+              className={`p-1.5 rounded-full transition-all active:scale-90 ${modoVisualizacao === 'mobile' ? 'bg-white text-[#1e3a5f]' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
             >
               <Smartphone size={15} />
             </button>
@@ -143,12 +143,12 @@ function Home() {
               onClick={() => escolherModoVisualizacao('desktop')}
               aria-label="Visualizar como desktop"
               aria-pressed={modoVisualizacao === 'desktop'}
-              className={`p-1.5 rounded-full transition-colors ${modoVisualizacao === 'desktop' ? 'bg-white text-[#1e3a5f]' : 'text-slate-300'}`}
+              className={`p-1.5 rounded-full transition-all active:scale-90 ${modoVisualizacao === 'desktop' ? 'bg-white text-[#1e3a5f]' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
             >
               <Monitor size={15} />
             </button>
           </div>
-          <button onClick={logout} aria-label="Sair" className="text-slate-300 hover:text-white shrink-0 p-1">
+          <button onClick={logout} aria-label="Sair" className="text-slate-300 hover:text-white active:scale-90 transition-all shrink-0 p-1">
             <LogOut size={18} />
           </button>
         </div>
@@ -158,8 +158,8 @@ function Home() {
             <button
               key={val}
               onClick={() => setPeriodo(val)}
-              className={`text-xs px-3 py-1 rounded-full font-medium transition-colors ${
-                periodo === val ? 'bg-white text-[#1e3a5f]' : 'bg-white/15 text-white/70'
+              className={`text-xs px-3 py-1 rounded-full font-medium transition-all active:scale-95 ${
+                periodo === val ? 'bg-white text-[#1e3a5f]' : 'bg-white/15 text-white/70 hover:bg-white/25 hover:text-white'
               }`}
             >
               {label}
@@ -215,7 +215,7 @@ function Home() {
           </div>
         )}
 
-        <p className="text-xs text-[#2563eb] mt-2 cursor-pointer font-medium" onClick={() => navigate('/prazos')}>
+        <p className="text-xs text-[#2563eb] mt-2 cursor-pointer font-medium hover:text-[#1e3a5f] active:scale-95 transition-all inline-block" onClick={() => navigate('/prazos')}>
           Ver calendário →
         </p>
       </div>
@@ -245,7 +245,7 @@ function Home() {
           </div>
         )}
 
-        <p onClick={() => navigate('/servicos?status=em_andamento')} className="text-xs text-[#2563eb] mt-2 cursor-pointer font-medium">
+        <p onClick={() => navigate('/servicos?status=em_andamento')} className="text-xs text-[#2563eb] mt-2 cursor-pointer font-medium hover:text-[#1e3a5f] active:scale-95 transition-all inline-block">
           Ver todos →
         </p>
       </div>

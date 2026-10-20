@@ -69,7 +69,7 @@ function Anotacoes() {
     <div className="min-h-screen bg-slate-50 flex flex-col pb-24">
 
       <div className="page-header bg-[#1e3a5f] px-6 pb-5">
-        <button onClick={() => navigate(-1)} className="text-xs text-slate-300 mb-3 block">← Voltar</button>
+        <button onClick={() => navigate(-1)} className="text-xs text-slate-300 mb-3 block hover:text-white active:scale-95 transition-all">← Voltar</button>
         <h1 className="text-lg font-bold text-white">Anotações</h1>
         {servico && (
           <p className="text-xs text-slate-300 mt-0.5 truncate">{servico.titulo}</p>
@@ -93,7 +93,7 @@ function Anotacoes() {
           <button
             onClick={salvarAnotacao}
             disabled={salvando || !novaAnotacao.trim()}
-            className="mt-3 w-full bg-[#2563eb] text-white text-sm font-semibold py-2.5 rounded-xl disabled:opacity-50"
+            className="mt-3 w-full bg-[#2563eb] text-white text-sm font-semibold py-2.5 rounded-xl transition-all hover:bg-[#1e3a5f] active:scale-[0.97] disabled:opacity-50 disabled:active:scale-100"
           >
             {salvando ? 'Salvando...' : '+ Salvar anotação'}
           </button>
@@ -113,7 +113,7 @@ function Anotacoes() {
                 <span className="text-xs text-slate-400">{formatarData(a.created_at)}</span>
                 <button
                   onClick={() => deletarAnotacao(a.id)}
-                  className="text-xs text-red-400 font-semibold shrink-0"
+                  className="text-xs text-red-400 font-semibold shrink-0 hover:text-red-600 active:scale-95 transition-all"
                 >
                   Remover
                 </button>

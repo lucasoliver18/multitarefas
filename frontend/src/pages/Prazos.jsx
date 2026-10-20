@@ -163,7 +163,7 @@ function Prazos() {
                 <button
                   key={o.val}
                   onClick={() => confirmarMudarStatus(s, o.val)}
-                  className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-slate-50 border-b border-slate-100 last:border-0 block"
+                  className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition-colors border-b border-slate-100 last:border-0 block"
                 >
                   {o.label}
                 </button>
@@ -188,14 +188,14 @@ function Prazos() {
       <div className="flex gap-2 mt-3">
         <button
           onClick={() => navigate(`/servicos/${s.id}/anotacoes`)}
-          className="flex-1 text-xs bg-amber-50 text-amber-700 border border-amber-200 px-3 py-2 rounded-xl font-semibold text-center inline-flex items-center justify-center gap-1 transition-all active:scale-[0.96]"
+          className="flex-1 text-xs bg-amber-50 text-amber-700 border border-amber-200 px-3 py-2 rounded-xl font-semibold text-center inline-flex items-center justify-center gap-1 transition-all hover:bg-amber-100 active:scale-[0.96]"
         >
           <NotebookPen size={13} />
           Anotações
         </button>
         <button
           onClick={() => navigate(`/editar/${s.id}`)}
-          className="flex-1 text-xs bg-slate-50 text-[#2563eb] border border-slate-200 px-3 py-2 rounded-xl font-semibold text-center transition-all active:scale-[0.96]"
+          className="flex-1 text-xs bg-slate-50 text-[#2563eb] border border-slate-200 px-3 py-2 rounded-xl font-semibold text-center transition-all hover:bg-slate-100 active:scale-[0.96]"
         >
           Editar serviço
         </button>
@@ -213,7 +213,7 @@ function Prazos() {
         </div>
         <button
           onClick={() => navigate('/novo')}
-          className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold transition-all active:scale-[0.96]"
+          className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold transition-all hover:bg-[#1e3a5f] active:scale-[0.96]"
         >
           + Novo
         </button>
@@ -241,7 +241,7 @@ function Prazos() {
                   </div>
                   <button
                     onClick={() => navigate(`/editar/${s.id}`)}
-                    className="text-xs bg-red-600 text-white px-3 py-1.5 rounded-full font-semibold shrink-0"
+                    className="text-xs bg-red-600 text-white px-3 py-1.5 rounded-full font-semibold shrink-0 hover:bg-red-700 active:scale-95 transition-all"
                   >
                     Editar
                   </button>
@@ -251,7 +251,7 @@ function Prazos() {
             {vencidos.length > LIMITE_VENCIDOS && (
               <button
                 onClick={() => navigate('/servicos?vencidos=1')}
-                className="text-xs text-red-700 font-semibold underline mt-3"
+                className="text-xs text-red-700 font-semibold underline mt-3 hover:text-red-900 active:scale-95 transition-all"
               >
                 Ver todos os {vencidos.length} prazos vencidos
               </button>
@@ -265,7 +265,7 @@ function Prazos() {
           <span className="text-xs text-slate-400">Tipo:</span>
           {TAGS_FIXAS.map(tag => (
             <button key={tag} onClick={() => toggleTag(tag)}
-              className={`text-xs px-3 py-1 rounded-full font-medium ${filtroTags.includes(tag) ? 'bg-[#2563eb] text-white' : 'bg-slate-200 text-slate-600'}`}>
+              className={`text-xs px-3 py-1 rounded-full font-medium transition-all active:scale-95 ${filtroTags.includes(tag) ? 'bg-[#2563eb] text-white hover:bg-[#1e3a5f]' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>
               {TAG_LABEL[tag] || tag}
             </button>
           ))}
@@ -275,7 +275,7 @@ function Prazos() {
           <span className="text-xs text-slate-400">Prioridade:</span>
           {PRIORIDADE_OPCOES.map(({ val, label }) => (
             <button key={val} onClick={() => togglePrioridade(val)}
-              className={`inline-flex items-center gap-1.5 text-xs px-3 py-1 rounded-full font-medium ${filtroPrioridade === val ? `bg-slate-100 border border-slate-300 ${corTextoPrioridade(val)}` : 'bg-slate-100 text-slate-600'}`}>
+              className={`inline-flex items-center gap-1.5 text-xs px-3 py-1 rounded-full font-medium transition-all active:scale-95 ${filtroPrioridade === val ? `bg-slate-100 border border-slate-300 ${corTextoPrioridade(val)}` : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${corFundoPrioridade(val)}`} />
               {label}
             </button>
@@ -286,14 +286,14 @@ function Prazos() {
           <span className="text-xs text-slate-400">Status:</span>
           {STATUS_OPCOES.map(({ val, label }) => (
             <button key={val} onClick={() => toggleStatus(val)}
-              className={`text-xs px-3 py-1 rounded-full font-medium ${filtroStatus === val ? 'bg-[#2563eb] text-white' : 'bg-slate-100 text-slate-600'}`}>
+              className={`text-xs px-3 py-1 rounded-full font-medium transition-all active:scale-95 ${filtroStatus === val ? 'bg-[#2563eb] text-white hover:bg-[#1e3a5f]' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
               {label}
             </button>
           ))}
         </div>
 
         {temFiltroAtivo && (
-          <button onClick={limparFiltros} className="text-xs text-red-400 underline self-start">
+          <button onClick={limparFiltros} className="text-xs text-red-400 underline self-start hover:text-red-600 active:scale-95 transition-all">
             Limpar filtros
           </button>
         )}
@@ -303,13 +303,13 @@ function Prazos() {
         <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
 
           <div className="flex items-center justify-between mb-3">
-            <button onClick={mesAnterior} className="w-8 h-8 flex items-center justify-center text-slate-500 text-lg hover:bg-slate-100 rounded-full">
+            <button onClick={mesAnterior} className="w-8 h-8 flex items-center justify-center text-slate-500 text-lg hover:bg-slate-100 active:scale-90 transition-all rounded-full">
               ‹
             </button>
             <p translate="no" className="text-sm font-semibold text-slate-700">
               {MESES[mes]} {ano}
             </p>
-            <button onClick={proximoMes} className="w-8 h-8 flex items-center justify-center text-slate-500 text-lg hover:bg-slate-100 rounded-full">
+            <button onClick={proximoMes} className="w-8 h-8 flex items-center justify-center text-slate-500 text-lg hover:bg-slate-100 active:scale-90 transition-all rounded-full">
               ›
             </button>
           </div>
@@ -346,9 +346,9 @@ function Prazos() {
                 return (
                   <div key={j} onClick={() => setDiaSelecionado(dia)}
                     className="flex flex-col items-center py-0.5 cursor-pointer">
-                    <div className={`w-7 h-7 flex items-center justify-center rounded-full text-xs
+                    <div className={`w-7 h-7 flex items-center justify-center rounded-full text-xs transition-all active:scale-90
                       ${isSelected ? 'bg-[#2563eb] text-white font-bold'
-                        : isHoje ? 'border-2 border-[#2563eb] text-[#2563eb] font-semibold'
+                        : isHoje ? 'border-2 border-[#2563eb] text-[#2563eb] font-semibold hover:bg-blue-50'
                         : 'text-slate-700 hover:bg-slate-100'}`}>
                       {dia}
                     </div>
@@ -419,7 +419,7 @@ function Prazos() {
                 </div>
                 <button
                   onClick={() => navigate(`/editar/${s.id}`)}
-                  className="mt-3 w-full text-xs bg-slate-50 text-[#2563eb] border border-slate-200 px-3 py-2 rounded-xl font-semibold text-center transition-all active:scale-[0.96]"
+                  className="mt-3 w-full text-xs bg-slate-50 text-[#2563eb] border border-slate-200 px-3 py-2 rounded-xl font-semibold text-center transition-all hover:bg-slate-100 active:scale-[0.96]"
                 >
                   Definir prazo →
                 </button>
