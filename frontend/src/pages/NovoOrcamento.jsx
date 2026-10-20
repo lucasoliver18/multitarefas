@@ -7,6 +7,7 @@ import ComboboxAsync from '../components/ComboboxAsync'
 import { useToast } from '../hooks/useToast'
 import { buscarMateriaisPagina } from '../hooks/useMateriais'
 import { materiaisComEstoqueInsuficiente } from '../utils/materiais'
+import { mensagemErro } from '../utils/erros'
 
 const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
 const LABEL = 'text-xs font-semibold text-slate-700 mb-1'
@@ -19,7 +20,6 @@ function NovoOrcamento() {
   const [form, setForm] = useState({ titulo: '', descricao: '', margem_lucro: '0' })
   const [itens, setItens] = useState([])
   const [buscaMaterial, setBuscaMaterial] = useState('')
-  const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
 
   useEffect(() => {
@@ -54,15 +54,14 @@ function NovoOrcamento() {
       toast.sucesso('Orçamento criado com sucesso!')
       navigate(`/orcamentos/${servicoId}`)
     } catch (e) {
-      setErro(e.response?.data?.message || 'Erro ao salvar orçamento.')
+      toast.erro(mensagemErro(e, 'Erro ao salvar orçamento.'))
     } finally {
       setSalvando(false)
     }
   }
 
   const salvar = () => {
-    setErro('')
-    if (!form.titulo) { setErro('Informe o título do orçamento.'); return }
+    if (!form.titulo) { toast.erro('Informe o título do orçamento.'); return }
 
     const insuficientes = materiaisComEstoqueInsuficiente(itens)
     if (insuficientes.length > 0) {
@@ -94,10 +93,6 @@ function NovoOrcamento() {
       </div>
 
       <div className="px-6 pt-5 flex flex-col gap-4 mb-24">
-        {erro && (
-          <div className="bg-red-50 text-red-600 text-xs px-4 py-3 rounded-xl border border-red-200">{erro}</div>
-        )}
-
         <div className="flex flex-col gap-1">
           <label className={LABEL}>Título *</label>
           <input name="titulo" value={form.titulo} onChange={handleChange} placeholder="Ex: Orçamento Opção A" className={INPUT} />

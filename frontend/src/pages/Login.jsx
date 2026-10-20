@@ -1,11 +1,11 @@
-import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { GoogleLogin } from '@react-oauth/google'
 import { useAuth } from '../hooks/useAuth'
+import { useToast } from '../hooks/useToast'
 
 function Login() {
-  const { user, entrarComGoogle, erro } = useAuth()
-  const [erroGoogle, setErroGoogle] = useState('')
+  const { user, entrarComGoogle } = useAuth()
+  const toast = useToast()
 
   if (user) {
     return <Navigate to="/" replace />
@@ -20,13 +20,10 @@ function Login() {
 
       <div className="bg-white rounded-2xl p-6 w-full max-w-xs flex flex-col items-center gap-4">
         <GoogleLogin
-          onSuccess={cred => { setErroGoogle(''); entrarComGoogle(cred.credential) }}
-          onError={() => setErroGoogle('Não foi possível entrar com o Google. Tente novamente.')}
+          onSuccess={cred => entrarComGoogle(cred.credential)}
+          onError={() => toast.erro('Não foi possível entrar com o Google. Tente novamente.')}
           locale="pt_BR"
         />
-        {(erro || erroGoogle) && (
-          <p className="text-xs text-red-600 text-center">{erro || erroGoogle}</p>
-        )}
       </div>
     </div>
   )

@@ -9,6 +9,7 @@ import MiniCadastroCliente from '../components/MiniCadastroCliente'
 import ComboboxAsync from '../components/ComboboxAsync'
 import { PRIORIDADE_OPCOES } from '../utils/status'
 import { dataValida } from '../utils/prazos'
+import { mensagemErro } from '../utils/erros'
 
 const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
 const LABEL = 'text-xs font-semibold text-slate-700 mb-1'
@@ -28,7 +29,6 @@ function NovoServico() {
     tag: '',
   })
   const [loading, setLoading] = useState(false)
-  const [erro, setErro] = useState('')
   const [mostrarCadastroCliente, setMostrarCadastroCliente] = useState(false)
 
   const handleChange = (e) => {
@@ -41,11 +41,10 @@ function NovoServico() {
   // com o estado do formulário quando o usuário sai do campo.
   const handlePrazoBlur = (e) => {
     if (e.target.validity.badInput) {
-      setErro('Data inválida: verifique se o dia existe no mês selecionado.')
+      toast.erro('Data inválida: verifique se o dia existe no mês selecionado.')
       e.target.value = form.prazo
       return
     }
-    setErro('')
     setForm(prev => ({ ...prev, prazo: e.target.value }))
   }
 
@@ -66,13 +65,12 @@ function NovoServico() {
   }
 
   const handleSalvar = async () => {
-    setErro('')
     if (!form.titulo || !form.cliente_id) {
-      setErro('Título e cliente são obrigatórios! Selecione um cliente existente ou cadastre um novo.')
+      toast.erro('Título e cliente são obrigatórios! Selecione um cliente existente ou cadastre um novo.')
       return
     }
     if (form.prazo && !dataValida(form.prazo)) {
-      setErro('A data informada para o prazo não é válida.')
+      toast.erro('A data informada para o prazo não é válida.')
       return
     }
     setLoading(true)
@@ -81,7 +79,7 @@ function NovoServico() {
       toast.sucesso('Serviço criado com sucesso!')
       navigate('/servicos')
     } catch (e) {
-      setErro(e.response?.data?.errors?.prazo?.[0] || e.response?.data?.message || 'Erro ao salvar serviço. Tente novamente.')
+      toast.erro(mensagemErro(e, 'Erro ao salvar serviço. Tente novamente.'))
     } finally {
       setLoading(false)
     }
@@ -96,12 +94,6 @@ function NovoServico() {
       </div>
 
       <div className="px-6 pt-5 flex flex-col gap-4 mb-24">
-
-        {erro && (
-          <div className="bg-red-50 text-red-600 text-xs p-3 rounded-xl border border-red-200">
-            {erro}
-          </div>
-        )}
 
         <div>
           <p className={LABEL}>Título *</p>

@@ -4,6 +4,7 @@ import api from '../services/api'
 import Navbar from '../components/Navbar'
 import { useToast } from '../hooks/useToast'
 import { apenasDigitos, mascararTelefone, mascararCpf, mascararCnpj } from '../utils/mascaras'
+import { mensagemErro } from '../utils/erros'
 
 const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
 const LABEL = 'text-xs font-semibold text-slate-700 mb-1'
@@ -13,7 +14,6 @@ function EditarCliente() {
   const navigate = useNavigate()
   const toast = useToast()
   const [form, setForm] = useState({ nome: '', tipo_pessoa: 'fisica', cpf: '', cnpj: '', telefone: '', email: '', observacoes: '' })
-  const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [carregando, setCarregando] = useState(true)
 
@@ -40,13 +40,12 @@ function EditarCliente() {
   const handleCnpjChange = e => setForm({ ...form, cnpj: mascararCnpj(e.target.value) })
 
   const salvar = async () => {
-    setErro('')
-    if (!form.nome) { setErro('O nome do cliente é obrigatório.'); return }
+    if (!form.nome) { toast.erro('O nome do cliente é obrigatório.'); return }
     if (form.tipo_pessoa === 'fisica' && apenasDigitos(form.cpf).length !== 11) {
-      setErro('Informe um CPF válido.'); return
+      toast.erro('Informe um CPF válido.'); return
     }
     if (form.tipo_pessoa === 'juridica' && apenasDigitos(form.cnpj).length !== 14) {
-      setErro('Informe um CNPJ válido.'); return
+      toast.erro('Informe um CNPJ válido.'); return
     }
 
     setSalvando(true)
@@ -59,7 +58,7 @@ function EditarCliente() {
       toast.sucesso('Alterações salvas!')
       navigate('/clientes')
     } catch (e) {
-      setErro(e.response?.data?.message || 'Erro ao salvar cliente.')
+      toast.erro(mensagemErro(e, 'Erro ao salvar cliente.'))
     } finally {
       setSalvando(false)
     }
@@ -78,10 +77,6 @@ function EditarCliente() {
       </div>
 
       <div className="px-6 pt-5 flex flex-col gap-4 mb-24">
-        {erro && (
-          <div className="bg-red-50 text-red-600 text-xs px-4 py-3 rounded-xl border border-red-200">{erro}</div>
-        )}
-
         <div className="flex flex-col gap-1">
           <label className={LABEL}>Nome *</label>
           <input name="nome" value={form.nome} onChange={handleChange} className={INPUT} />

@@ -1,13 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
 import { AuthContext } from '../contexts/AuthContext'
 import api, { definirTokenAuth } from '../services/api'
+import { useToast } from '../hooks/useToast'
+import { mensagemErro } from '../utils/erros'
 
 const CHAVE_TOKEN = 'auth_token'
 
 export function AuthProvider({ children }) {
+  const toast = useToast()
   const [user, setUser] = useState(null)
   const [carregando, setCarregando] = useState(() => Boolean(localStorage.getItem(CHAVE_TOKEN)))
-  const [erro, setErro] = useState('')
 
   const sair = useCallback(() => {
     localStorage.removeItem(CHAVE_TOKEN)
@@ -32,14 +34,13 @@ export function AuthProvider({ children }) {
   }, [sair])
 
   const entrarComGoogle = async (credential) => {
-    setErro('')
     try {
       const res = await api.post('/auth/google', { credential })
       localStorage.setItem(CHAVE_TOKEN, res.data.token)
       definirTokenAuth(res.data.token)
       setUser(res.data.user)
     } catch (e) {
-      setErro(e.response?.data?.errors?.credential?.[0] || e.response?.data?.message || 'Erro ao entrar com o Google.')
+      toast.erro(mensagemErro(e, 'Erro ao entrar com o Google.'))
     }
   }
 
@@ -49,7 +50,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, carregando, erro, entrarComGoogle, logout }}>
+    <AuthContext.Provider value={{ user, carregando, entrarComGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   )

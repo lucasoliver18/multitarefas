@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import api from '../services/api'
+import { useToast } from '../hooks/useToast'
 import { apenasDigitos, mascararCpf, mascararCnpj } from '../utils/mascaras'
+import { mensagemErro } from '../utils/erros'
 
 const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
 const LABEL = 'text-xs font-semibold text-slate-700 mb-1 block'
 
 function MiniCadastroCliente({ nomeInicial, onCriado, onCancelar }) {
+  const toast = useToast()
   const [form, setForm] = useState({ nome: nomeInicial || '', tipo_pessoa: 'fisica', cpf: '', cnpj: '' })
-  const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
 
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value })
@@ -15,13 +17,12 @@ function MiniCadastroCliente({ nomeInicial, onCriado, onCancelar }) {
   const handleCnpjChange = e => setForm({ ...form, cnpj: mascararCnpj(e.target.value) })
 
   const salvar = async () => {
-    setErro('')
-    if (!form.nome) { setErro('O nome do cliente é obrigatório.'); return }
+    if (!form.nome) { toast.erro('O nome do cliente é obrigatório.'); return }
     if (form.tipo_pessoa === 'fisica' && apenasDigitos(form.cpf).length !== 11) {
-      setErro('Informe um CPF válido.'); return
+      toast.erro('Informe um CPF válido.'); return
     }
     if (form.tipo_pessoa === 'juridica' && apenasDigitos(form.cnpj).length !== 14) {
-      setErro('Informe um CNPJ válido.'); return
+      toast.erro('Informe um CNPJ válido.'); return
     }
 
     setSalvando(true)
@@ -34,7 +35,7 @@ function MiniCadastroCliente({ nomeInicial, onCriado, onCancelar }) {
       })
       onCriado({ id: res.data.id, nome: res.data.nome })
     } catch (e) {
-      setErro(e.response?.data?.message || 'Erro ao cadastrar cliente.')
+      toast.erro(mensagemErro(e, 'Erro ao cadastrar cliente.'))
     } finally {
       setSalvando(false)
     }
@@ -43,10 +44,6 @@ function MiniCadastroCliente({ nomeInicial, onCriado, onCancelar }) {
   return (
     <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col gap-3">
       <p className="text-xs font-semibold text-slate-600">Cadastrar novo cliente</p>
-
-      {erro && (
-        <div className="bg-red-50 text-red-600 text-xs px-3 py-2 rounded-lg border border-red-200">{erro}</div>
-      )}
 
       <div>
         <label className={LABEL}>Nome *</label>

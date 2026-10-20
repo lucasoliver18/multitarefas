@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
 import MaterialForm from '../components/MaterialForm'
 import { useToast } from '../hooks/useToast'
+import { mensagemErro } from '../utils/erros'
 
 function NovoMaterial() {
   const navigate = useNavigate()
@@ -16,7 +17,6 @@ function NovoMaterial() {
     quantidade_estoque: '',
     quantidade_minima: '',
   })
-  const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
 
   const handleChange = (e) => {
@@ -24,9 +24,8 @@ function NovoMaterial() {
   }
 
   const salvar = async () => {
-    setErro('')
     if (!form.nome || !form.preco_unitario) {
-      setErro('Preencha nome e preço unitário.')
+      toast.erro('Preencha nome e preço unitário.')
       return
     }
     setSalvando(true)
@@ -39,8 +38,7 @@ function NovoMaterial() {
       toast.sucesso('Material adicionado ao estoque!')
       navigate('/materiais')
     } catch (e) {
-      const erros = e.response?.data?.errors
-      setErro(erros ? Object.values(erros).flat()[0] : 'Erro ao salvar material.')
+      toast.erro(mensagemErro(e, 'Erro ao salvar material.'))
     } finally {
       setSalvando(false)
     }
@@ -51,7 +49,6 @@ function NovoMaterial() {
       titulo="Novo Material"
       form={form}
       onChange={handleChange}
-      erro={erro}
       salvando={salvando}
       onSalvar={salvar}
       botaoLabel="Salvar Material"

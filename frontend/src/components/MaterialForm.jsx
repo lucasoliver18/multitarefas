@@ -8,7 +8,7 @@ import { useMateriais } from '../hooks/useMateriais'
 const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
 const LABEL = 'text-xs font-semibold text-slate-700 mb-1'
 
-function MaterialForm({ titulo, form, onChange, erro, salvando, onSalvar, botaoLabel }) {
+function MaterialForm({ titulo, form, onChange, salvando, onSalvar, botaoLabel }) {
   const navigate = useNavigate()
   const { materiais } = useMateriais()
 
@@ -28,12 +28,6 @@ function MaterialForm({ titulo, form, onChange, erro, salvando, onSalvar, botaoL
       </div>
 
       <div className="px-6 pt-5 flex flex-col gap-4 mb-24">
-        {erro && (
-          <div className="bg-red-50 text-red-600 text-xs px-4 py-3 rounded-xl border border-red-200">
-            {erro}
-          </div>
-        )}
-
         <div className="flex flex-col gap-1">
           <label className={LABEL}>Nome *</label>
           <input
