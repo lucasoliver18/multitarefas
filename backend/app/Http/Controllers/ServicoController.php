@@ -14,6 +14,7 @@ class ServicoController extends Controller
     {
         $servicos = Servico::with('clienteRelacao')
             ->withExists(['orcamentos as tem_orcamento_aprovado' => fn ($q) => $q->where('status', 'aprovado')])
+            ->withExists('orcamentos as tem_orcamento')
             ->orderBy('created_at', 'desc')
             ->get();
         return ServicoResource::collection($servicos);
@@ -53,6 +54,10 @@ class ServicoController extends Controller
         $servico->setAttribute(
             'tem_orcamento_aprovado',
             $servico->orcamentos()->where('status', 'aprovado')->exists()
+        );
+        $servico->setAttribute(
+            'tem_orcamento',
+            $servico->orcamentos()->exists()
         );
         return $servico;
     }

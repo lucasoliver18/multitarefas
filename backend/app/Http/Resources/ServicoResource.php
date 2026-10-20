@@ -20,6 +20,7 @@ class ServicoResource extends JsonResource
             'tag'        => $this->tag,
             'descricao'  => $this->descricao,
             'tem_orcamento_aprovado' => (bool) $this->tem_orcamento_aprovado,
+            'tem_orcamento' => (bool) $this->tem_orcamento,
             'created_at' => $this->created_at,
         ];
     }

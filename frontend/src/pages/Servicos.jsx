@@ -59,18 +59,19 @@ function Servicos() {
     searchParams.get('vencidos') === '1' ? 'atrasado' : ''
   )
   const [filtroPago, setFiltroPago] = useState('')
+  const [filtroOrcamento, setFiltroOrcamento] = useState('')
   const [limiteColuna, setLimiteColuna] = useState({})
 
   // Reseta os limites de "carregar mais" do quadro sempre que os filtros mudam,
   // ajustando o estado durante a renderização em vez de usar um efeito.
-  const filtrosChave = JSON.stringify([filtroStatus, filtroPrioridade, filtroTag, filtroPago, filtroPrazoDe, filtroPrazoAte, filtroSituacaoPrazo])
+  const filtrosChave = JSON.stringify([filtroStatus, filtroPrioridade, filtroTag, filtroPago, filtroOrcamento, filtroPrazoDe, filtroPrazoAte, filtroSituacaoPrazo])
   const [filtrosChaveAnterior, setFiltrosChaveAnterior] = useState(filtrosChave)
   if (filtrosChaveAnterior !== filtrosChave) {
     setFiltrosChaveAnterior(filtrosChave)
     setLimiteColuna({})
   }
 
-  const quantidadeFiltrosAtivos = [filtroStatus, filtroPrioridade, filtroTag, filtroPrazoDe, filtroPrazoAte, filtroSituacaoPrazo, filtroPago]
+  const quantidadeFiltrosAtivos = [filtroStatus, filtroPrioridade, filtroTag, filtroPrazoDe, filtroPrazoAte, filtroSituacaoPrazo, filtroPago, filtroOrcamento]
     .filter(Boolean).length
 
   const limparFiltros = () => {
@@ -81,6 +82,7 @@ function Servicos() {
     setFiltroPrazoAte('')
     setFiltroSituacaoPrazo('')
     setFiltroPago('')
+    setFiltroOrcamento('')
   }
 
   const servicosFiltrados = useMemo(() => {
@@ -96,6 +98,8 @@ function Servicos() {
       if (filtroPrioridade && s.prioridade !== filtroPrioridade) return false
       if (filtroTag && s.tag !== filtroTag) return false
       if (filtroPago && String(Number(!!s.pago)) !== filtroPago) return false
+      if (filtroOrcamento === 'com' && !s.tem_orcamento) return false
+      if (filtroOrcamento === 'sem' && s.tem_orcamento) return false
       if ((filtroPrazoDe || filtroPrazoAte) ) {
         if (!s.prazo) return false
         if (filtroPrazoDe && s.prazo < filtroPrazoDe) return false
@@ -103,7 +107,7 @@ function Servicos() {
       }
       return true
     })
-  }, [servicos, busca, filtroSituacaoPrazo, hojeStr, filtroStatus, filtroPrioridade, filtroTag, filtroPago, filtroPrazoDe, filtroPrazoAte])
+  }, [servicos, busca, filtroSituacaoPrazo, hojeStr, filtroStatus, filtroPrioridade, filtroTag, filtroPago, filtroOrcamento, filtroPrazoDe, filtroPrazoAte])
 
   const servicosOrdenados = useServicosOrdenados(servicosFiltrados)
 
@@ -161,6 +165,16 @@ function Servicos() {
       <ICONE_PAGO size={11} />
       {labelPago(s.pago)}
     </button>
+  )
+
+  // Indica serviços que ainda não têm nenhum orçamento gerado (de qualquer
+  // status), para o usuário saber para quais precisa montar um.
+  const OrcamentoBadge = ({ s }) => (
+    !s.tem_orcamento && (
+      <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+        Sem orçamento
+      </span>
+    )
   )
 
   const handleExcluirSelecionados = () => {
@@ -248,6 +262,7 @@ function Servicos() {
           </span>
         )}
         {!selecaoAtiva && <PagoBadge s={s} />}
+        {!selecaoAtiva && <OrcamentoBadge s={s} />}
       </div>
       {s.prazo && (
         <p className={`text-xs mt-1.5 inline-flex items-center gap-1 ${estaVencido(s, hojeStr) ? 'text-red-600 font-semibold' : 'text-slate-400'}`}>
@@ -299,6 +314,11 @@ function Servicos() {
       )}
       {!selecaoAtiva && s.pago && (
         <ICONE_PAGO size={13} className="text-green-600 shrink-0" aria-label="Pago" />
+      )}
+      {!selecaoAtiva && !s.tem_orcamento && (
+        <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 shrink-0">
+          Sem orç.
+        </span>
       )}
       {!selecaoAtiva && (
         <button
@@ -360,6 +380,7 @@ function Servicos() {
             </span>
           )}
           {!selecaoAtiva && <PagoBadge s={s} />}
+          {!selecaoAtiva && <OrcamentoBadge s={s} />}
         </div>
       </div>
 
@@ -578,6 +599,14 @@ function Servicos() {
                 <Select value={filtroPago} onChange={e => setFiltroPago(e.target.value)} className={SELECT}>
                   <option value="">Todos</option>
                   {PAGO_OPCOES.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
+                </Select>
+              </div>
+              <div>
+                <label className={LABEL}>Orçamento</label>
+                <Select value={filtroOrcamento} onChange={e => setFiltroOrcamento(e.target.value)} className={SELECT}>
+                  <option value="">Todos</option>
+                  <option value="com">Com orçamento</option>
+                  <option value="sem">Sem orçamento</option>
                 </Select>
               </div>
             </div>
