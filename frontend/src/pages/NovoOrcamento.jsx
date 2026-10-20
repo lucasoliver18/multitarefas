@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { X } from 'lucide-react'
 import api from '../services/api'
 import Navbar from '../components/Navbar'
+import Button from '../components/Button'
 import ComboboxAsync from '../components/ComboboxAsync'
 import { useToast } from '../hooks/useToast'
 import { buscarMateriaisPagina } from '../hooks/useMateriais'
@@ -168,13 +169,9 @@ function NovoOrcamento() {
           <p className="text-sm font-bold text-[#2563eb] mt-2">Total: R$ {valorFinal.toFixed(2)}</p>
         </div>
 
-        <button
-          onClick={salvar}
-          disabled={salvando}
-          className="bg-[#2563eb] hover:bg-[#1e3a5f] text-white text-sm font-semibold py-3 rounded-xl disabled:opacity-60 transition-colors"
-        >
+        <Button onClick={salvar} disabled={salvando} className="text-sm font-semibold py-3 rounded-xl">
           {salvando ? 'Salvando...' : 'Salvar Orçamento'}
-        </button>
+        </Button>
       </div>
 
       <Navbar />

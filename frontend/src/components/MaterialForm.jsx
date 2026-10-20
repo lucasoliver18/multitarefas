@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import Navbar from './Navbar'
+import Button from './Button'
 import Select from './Select'
 import { useNavigate } from 'react-router-dom'
 import { UNIDADES as unidades } from '../utils/materiais'
@@ -120,13 +121,9 @@ function MaterialForm({ titulo, form, onChange, salvando, onSalvar, botaoLabel }
           />
         </div>
 
-        <button
-          onClick={onSalvar}
-          disabled={salvando}
-          className="bg-[#2563eb] hover:bg-[#1e3a5f] text-white text-sm font-semibold py-3 rounded-xl mt-2 disabled:opacity-60 transition-colors"
-        >
+        <Button onClick={onSalvar} disabled={salvando} className="text-sm font-semibold py-3 rounded-xl mt-2">
           {salvando ? 'Salvando...' : botaoLabel}
-        </button>
+        </Button>
       </div>
 
       <Navbar />

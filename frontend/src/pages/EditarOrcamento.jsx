@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { X, Check, XCircle } from 'lucide-react'
 import api from '../services/api'
 import Navbar from '../components/Navbar'
+import Button from '../components/Button'
 import ComboboxAsync from '../components/ComboboxAsync'
 import { useToast } from '../hooks/useToast'
 import { buscarMateriaisPagina } from '../hooks/useMateriais'
@@ -209,32 +210,30 @@ function EditarOrcamento() {
           <p className="text-sm font-bold text-[#2563eb] mt-2">Total: R$ {valorFinal.toFixed(2)}</p>
         </div>
 
-        <button
-          onClick={salvar}
-          disabled={salvando}
-          className="bg-[#2563eb] hover:bg-[#1e3a5f] text-white text-sm font-semibold py-3 rounded-xl disabled:opacity-60 transition-colors"
-        >
+        <Button onClick={salvar} disabled={salvando} className="text-sm font-semibold py-3 rounded-xl">
           {salvando ? 'Salvando...' : 'Salvar Alterações'}
-        </button>
+        </Button>
 
         <div className="flex gap-3">
           {statusAtual !== 'aprovado' && (
-            <button
+            <Button
+              variant="success"
               onClick={aprovar}
-              className="flex-1 bg-[#16a34a] hover:bg-green-700 text-white text-sm font-semibold py-3 rounded-xl transition-colors inline-flex items-center justify-center gap-1.5"
+              className="flex-1 text-sm font-semibold py-3 rounded-xl inline-flex items-center justify-center gap-1.5"
             >
               <Check size={16} />
               Aprovar
-            </button>
+            </Button>
           )}
           {statusAtual !== 'reprovado' && (
-            <button
+            <Button
+              variant="danger"
               onClick={reprovar}
-              className="flex-1 bg-[#dc2626] hover:bg-red-700 text-white text-sm font-semibold py-3 rounded-xl transition-colors inline-flex items-center justify-center gap-1.5"
+              className="flex-1 text-sm font-semibold py-3 rounded-xl inline-flex items-center justify-center gap-1.5"
             >
               <XCircle size={16} />
               Reprovar
-            </button>
+            </Button>
           )}
         </div>
       </div>

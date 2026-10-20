@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import api from '../services/api'
+import Button from './Button'
 import { useToast } from '../hooks/useToast'
 import { apenasDigitos, mascararCpf, mascararCnpj } from '../utils/mascaras'
 import { mensagemErro } from '../utils/erros'
@@ -87,21 +88,22 @@ function MiniCadastroCliente({ nomeInicial, onCriado, onCancelar }) {
       )}
 
       <div className="flex gap-2">
-        <button
+        <Button
           type="button"
           onClick={salvar}
           disabled={salvando}
-          className="flex-1 text-xs bg-[#2563eb] text-white py-2.5 rounded-xl font-semibold disabled:opacity-60"
+          className="flex-1 text-xs py-2.5 rounded-xl font-semibold"
         >
           {salvando ? 'Cadastrando...' : 'Cadastrar'}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="ghost"
           onClick={onCancelar}
-          className="flex-1 text-xs bg-slate-100 text-slate-600 py-2.5 rounded-xl font-semibold"
+          className="flex-1 text-xs py-2.5 rounded-xl font-semibold"
         >
           Cancelar
-        </button>
+        </Button>
       </div>
     </div>
   )

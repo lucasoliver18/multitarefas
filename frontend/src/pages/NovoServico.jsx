@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
 import Navbar from '../components/Navbar'
+import Button from '../components/Button'
 import Select from '../components/Select'
 import { useToast } from '../hooks/useToast'
 import { buscarClientesPagina } from '../hooks/useClientes'
@@ -192,19 +193,20 @@ function NovoServico() {
         </div>
 
         <div className="flex gap-3 mt-2">
-          <button
+          <Button
             onClick={handleSalvar}
             disabled={loading}
-            className="flex-1 bg-[#2563eb] hover:bg-[#1e3a5f] text-white rounded-full py-3 text-sm font-semibold transition-colors disabled:opacity-60"
+            className="flex-1 rounded-full py-3 text-sm font-semibold"
           >
             {loading ? 'Salvando...' : 'Salvar'}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="secondary"
             onClick={() => navigate('/')}
-            className="flex-1 border border-slate-300 text-slate-600 rounded-full py-3 text-sm font-semibold"
+            className="flex-1 rounded-full py-3 text-sm font-semibold"
           >
             Descartar
-          </button>
+          </Button>
         </div>
 
       </div>

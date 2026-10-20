@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
 import Navbar from '../components/Navbar'
+import Button from '../components/Button'
 import { useToast } from '../hooks/useToast'
 import { apenasDigitos, mascararTelefone, mascararCpf, mascararCnpj } from '../utils/mascaras'
 import { mensagemErro } from '../utils/erros'
@@ -119,10 +120,9 @@ function NovoCliente() {
             className={`${INPUT} resize-none`} />
         </div>
 
-        <button onClick={salvar} disabled={salvando}
-          className="bg-[#2563eb] hover:bg-[#1e3a5f] text-white text-sm font-semibold py-3 rounded-xl mt-2 disabled:opacity-60 transition-colors">
+        <Button onClick={salvar} disabled={salvando} className="text-sm font-semibold py-3 rounded-xl mt-2">
           {salvando ? 'Salvando...' : 'Salvar Cliente'}
-        </button>
+        </Button>
       </div>
 
       <Navbar />
