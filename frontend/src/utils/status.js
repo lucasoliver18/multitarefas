@@ -18,6 +18,13 @@ export const STATUS_ICONE = {
   finalizado:   CheckCircle2,
 }
 
+// Ordem da esteira de status: um serviço só pode avançar (pendente -> em
+// andamento -> finalizado), nunca retroceder.
+export const PESO_STATUS = { pendente: 0, em_andamento: 1, finalizado: 2 }
+
+export const statusSeguintes = (statusAtual) =>
+  STATUS_OPCOES.filter(o => (PESO_STATUS[o.val] ?? 0) > (PESO_STATUS[statusAtual] ?? -1))
+
 export const PRIORIDADE_OPCOES = [
   { val: 'alta',  label: 'Alta' },
   { val: 'media', label: 'Média' },

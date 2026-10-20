@@ -12,7 +12,10 @@ class ServicoController extends Controller
 {
     public function index()
     {
-        $servicos = Servico::with('clienteRelacao')->orderBy('created_at', 'desc')->get();
+        $servicos = Servico::with('clienteRelacao')
+            ->withExists(['orcamentos as tem_orcamento_aprovado' => fn ($q) => $q->where('status', 'aprovado')])
+            ->orderBy('created_at', 'desc')
+            ->get();
         return ServicoResource::collection($servicos);
     }
 
@@ -21,12 +24,12 @@ class ServicoController extends Controller
         $data = $request->validated();
         $data['cliente'] = Cliente::find($data['cliente_id'])->nome;
         $servico = Servico::create($data);
-        return new ServicoResource($servico->load('clienteRelacao'));
+        return new ServicoResource($this->comOrcamentoAprovado($servico->load('clienteRelacao')));
     }
 
     public function show(Servico $servico)
     {
-        return new ServicoResource($servico->load('clienteRelacao'));
+        return new ServicoResource($this->comOrcamentoAprovado($servico->load('clienteRelacao')));
     }
 
     public function update(UpdateServicoRequest $request, Servico $servico)
@@ -36,12 +39,21 @@ class ServicoController extends Controller
             $data['cliente'] = Cliente::find($data['cliente_id'])->nome;
         }
         $servico->update($data);
-        return new ServicoResource($servico->load('clienteRelacao'));
+        return new ServicoResource($this->comOrcamentoAprovado($servico->load('clienteRelacao')));
     }
 
     public function destroy(Servico $servico)
     {
         $servico->delete();
         return response()->json(['message' => 'Serviço deletado com sucesso!']);
+    }
+
+    private function comOrcamentoAprovado(Servico $servico): Servico
+    {
+        $servico->setAttribute(
+            'tem_orcamento_aprovado',
+            $servico->orcamentos()->where('status', 'aprovado')->exists()
+        );
+        return $servico;
     }
 }

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, X, ChevronUp, ChevronDown, Phone, Mail } from 'lucide-react'
+import { Search, X, ChevronUp, ChevronDown, Phone, Mail, List, LayoutGrid } from 'lucide-react'
 import api from '../services/api'
 import Navbar from '../components/Navbar'
 import StatusBadge from '../components/StatusBadge'
@@ -24,6 +24,7 @@ function Clientes() {
   const toast = useToast()
   const { clientes, carregando, buscar, deletar, transferirServicos } = useClientes()
   const [busca, setBusca] = useState('')
+  const [visualizacao, setVisualizacao] = useState('lista')
   const [expandido, setExpandido] = useState(null)
   const [servicosCliente, setServicosCliente] = useState({})
   const [mostrarTodosServicos, setMostrarTodosServicos] = useState({})
@@ -158,6 +159,31 @@ function Clientes() {
         )}
 
         {!carregando && clientes.length > 0 && (
+          <div className="flex justify-end">
+            <div className="inline-flex bg-slate-200/70 rounded-full p-1 gap-1">
+              <button
+                onClick={() => setVisualizacao('lista')}
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${
+                  visualizacao === 'lista' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'
+                }`}
+              >
+                <List size={13} />
+                Lista
+              </button>
+              <button
+                onClick={() => setVisualizacao('grade')}
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${
+                  visualizacao === 'grade' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'
+                }`}
+              >
+                <LayoutGrid size={13} />
+                Grade
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!carregando && clientes.length > 0 && (
           <PainelFiltros quantidadeAtiva={quantidadeFiltrosAtivos} onLimpar={limparFiltros}>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -191,162 +217,166 @@ function Clientes() {
             mudarTamanhoPagina={mudarTamanhoPagina} totalPaginas={totalPaginas} />
         )}
 
-        {itensPagina.map(c => (
-          <div key={c.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div
-              className="p-4 cursor-pointer"
-              onClick={() => selecaoAtiva ? alternarItem(c.id) : expandirCliente(c.id)}
-            >
-              <div className="flex justify-between items-start">
-                {selecaoAtiva && (
-                  <input
-                    type="checkbox"
-                    checked={selecionados.has(c.id)}
-                    onChange={() => alternarItem(c.id)}
-                    onClick={e => e.stopPropagation()}
-                    className="w-5 h-5 accent-blue-600 shrink-0 mr-3 mt-0.5"
-                  />
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-slate-800">{c.nome}</p>
-                    <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full shrink-0">
-                      {c.tipo_pessoa === 'juridica' ? 'PJ' : 'PF'}
-                    </span>
-                  </div>
-                  {c.cpf && <p className="text-xs text-slate-500 mt-0.5">CPF: {c.cpf}</p>}
-                  {c.cnpj && <p className="text-xs text-slate-500 mt-0.5">CNPJ: {c.cnpj}</p>}
-                  {c.telefone && <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1"><Phone size={11} />{c.telefone}</p>}
-                  {c.email && <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1"><Mail size={11} />{c.email}</p>}
-                  <p className="text-xs text-slate-400 mt-1">{totalLabel(c.servicos_count)}</p>
-                </div>
-                {!selecaoAtiva && (
-                  <span className="text-slate-300 ml-2">
-                    {expandido === c.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                  </span>
-                )}
-              </div>
-
-              {!selecaoAtiva && (transferindoCliente?.id === c.id ? (
-                <div className="mt-3 pt-3 border-t border-slate-100" onClick={e => e.stopPropagation()}>
-                  <p className="text-xs text-slate-500 mb-2">
-                    Este cliente tem {transferindoCliente.count} serviço{transferindoCliente.count !== 1 ? 's' : ''} vinculado{transferindoCliente.count !== 1 ? 's' : ''}.
-                    Escolha outro cliente para transferir os serviços antes de excluir:
-                  </p>
-                  {clientes.filter(o => o.id !== c.id).length === 0 ? (
-                    <p className="text-xs text-amber-600 mb-2">Cadastre outro cliente antes de excluir este.</p>
-                  ) : (
-                    <div className="mb-2">
-                      <ComboboxAsync
-                        valor={novoClienteTexto}
-                        onChangeTexto={texto => { setNovoClienteTexto(texto); setNovoClienteId('') }}
-                        onSelecionar={o => { setNovoClienteTexto(o.nome); setNovoClienteId(o.id) }}
-                        buscarPagina={(busca, pagina) => buscarClientesPagina(busca, pagina)
-                          .then(r => ({ ...r, itens: r.itens.filter(o => o.id !== c.id) }))}
-                        renderItem={o => <span>{o.nome}</span>}
-                        placeholder="Buscar cliente..."
-                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-600"
-                      />
-                    </div>
+        <div className={visualizacao === 'grade' ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-3'}>
+          {itensPagina.map(c => {
+            const grade = visualizacao === 'grade'
+            return (
+            <div key={c.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden min-w-0">
+              <div
+                className={`cursor-pointer ${grade ? 'p-3' : 'p-4'}`}
+                onClick={() => selecaoAtiva ? alternarItem(c.id) : expandirCliente(c.id)}
+              >
+                <div className="flex justify-between items-start">
+                  {selecaoAtiva && (
+                    <input
+                      type="checkbox"
+                      checked={selecionados.has(c.id)}
+                      onChange={() => alternarItem(c.id)}
+                      onClick={e => e.stopPropagation()}
+                      className="w-5 h-5 accent-blue-600 shrink-0 mr-3 mt-0.5"
+                    />
                   )}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleTransferirEExcluir(c.id)}
-                      disabled={!novoClienteId}
-                      className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold disabled:opacity-40"
-                    >
-                      Transferir e excluir
-                    </button>
-                    <button
-                      onClick={() => { setTransferindoCliente(null); setNovoClienteId(''); setNovoClienteTexto('') }}
-                      className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold"
-                    >
-                      Cancelar
-                    </button>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className={`font-semibold text-slate-800 truncate ${grade ? 'text-xs' : 'text-sm'}`}>{c.nome}</p>
+                      <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full shrink-0">
+                        {c.tipo_pessoa === 'juridica' ? 'PJ' : 'PF'}
+                      </span>
+                    </div>
+                    {c.cpf && <p className="text-xs text-slate-500 mt-0.5 truncate">CPF: {c.cpf}</p>}
+                    {c.cnpj && <p className="text-xs text-slate-500 mt-0.5 truncate">CNPJ: {c.cnpj}</p>}
+                    {!grade && c.telefone && <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1"><Phone size={11} />{c.telefone}</p>}
+                    {!grade && c.email && <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1"><Mail size={11} />{c.email}</p>}
+                    <p className="text-xs text-slate-400 mt-1">{totalLabel(c.servicos_count)}</p>
                   </div>
+                  {!selecaoAtiva && (
+                    <span className="text-slate-300 ml-2 shrink-0">
+                      {expandido === c.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    </span>
+                  )}
                 </div>
-              ) : confirmandoId === c.id ? (
-                <div className="mt-3 pt-3 border-t border-slate-100">
-                  <p className="text-xs text-slate-500 mb-2 text-center">Remover este cliente?</p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={e => { e.stopPropagation(); handleDeletar(c.id) }}
-                      className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold"
-                    >
-                      Sim, remover
-                    </button>
-                    <button
-                      onClick={e => { e.stopPropagation(); setConfirmandoId(null) }}
-                      className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex justify-end gap-2 mt-3">
-                  <button
-                    onClick={e => { e.stopPropagation(); navigate(`/clientes/editar/${c.id}`) }}
-                    className="text-xs bg-[#2563eb] text-white px-3 py-1.5 rounded-full font-semibold"
-                  >
-                    Editar
-                  </button>
-                  <button
-                    onClick={e => { e.stopPropagation(); setConfirmandoId(c.id) }}
-                    className="text-xs bg-[#dc2626] text-white px-3 py-1.5 rounded-full font-semibold"
-                  >
-                    Excluir
-                  </button>
-                </div>
-              ))}
-            </div>
 
-            {!selecaoAtiva && expandido === c.id && (
-              <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 flex flex-col gap-2">
-                <p className="text-xs font-semibold text-slate-500 mb-1">Serviços prestados</p>
-                {!servicosCliente[c.id] ? (
-                  <p className="text-xs text-slate-400">Carregando...</p>
-                ) : servicosCliente[c.id].length === 0 ? (
-                  <p className="text-xs text-slate-400">Nenhum serviço registrado para este cliente.</p>
-                ) : (
-                  <>
-                    {(mostrarTodosServicos[c.id] ? servicosCliente[c.id] : servicosCliente[c.id].slice(0, LIMITE_SERVICOS)).map(s => (
-                      <div key={s.id} className="bg-white rounded-xl p-3 border border-slate-100">
-                        <div className="flex justify-between items-start gap-2">
-                          <p className="text-xs font-semibold text-slate-700 flex-1 truncate">{s.titulo}</p>
-                          <StatusBadge status={s.status} className="px-2 py-0.5" />
-                        </div>
-                        {s.prazo && (
-                          <p className="text-xs text-slate-400 mt-1">
-                            Prazo: {new Date(s.prazo + 'T00:00:00').toLocaleDateString('pt-BR')}
-                          </p>
-                        )}
-                        {s.tag && (
-                          <span className="inline-block bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full mt-1">
-                            {TAG_LABEL[s.tag] || s.tag}
-                          </span>
-                        )}
+                {!selecaoAtiva && (transferindoCliente?.id === c.id ? (
+                  <div className="mt-3 pt-3 border-t border-slate-100" onClick={e => e.stopPropagation()}>
+                    <p className="text-xs text-slate-500 mb-2">
+                      Este cliente tem {transferindoCliente.count} serviço{transferindoCliente.count !== 1 ? 's' : ''} vinculado{transferindoCliente.count !== 1 ? 's' : ''}.
+                      Escolha outro cliente para transferir os serviços antes de excluir:
+                    </p>
+                    {clientes.filter(o => o.id !== c.id).length === 0 ? (
+                      <p className="text-xs text-amber-600 mb-2">Cadastre outro cliente antes de excluir este.</p>
+                    ) : (
+                      <div className="mb-2">
+                        <ComboboxAsync
+                          valor={novoClienteTexto}
+                          onChangeTexto={texto => { setNovoClienteTexto(texto); setNovoClienteId('') }}
+                          onSelecionar={o => { setNovoClienteTexto(o.nome); setNovoClienteId(o.id) }}
+                          buscarPagina={(busca, pagina) => buscarClientesPagina(busca, pagina)
+                            .then(r => ({ ...r, itens: r.itens.filter(o => o.id !== c.id) }))}
+                          renderItem={o => <span>{o.nome}</span>}
+                          placeholder="Buscar cliente..."
+                          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-600"
+                        />
                       </div>
-                    ))}
-                    {servicosCliente[c.id].length > LIMITE_SERVICOS && (
-                      <button
-                        onClick={e => {
-                          e.stopPropagation()
-                          setMostrarTodosServicos(prev => ({ ...prev, [c.id]: !prev[c.id] }))
-                        }}
-                        className="text-xs text-[#2563eb] font-semibold self-center py-1"
-                      >
-                        {mostrarTodosServicos[c.id]
-                          ? 'Mostrar menos'
-                          : `Mostrar todos (${servicosCliente[c.id].length})`}
-                      </button>
                     )}
-                  </>
-                )}
+                    <div className={grade ? 'flex flex-col gap-2' : 'flex gap-2'}>
+                      <button
+                        onClick={() => handleTransferirEExcluir(c.id)}
+                        disabled={!novoClienteId}
+                        className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold disabled:opacity-40"
+                      >
+                        Transferir e excluir
+                      </button>
+                      <button
+                        onClick={() => { setTransferindoCliente(null); setNovoClienteId(''); setNovoClienteTexto('') }}
+                        className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : confirmandoId === c.id ? (
+                  <div className="mt-3 pt-3 border-t border-slate-100">
+                    <p className="text-xs text-slate-500 mb-2 text-center">Remover este cliente?</p>
+                    <div className={grade ? 'flex flex-col gap-2' : 'flex gap-2'}>
+                      <button
+                        onClick={e => { e.stopPropagation(); handleDeletar(c.id) }}
+                        className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold"
+                      >
+                        Sim, remover
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); setConfirmandoId(null) }}
+                        className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={`mt-3 ${grade ? 'flex flex-col gap-2' : 'flex justify-end gap-2'}`}>
+                    <button
+                      onClick={e => { e.stopPropagation(); navigate(`/clientes/editar/${c.id}`) }}
+                      className={`text-xs bg-[#2563eb] text-white px-3 py-1.5 rounded-full font-semibold ${grade ? 'w-full' : ''}`}
+                    >
+                      Editar
+                    </button>
+                    <button
+                      onClick={e => { e.stopPropagation(); setConfirmandoId(c.id) }}
+                      className={`text-xs bg-[#dc2626] text-white px-3 py-1.5 rounded-full font-semibold ${grade ? 'w-full' : ''}`}
+                    >
+                      Excluir
+                    </button>
+                  </div>
+                ))}
               </div>
-            )}
-          </div>
-        ))}
+
+              {!selecaoAtiva && expandido === c.id && (
+                <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 flex flex-col gap-2">
+                  <p className="text-xs font-semibold text-slate-500 mb-1">Serviços prestados</p>
+                  {!servicosCliente[c.id] ? (
+                    <p className="text-xs text-slate-400">Carregando...</p>
+                  ) : servicosCliente[c.id].length === 0 ? (
+                    <p className="text-xs text-slate-400">Nenhum serviço registrado para este cliente.</p>
+                  ) : (
+                    <>
+                      {(mostrarTodosServicos[c.id] ? servicosCliente[c.id] : servicosCliente[c.id].slice(0, LIMITE_SERVICOS)).map(s => (
+                        <div key={s.id} className="bg-white rounded-xl p-3 border border-slate-100">
+                          <div className="flex justify-between items-start gap-2">
+                            <p className="text-xs font-semibold text-slate-700 flex-1 truncate">{s.titulo}</p>
+                            <StatusBadge status={s.status} className="px-2 py-0.5" />
+                          </div>
+                          {s.prazo && (
+                            <p className="text-xs text-slate-400 mt-1">
+                              Prazo: {new Date(s.prazo + 'T00:00:00').toLocaleDateString('pt-BR')}
+                            </p>
+                          )}
+                          {s.tag && (
+                            <span className="inline-block bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full mt-1">
+                              {TAG_LABEL[s.tag] || s.tag}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                      {servicosCliente[c.id].length > LIMITE_SERVICOS && (
+                        <button
+                          onClick={e => {
+                            e.stopPropagation()
+                            setMostrarTodosServicos(prev => ({ ...prev, [c.id]: !prev[c.id] }))
+                          }}
+                          className="text-xs text-[#2563eb] font-semibold self-center py-1"
+                        >
+                          {mostrarTodosServicos[c.id]
+                            ? 'Mostrar menos'
+                            : `Mostrar todos (${servicosCliente[c.id].length})`}
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )})}
+        </div>
       </div>
 
       {selecaoAtiva ? (

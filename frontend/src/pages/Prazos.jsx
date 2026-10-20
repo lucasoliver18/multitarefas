@@ -11,6 +11,8 @@ import {
   PRIORIDADE_OPCOES,
   PESO_PRIORIDADE,
   labelPrioridade,
+  labelStatus,
+  statusSeguintes,
   corTextoPrioridade,
   corFundoPrioridade,
 } from '../utils/status'
@@ -20,7 +22,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Ag
 const DIAS_SEMANA = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
 
 const TAGS_FIXAS = ['informatica', 'pintura', 'outros']
-const LIMITE_VENCIDOS = 2
+const LIMITE_VENCIDOS = 3
 
 function Prazos() {
   const navigate = useNavigate()
@@ -38,13 +40,21 @@ function Prazos() {
   const [menuStatus, setMenuStatus] = useState(null)
 
   const mudarStatus = async (id, novoStatus) => {
-    setMenuStatus(null)
     try {
       await mudarStatusHook(id, novoStatus)
       toast.sucesso('Status atualizado!')
     } catch {
       toast.erro('Erro ao atualizar status.')
     }
+  }
+
+  const confirmarMudarStatus = (s, novoStatus) => {
+    setMenuStatus(null)
+    const exigeOrcamento = (novoStatus === 'em_andamento' || novoStatus === 'finalizado') && !s.tem_orcamento_aprovado
+    const mensagem = exigeOrcamento
+      ? `Este serviço não possui nenhum orçamento aprovado. Tem certeza que deseja alterar o status para "${labelStatus(novoStatus)}" mesmo assim?`
+      : `Tem certeza que deseja alterar o status para "${labelStatus(novoStatus)}"?`
+    toast.confirmar(mensagem, () => mudarStatus(s.id, novoStatus))
   }
 
   const servicosFiltrados = useMemo(() => {
@@ -56,8 +66,10 @@ function Prazos() {
     })
   }, [servicos, filtroTags, filtroPrioridade, filtroStatus])
 
+  // Usa a lista completa de serviços (não a filtrada): o aviso de vencidos
+  // precisa mostrar todos os prazos vencidos independente dos filtros da tela.
   const vencidos = useMemo(() =>
-    servicosFiltrados
+    servicos
       .filter(s => estaVencido(s, hojeStr))
       .sort((a, b) => {
         const prioA = PESO_PRIORIDADE[a.prioridade] ?? 1
@@ -65,7 +77,7 @@ function Prazos() {
         if (prioA !== prioB) return prioA - prioB
         return a.prazo < b.prazo ? -1 : a.prazo > b.prazo ? 1 : 0
       }),
-    [servicosFiltrados, hojeStr]
+    [servicos, hojeStr]
   )
 
   const semPrazo = useMemo(() =>
@@ -117,7 +129,9 @@ function Prazos() {
   const limparFiltros = () => { setFiltroTags([]); setFiltroPrioridade(null); setFiltroStatus(null) }
   const temFiltroAtivo = filtroTags.length > 0 || filtroPrioridade || filtroStatus
 
-  const CardServico = ({ s }) => (
+  const CardServico = ({ s }) => {
+    const proximos = statusSeguintes(s.status)
+    return (
     <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
       <div className="flex justify-between items-start gap-2">
         <div className="flex-1 min-w-0">
@@ -127,15 +141,16 @@ function Prazos() {
         <div className="relative shrink-0">
           <StatusBadge
             status={s.status}
-            as="button"
-            onClick={() => setMenuStatus(prev => prev === s.id ? null : s.id)}
+            {...(proximos.length > 0
+              ? { as: 'button', onClick: () => setMenuStatus(prev => prev === s.id ? null : s.id) }
+              : {})}
           />
-          {menuStatus === s.id && (
+          {menuStatus === s.id && proximos.length > 0 && (
             <div className="absolute right-0 top-full mt-1 bg-white rounded-xl border border-slate-200 shadow-lg z-20 min-w-[150px] overflow-hidden">
-              {STATUS_OPCOES.filter(o => o.val !== s.status).map(o => (
+              {proximos.map(o => (
                 <button
                   key={o.val}
-                  onClick={() => mudarStatus(s.id, o.val)}
+                  onClick={() => confirmarMudarStatus(s, o.val)}
                   className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-slate-50 border-b border-slate-100 last:border-0 block"
                 >
                   {o.label}
@@ -174,7 +189,7 @@ function Prazos() {
         </button>
       </div>
     </div>
-  )
+  )}
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -234,11 +249,12 @@ function Prazos() {
       )}
 
       <div className="px-6 pt-4 mb-3 flex flex-col gap-2">
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap items-center">
+          <span className="text-xs text-slate-400">Tipo:</span>
           {TAGS_FIXAS.map(tag => (
             <button key={tag} onClick={() => toggleTag(tag)}
               className={`text-xs px-3 py-1 rounded-full font-medium ${filtroTags.includes(tag) ? 'bg-[#2563eb] text-white' : 'bg-slate-200 text-slate-600'}`}>
-              {TAG_LABEL[tag] || `#${tag}`}
+              {TAG_LABEL[tag] || tag}
             </button>
           ))}
         </div>

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { User, Calendar, NotebookPen, Receipt, List, LayoutList, Kanban, AlertTriangle } from 'lucide-react'
+import { User, Calendar, NotebookPen, Receipt, List, LayoutList, Kanban, AlertTriangle, Search, X } from 'lucide-react'
 import Navbar from '../components/Navbar'
 import StatusBadge from '../components/StatusBadge'
 import Select from '../components/Select'
@@ -28,6 +28,8 @@ import {
   ICONE_PAGO,
   badgePago,
   labelPago,
+  labelStatus,
+  statusSeguintes,
 } from '../utils/status'
 
 const SELECT = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-600'
@@ -47,6 +49,7 @@ function Servicos() {
   const [searchParams, setSearchParams] = useSearchParams()
   const hojeStr = hojeISO()
 
+  const [busca, setBusca] = useState('')
   const [filtroStatus, setFiltroStatus] = useState('')
   const [filtroPrioridade, setFiltroPrioridade] = useState('')
   const [filtroTag, setFiltroTag] = useState('')
@@ -82,6 +85,11 @@ function Servicos() {
 
   const servicosFiltrados = useMemo(() => {
     return servicos.filter(s => {
+      if (busca.trim()) {
+        const termo = busca.trim().toLowerCase()
+        const combina = s.titulo.toLowerCase().includes(termo) || (s.cliente || '').toLowerCase().includes(termo)
+        if (!combina) return false
+      }
       if (filtroSituacaoPrazo === 'atrasado' && !estaVencido(s, hojeStr)) return false
       if (filtroSituacaoPrazo === 'no_prazo' && estaVencido(s, hojeStr)) return false
       if (filtroStatus && s.status !== filtroStatus) return false
@@ -95,7 +103,7 @@ function Servicos() {
       }
       return true
     })
-  }, [servicos, filtroSituacaoPrazo, hojeStr, filtroStatus, filtroPrioridade, filtroTag, filtroPago, filtroPrazoDe, filtroPrazoAte])
+  }, [servicos, busca, filtroSituacaoPrazo, hojeStr, filtroStatus, filtroPrioridade, filtroTag, filtroPago, filtroPrazoDe, filtroPrazoAte])
 
   const servicosOrdenados = useServicosOrdenados(servicosFiltrados)
 
@@ -118,7 +126,6 @@ function Servicos() {
   }
 
   const handleMudarStatus = async (id, novoStatus) => {
-    setMenuStatus(null)
     try {
       await mudarStatus(id, novoStatus)
       toast.sucesso('Status atualizado!')
@@ -126,6 +133,15 @@ function Servicos() {
       buscar()
       toast.erro('Erro ao atualizar status.')
     }
+  }
+
+  const confirmarMudarStatus = (s, novoStatus) => {
+    setMenuStatus(null)
+    const exigeOrcamento = (novoStatus === 'em_andamento' || novoStatus === 'finalizado') && !s.tem_orcamento_aprovado
+    const mensagem = exigeOrcamento
+      ? `Este serviço não possui nenhum orçamento aprovado. Tem certeza que deseja alterar o status para "${labelStatus(novoStatus)}" mesmo assim?`
+      : `Tem certeza que deseja alterar o status para "${labelStatus(novoStatus)}"?`
+    toast.confirmar(mensagem, () => handleMudarStatus(s.id, novoStatus))
   }
 
   const handleMudarPago = async (id, novoPago) => {
@@ -161,12 +177,12 @@ function Servicos() {
     if (menuStatus !== s.id) return null
     return (
       <div className="absolute right-0 top-full mt-1 bg-white rounded-xl border border-slate-200 shadow-lg z-20 min-w-[150px] overflow-hidden">
-        {STATUS_OPCOES.filter(o => o.val !== s.status).map(o => {
+        {statusSeguintes(s.status).map(o => {
           const Icone = STATUS_ICONE[o.val]
           return (
             <button
               key={o.val}
-              onClick={() => handleMudarStatus(s.id, o.val)}
+              onClick={() => confirmarMudarStatus(s, o.val)}
               className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-slate-50 border-b border-slate-100 last:border-0 flex items-center gap-2"
             >
               <Icone size={12} />
@@ -175,6 +191,26 @@ function Servicos() {
           )
         })}
       </div>
+    )
+  }
+
+  // Badge de status: só vira botão com menu quando há próximos status
+  // possíveis na esteira (pendente -> em andamento -> finalizado). Em
+  // "finalizado" não há mais para onde avançar, então fica só leitura.
+  const StatusAcao = ({ s, className }) => {
+    if (statusSeguintes(s.status).length === 0) {
+      return <StatusBadge status={s.status} className={className} />
+    }
+    return (
+      <>
+        <StatusBadge
+          status={s.status}
+          as="button"
+          className={className}
+          onClick={() => setMenuStatus(prev => prev === s.id ? null : s.id)}
+        />
+        <MenuStatusServico s={s} />
+      </>
     )
   }
 
@@ -197,13 +233,7 @@ function Servicos() {
       </div>
       {!selecaoAtiva && (
         <div className="relative mt-1.5" onClick={e => e.stopPropagation()}>
-          <StatusBadge
-            status={s.status}
-            as="button"
-            className="px-2 py-0.5"
-            onClick={() => setMenuStatus(prev => prev === s.id ? null : s.id)}
-          />
-          <MenuStatusServico s={s} />
+          <StatusAcao s={s} className="px-2 py-0.5" />
         </div>
       )}
       <p className="text-xs text-slate-400 mt-1 truncate">{s.cliente}</p>
@@ -281,13 +311,7 @@ function Servicos() {
       )}
       {!selecaoAtiva && (
         <div className="relative shrink-0" onClick={e => e.stopPropagation()}>
-          <StatusBadge
-            status={s.status}
-            as="button"
-            className="px-2 py-1"
-            onClick={() => setMenuStatus(prev => prev === s.id ? null : s.id)}
-          />
-          <MenuStatusServico s={s} />
+          <StatusAcao s={s} className="px-2 py-1" />
         </div>
       )}
     </div>
@@ -311,12 +335,7 @@ function Servicos() {
         <p className="text-sm font-semibold text-slate-800 flex-1 leading-snug">{s.titulo}</p>
         {!selecaoAtiva && (
           <div className="relative shrink-0">
-            <StatusBadge
-              status={s.status}
-              as="button"
-              onClick={() => setMenuStatus(prev => prev === s.id ? null : s.id)}
-            />
-            <MenuStatusServico s={s} />
+            <StatusAcao s={s} />
           </div>
         )}
       </div>
@@ -405,26 +424,43 @@ function Servicos() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
 
-      <div className="page-header bg-[#1e3a5f] px-6 pb-5 flex justify-between items-center">
-        <div>
-          <h1 className="text-lg font-bold text-white">Serviços</h1>
-          <p className="text-xs text-slate-300 mt-0.5">
-            {carregando ? 'Carregando...' : servicos.length === 0 ? 'Nenhum serviço' : servicos.length === 1 ? '1 serviço' : `${servicos.length} serviços`}
-          </p>
+      <div className="page-header bg-[#1e3a5f] px-6 pb-5">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-lg font-bold text-white">Serviços</h1>
+            <p className="text-xs text-slate-300 mt-0.5">
+              {carregando ? 'Carregando...' : servicos.length === 0 ? 'Nenhum serviço' : servicos.length === 1 ? '1 serviço' : `${servicos.length} serviços`}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={alternarModo}
+              className="bg-white/10 text-white text-xs px-3 py-2 rounded-full font-semibold"
+            >
+              {selecaoAtiva ? 'Cancelar' : 'Selecionar'}
+            </button>
+            <button
+              onClick={() => navigate('/novo')}
+              className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold"
+            >
+              + Novo
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={alternarModo}
-            className="bg-white/10 text-white text-xs px-3 py-2 rounded-full font-semibold"
-          >
-            {selecaoAtiva ? 'Cancelar' : 'Selecionar'}
-          </button>
-          <button
-            onClick={() => navigate('/novo')}
-            className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold"
-          >
-            + Novo
-          </button>
+
+        <div className="mt-4 flex items-center gap-2 bg-white/10 border border-white/20 rounded-xl px-4 py-3">
+          <Search size={16} className="text-slate-300" />
+          <input
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+            className="flex-1 text-xs text-white placeholder-slate-400 outline-none bg-transparent"
+            placeholder="Buscar serviço pelo título ou cliente..."
+          />
+          {busca && (
+            <button onClick={() => setBusca('')} className="text-slate-400">
+              <X size={14} />
+            </button>
+          )}
         </div>
       </div>
 

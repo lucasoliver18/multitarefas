@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Cliente;
+use App\Models\Orcamento;
 use App\Models\Servico;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -101,6 +102,36 @@ class ServicoTest extends TestCase
         $this->patchJson("/api/servicos/{$servico->id}", ['status' => 'finalizado'])
              ->assertOk()
              ->assertJsonFragment(['status' => 'finalizado']);
+    }
+
+    public function test_sinaliza_se_servico_tem_orcamento_aprovado(): void
+    {
+        $semOrcamento = Servico::factory()->create();
+        $comOrcamentoPendente = Servico::factory()->create();
+        Orcamento::factory()->create(['servico_id' => $comOrcamentoPendente->id, 'status' => 'pendente']);
+        $comOrcamentoAprovado = Servico::factory()->create();
+        Orcamento::factory()->create(['servico_id' => $comOrcamentoAprovado->id, 'status' => 'aprovado']);
+
+        $this->getJson('/api/servicos')
+             ->assertOk()
+             ->assertJsonFragment(['id' => $semOrcamento->id, 'tem_orcamento_aprovado' => false])
+             ->assertJsonFragment(['id' => $comOrcamentoPendente->id, 'tem_orcamento_aprovado' => false])
+             ->assertJsonFragment(['id' => $comOrcamentoAprovado->id, 'tem_orcamento_aprovado' => true]);
+
+        $this->getJson("/api/servicos/{$comOrcamentoAprovado->id}")
+             ->assertOk()
+             ->assertJsonFragment(['tem_orcamento_aprovado' => true]);
+    }
+
+    public function test_nao_permite_retroceder_status_do_servico(): void
+    {
+        $servico = Servico::factory()->create(['status' => 'em_andamento']);
+
+        $this->patchJson("/api/servicos/{$servico->id}", ['status' => 'pendente'])
+             ->assertStatus(422)
+             ->assertJsonValidationErrors('status');
+
+        $this->assertSame('em_andamento', $servico->fresh()->status);
     }
 
     public function test_pode_marcar_servico_como_pago(): void

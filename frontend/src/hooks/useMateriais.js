@@ -29,7 +29,18 @@ export function useMateriais() {
     }
   }, [buscar])
 
-  return { materiais, carregando, buscar, deletar }
+  const atualizarEstoque = useCallback(async (id, novaQuantidade) => {
+    const valor = Math.max(0, novaQuantidade)
+    setMateriais(prev => prev.map(m => m.id === id ? { ...m, quantidade_estoque: valor } : m))
+    try {
+      await api.patch(`/materiais/${id}`, { quantidade_estoque: valor })
+    } catch (err) {
+      await buscar()
+      throw err
+    }
+  }, [buscar])
+
+  return { materiais, carregando, buscar, deletar, atualizarEstoque }
 }
 
 /**
