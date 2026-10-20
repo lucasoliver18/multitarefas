@@ -8,6 +8,7 @@ import { useToast } from '../hooks/useToast'
 import { buscarMateriaisPagina } from '../hooks/useMateriais'
 import { materiaisComEstoqueInsuficiente } from '../utils/materiais'
 import { mensagemErro } from '../utils/erros'
+import { sanitizarNumero } from '../utils/numeros'
 
 const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
 const LABEL = 'text-xs font-semibold text-slate-700 mb-1'
@@ -177,9 +178,9 @@ function EditarOrcamento() {
                     <p className="text-xs text-slate-400">R$ {parseFloat(item.preco_unitario).toFixed(2)} / {item.unidade_medida}</p>
                   </div>
                   <input
-                    type="number" inputMode="decimal" min="0.001" step="0.001"
+                    type="text" inputMode="decimal"
                     value={item.quantidade}
-                    onChange={(e) => atualizarQuantidade(item.id, e.target.value)}
+                    onChange={(e) => atualizarQuantidade(item.id, sanitizarNumero(e.target.value, 4))}
                     className="w-16 border border-slate-200 rounded-lg px-2 py-1 text-xs text-center outline-none focus:border-blue-600"
                   />
                   <span className="text-xs text-slate-400">{item.unidade_medida}</span>
@@ -192,7 +193,14 @@ function EditarOrcamento() {
 
         <div className="flex flex-col gap-1">
           <label className={LABEL}>Margem de Lucro (%)</label>
-          <input name="margem_lucro" type="number" inputMode="decimal" min="0" step="0.5" value={form.margem_lucro} onChange={handleChange} className={INPUT} />
+          <input
+            name="margem_lucro"
+            type="text"
+            inputMode="decimal"
+            value={form.margem_lucro}
+            onChange={e => setForm({ ...form, margem_lucro: sanitizarNumero(e.target.value, 2) })}
+            className={INPUT}
+          />
         </div>
 
         <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">

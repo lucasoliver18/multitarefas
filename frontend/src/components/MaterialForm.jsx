@@ -4,6 +4,7 @@ import Select from './Select'
 import { useNavigate } from 'react-router-dom'
 import { UNIDADES as unidades } from '../utils/materiais'
 import { useMateriais } from '../hooks/useMateriais'
+import { sanitizarNumero } from '../utils/numeros'
 
 const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
 const LABEL = 'text-xs font-semibold text-slate-700 mb-1'
@@ -16,6 +17,11 @@ function MaterialForm({ titulo, form, onChange, salvando, onSalvar, botaoLabel }
     [...new Set(materiais.map(m => m.marca).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
     [materiais]
   )
+
+  const handleNumero = (decimais) => (e) => {
+    e.target.value = sanitizarNumero(e.target.value, decimais)
+    onChange(e)
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -78,12 +84,10 @@ function MaterialForm({ titulo, form, onChange, salvando, onSalvar, botaoLabel }
             <label className={LABEL}>Qtd. Estoque</label>
             <input
               name="quantidade_estoque"
-              type="number"
+              type="text"
               inputMode="decimal"
-              min="0"
-              step="0.001"
               value={form.quantidade_estoque}
-              onChange={onChange}
+              onChange={handleNumero(4)}
               placeholder="0"
               className={INPUT}
             />
@@ -94,12 +98,10 @@ function MaterialForm({ titulo, form, onChange, salvando, onSalvar, botaoLabel }
           <label className={LABEL}>Estoque mínimo</label>
           <input
             name="quantidade_minima"
-            type="number"
+            type="text"
             inputMode="decimal"
-            min="0"
-            step="0.001"
             value={form.quantidade_minima}
-            onChange={onChange}
+            onChange={handleNumero(4)}
             placeholder="Ex: 5 (avisa quando o estoque chegar nesse nível)"
             className={INPUT}
           />
@@ -109,12 +111,10 @@ function MaterialForm({ titulo, form, onChange, salvando, onSalvar, botaoLabel }
           <label className={LABEL}>Preço Unitário (R$) *</label>
           <input
             name="preco_unitario"
-            type="number"
+            type="text"
             inputMode="decimal"
-            min="0"
-            step="0.01"
             value={form.preco_unitario}
-            onChange={onChange}
+            onChange={handleNumero(2)}
             placeholder="0,00"
             className={INPUT}
           />

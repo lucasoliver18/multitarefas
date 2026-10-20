@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Minus, Plus } from 'lucide-react'
+import { sanitizarNumero } from '../utils/numeros'
 
 const DEBOUNCE_MS = 450
 
@@ -65,11 +66,10 @@ function EstoqueEditor({ quantidade, unidade, onAlterar }) {
       {editando ? (
         <input
           autoFocus
-          type="number"
-          min="0"
-          step="any"
+          type="text"
+          inputMode="decimal"
           value={textoEditando}
-          onChange={e => setTextoEditando(e.target.value)}
+          onChange={e => setTextoEditando(sanitizarNumero(e.target.value, 4))}
           onBlur={confirmarEdicao}
           onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
           onClick={e => e.stopPropagation()}

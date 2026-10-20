@@ -13,6 +13,7 @@ import BarraSelecao from '../components/BarraSelecao'
 import { useSelecaoMultipla } from '../hooks/useSelecaoMultipla'
 import { excluirEmMassa } from '../utils/exclusaoEmMassa'
 import { UNIDADES, estaComEstoqueBaixo } from '../utils/materiais'
+import { sanitizarNumero } from '../utils/numeros'
 
 const SELECT = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-600'
 const LABEL = 'text-xs font-semibold text-slate-600 mb-1 block'
@@ -211,25 +212,25 @@ function Materiais() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={LABEL}>Preço mín. (R$)</label>
-                <input type="number" min="0" step="0.01" value={filtroPrecoMin}
-                  onChange={e => setFiltroPrecoMin(e.target.value)} className={SELECT} />
+                <input type="text" inputMode="decimal" value={filtroPrecoMin}
+                  onChange={e => setFiltroPrecoMin(sanitizarNumero(e.target.value, 2))} className={SELECT} />
               </div>
               <div>
                 <label className={LABEL}>Preço máx. (R$)</label>
-                <input type="number" min="0" step="0.01" value={filtroPrecoMax}
-                  onChange={e => setFiltroPrecoMax(e.target.value)} className={SELECT} />
+                <input type="text" inputMode="decimal" value={filtroPrecoMax}
+                  onChange={e => setFiltroPrecoMax(sanitizarNumero(e.target.value, 2))} className={SELECT} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={LABEL}>Qtd. mín.</label>
-                <input type="number" min="0" step="0.001" value={filtroQtdMin}
-                  onChange={e => setFiltroQtdMin(e.target.value)} className={SELECT} />
+                <input type="text" inputMode="decimal" value={filtroQtdMin}
+                  onChange={e => setFiltroQtdMin(sanitizarNumero(e.target.value, 4))} className={SELECT} />
               </div>
               <div>
                 <label className={LABEL}>Qtd. máx.</label>
-                <input type="number" min="0" step="0.001" value={filtroQtdMax}
-                  onChange={e => setFiltroQtdMax(e.target.value)} className={SELECT} />
+                <input type="text" inputMode="decimal" value={filtroQtdMax}
+                  onChange={e => setFiltroQtdMax(sanitizarNumero(e.target.value, 4))} className={SELECT} />
               </div>
             </div>
           </PainelFiltros>
