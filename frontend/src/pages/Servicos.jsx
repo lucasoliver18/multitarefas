@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { DndContext, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { User, Calendar, NotebookPen, Receipt, List, LayoutList, Kanban, AlertTriangle, Search, X } from 'lucide-react'
 import Navbar from '../components/Navbar'
 import StatusBadge from '../components/StatusBadge'
@@ -14,6 +15,7 @@ import BarraSelecao from '../components/BarraSelecao'
 import { useSelecaoMultipla } from '../hooks/useSelecaoMultipla'
 import { excluirEmMassa } from '../utils/exclusaoEmMassa'
 import { hojeISO, estaVencido } from '../utils/prazos'
+import { mensagemErro } from '../utils/erros'
 import {
   borderPrioridade,
   labelPrioridade,
@@ -148,6 +150,30 @@ function Servicos() {
     toast.confirmar(mensagem, () => handleMudarStatus(s.id, novoStatus))
   }
 
+  // Arrastar um card entre colunas do kanban já salva a mudança de status
+  // direto, sem pedir confirmação (diferente do menu de status, que pergunta).
+  const sensoresArraste = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+
+  const handleDragEnd = async ({ active, over }) => {
+    if (!over) return
+    const servico = servicos.find(s => s.id === active.id)
+    const novoStatus = over.id
+    if (!servico || servico.status === novoStatus) return
+
+    try {
+      await mudarStatus(servico.id, novoStatus)
+      const exigeOrcamento = (novoStatus === 'em_andamento' || novoStatus === 'finalizado') && !servico.tem_orcamento_aprovado
+      if (exigeOrcamento) {
+        toast.alerta(`Status atualizado, mas este serviço ainda não possui orçamento aprovado.`)
+      } else {
+        toast.sucesso('Status atualizado!')
+      }
+    } catch (e) {
+      buscar()
+      toast.erro(mensagemErro(e, 'Erro ao atualizar status.'))
+    }
+  }
+
   const handleMudarPago = async (id, novoPago) => {
     try {
       await mudarPago(id, novoPago)
@@ -228,10 +254,23 @@ function Servicos() {
     )
   }
 
-  const ServicoCardKanban = ({ s }) => (
+  const ServicoCardKanban = ({ s }) => {
+    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+      id: s.id,
+      disabled: selecaoAtiva,
+    })
+    const style = transform
+      ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 50 }
+      : undefined
+
+    return (
     <div
+      ref={setNodeRef}
+      style={style}
+      {...(!selecaoAtiva ? attributes : {})}
+      {...(!selecaoAtiva ? listeners : {})}
       onClick={() => selecaoAtiva ? alternarItem(s.id) : navigate(`/editar/${s.id}`)}
-      className={`bg-white rounded-xl p-2 border border-slate-100 border-l-4 ${borderPrioridade(s.prioridade)} shadow-sm cursor-pointer min-w-0`}
+      className={`bg-white rounded-xl p-2 border border-slate-100 border-l-4 ${borderPrioridade(s.prioridade)} shadow-sm cursor-pointer min-w-0 touch-none transition-shadow ${isDragging ? 'opacity-50 shadow-lg' : ''}`}
     >
       <div className="flex items-start gap-1.5">
         {selecaoAtiva && (
@@ -283,7 +322,8 @@ function Servicos() {
         </div>
       )}
     </div>
-  )
+    )
+  }
 
   const ServicoLinhaCompacta = ({ s }) => (
     <div
@@ -441,6 +481,17 @@ function Servicos() {
       )}
     </div>
   )
+
+  // Zona de soltar de uma coluna do kanban: fica destacada em azul claro
+  // enquanto um card é arrastado sobre ela.
+  const ColunaKanban = ({ id, children }) => {
+    const { setNodeRef, isOver } = useDroppable({ id })
+    return (
+      <div ref={setNodeRef} className={`min-w-0 flex flex-col gap-2 rounded-xl transition-colors ${isOver ? 'bg-blue-50' : ''}`}>
+        {children}
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -625,41 +676,43 @@ function Servicos() {
         )}
 
         {visualizacao === 'kanban' && servicosFiltrados.length > 0 && (
-          <div className="grid grid-cols-3 gap-2">
-            {STATUS_OPCOES.map(coluna => {
-              const todosItens = servicosPorStatus[coluna.val] || []
-              const limite = limiteColuna[coluna.val] ?? LIMITE_KANBAN_INICIAL
-              const itens = todosItens.slice(0, limite)
-              const restantes = todosItens.length - itens.length
-              const IconeColuna = STATUS_ICONE[coluna.val]
-              return (
-                <div key={coluna.val} className="min-w-0 flex flex-col gap-2">
-                  <div className="flex flex-col items-start gap-1 px-0.5">
-                    <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-700 leading-tight">
-                      <IconeColuna size={12} className="text-slate-500 shrink-0" />
-                      {coluna.label}
-                    </span>
-                    <span className="text-[10px] text-slate-400 bg-slate-100 rounded-full px-1.5 py-0.5">{todosItens.length}</span>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    {itens.length === 0 ? (
-                      <div className="text-center text-[10px] text-slate-300 py-6 px-1 border border-dashed border-slate-200 rounded-xl">
-                        Nenhum serviço
-                      </div>
-                    ) : itens.map(s => <ServicoCardKanban key={s.id} s={s} />)}
-                  </div>
-                  {restantes > 0 && (
-                    <button
-                      onClick={() => setLimiteColuna(prev => ({ ...prev, [coluna.val]: limite + INCREMENTO_KANBAN }))}
-                      className="text-[10px] text-blue-600 font-semibold text-center py-1.5 border border-dashed border-blue-200 rounded-xl"
-                    >
-                      Carregar mais ({restantes})
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+          <DndContext sensors={sensoresArraste} onDragEnd={handleDragEnd}>
+            <div className="grid grid-cols-3 gap-2">
+              {STATUS_OPCOES.map(coluna => {
+                const todosItens = servicosPorStatus[coluna.val] || []
+                const limite = limiteColuna[coluna.val] ?? LIMITE_KANBAN_INICIAL
+                const itens = todosItens.slice(0, limite)
+                const restantes = todosItens.length - itens.length
+                const IconeColuna = STATUS_ICONE[coluna.val]
+                return (
+                  <ColunaKanban key={coluna.val} id={coluna.val}>
+                    <div className="flex flex-col items-start gap-1 px-0.5">
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-700 leading-tight">
+                        <IconeColuna size={12} className="text-slate-500 shrink-0" />
+                        {coluna.label}
+                      </span>
+                      <span className="text-[10px] text-slate-400 bg-slate-100 rounded-full px-1.5 py-0.5">{todosItens.length}</span>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      {itens.length === 0 ? (
+                        <div className="text-center text-[10px] text-slate-300 py-6 px-1 border border-dashed border-slate-200 rounded-xl">
+                          Nenhum serviço
+                        </div>
+                      ) : itens.map(s => <ServicoCardKanban key={s.id} s={s} />)}
+                    </div>
+                    {restantes > 0 && (
+                      <button
+                        onClick={() => setLimiteColuna(prev => ({ ...prev, [coluna.val]: limite + INCREMENTO_KANBAN }))}
+                        className="text-[10px] text-blue-600 font-semibold text-center py-1.5 border border-dashed border-blue-200 rounded-xl"
+                      >
+                        Carregar mais ({restantes})
+                      </button>
+                    )}
+                  </ColunaKanban>
+                )
+              })}
+            </div>
+          </DndContext>
         )}
 
         {visualizacao !== 'kanban' && itensPagina.map(s => (
