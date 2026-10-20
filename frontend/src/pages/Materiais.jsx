@@ -130,13 +130,13 @@ function Materiais() {
           <div className="flex items-center gap-2">
             <button
               onClick={alternarModo}
-              className="bg-white/10 text-white text-xs px-3 py-2 rounded-full font-semibold"
+              className="bg-white/10 text-white text-xs px-3 py-2 rounded-full font-semibold transition-all active:scale-[0.96]"
             >
               {selecaoAtiva ? 'Cancelar' : 'Selecionar'}
             </button>
             <button
               onClick={() => navigate('/materiais/novo')}
-              className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold"
+              className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold transition-all active:scale-[0.96]"
             >
               + Novo
             </button>
@@ -314,13 +314,13 @@ function Materiais() {
                   <div className={grade ? 'flex flex-col gap-2' : 'flex gap-2'}>
                     <button
                       onClick={() => handleDeletar(m.id)}
-                      className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold"
+                      className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold transition-all active:scale-[0.96]"
                     >
                       Sim, remover
                     </button>
                     <button
                       onClick={() => setConfirmandoId(null)}
-                      className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold"
+                      className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold transition-all active:scale-[0.96]"
                     >
                       Cancelar
                     </button>
@@ -330,13 +330,13 @@ function Materiais() {
                 <div className={`mt-3 ${grade ? 'flex flex-col gap-2' : 'flex justify-end gap-2'}`}>
                   <button
                     onClick={() => navigate(`/materiais/editar/${m.id}`)}
-                    className={`text-xs bg-[#2563eb] text-white px-3 py-1.5 rounded-full font-semibold ${grade ? 'w-full' : ''}`}
+                    className={`text-xs bg-[#2563eb] text-white px-3 py-1.5 rounded-full font-semibold transition-all active:scale-[0.96] ${grade ? 'w-full' : ''}`}
                   >
                     Editar
                   </button>
                   <button
                     onClick={() => setConfirmandoId(m.id)}
-                    className={`text-xs bg-[#dc2626] text-white px-3 py-1.5 rounded-full font-semibold ${grade ? 'w-full' : ''}`}
+                    className={`text-xs bg-[#dc2626] text-white px-3 py-1.5 rounded-full font-semibold transition-all active:scale-[0.96] ${grade ? 'w-full' : ''}`}
                   >
                     Remover
                   </button>

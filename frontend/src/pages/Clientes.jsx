@@ -124,13 +124,13 @@ function Clientes() {
           <div className="flex items-center gap-2">
             <button
               onClick={alternarModo}
-              className="bg-white/10 text-white text-xs px-3 py-2 rounded-full font-semibold"
+              className="bg-white/10 text-white text-xs px-3 py-2 rounded-full font-semibold transition-all active:scale-[0.96]"
             >
               {selecaoAtiva ? 'Cancelar' : 'Selecionar'}
             </button>
             <button
               onClick={() => navigate('/clientes/novo')}
-              className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold"
+              className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold transition-all active:scale-[0.96]"
             >
               + Novo
             </button>
@@ -223,7 +223,7 @@ function Clientes() {
             return (
             <div key={c.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden min-w-0">
               <div
-                className={`cursor-pointer ${grade ? 'p-3' : 'p-4'}`}
+                className={`cursor-pointer transition-colors hover:bg-slate-50 ${grade ? 'p-3' : 'p-4'}`}
                 onClick={() => selecaoAtiva ? alternarItem(c.id) : expandirCliente(c.id)}
               >
                 <div className="flex justify-between items-start">
@@ -282,13 +282,13 @@ function Clientes() {
                       <button
                         onClick={() => handleTransferirEExcluir(c.id)}
                         disabled={!novoClienteId}
-                        className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold disabled:opacity-40"
+                        className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold disabled:opacity-40 transition-all active:scale-[0.96]"
                       >
                         Transferir e excluir
                       </button>
                       <button
                         onClick={() => { setTransferindoCliente(null); setNovoClienteId(''); setNovoClienteTexto('') }}
-                        className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold"
+                        className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold transition-all active:scale-[0.96]"
                       >
                         Cancelar
                       </button>
@@ -300,13 +300,13 @@ function Clientes() {
                     <div className={grade ? 'flex flex-col gap-2' : 'flex gap-2'}>
                       <button
                         onClick={e => { e.stopPropagation(); handleDeletar(c.id) }}
-                        className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold"
+                        className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold transition-all active:scale-[0.96]"
                       >
                         Sim, remover
                       </button>
                       <button
                         onClick={e => { e.stopPropagation(); setConfirmandoId(null) }}
-                        className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold"
+                        className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold transition-all active:scale-[0.96]"
                       >
                         Cancelar
                       </button>
@@ -316,13 +316,13 @@ function Clientes() {
                   <div className={`mt-3 ${grade ? 'flex flex-col gap-2' : 'flex justify-end gap-2'}`}>
                     <button
                       onClick={e => { e.stopPropagation(); navigate(`/clientes/editar/${c.id}`) }}
-                      className={`text-xs bg-[#2563eb] text-white px-3 py-1.5 rounded-full font-semibold ${grade ? 'w-full' : ''}`}
+                      className={`text-xs bg-[#2563eb] text-white px-3 py-1.5 rounded-full font-semibold transition-all active:scale-[0.96] ${grade ? 'w-full' : ''}`}
                     >
                       Editar
                     </button>
                     <button
                       onClick={e => { e.stopPropagation(); setConfirmandoId(c.id) }}
-                      className={`text-xs bg-[#dc2626] text-white px-3 py-1.5 rounded-full font-semibold ${grade ? 'w-full' : ''}`}
+                      className={`text-xs bg-[#dc2626] text-white px-3 py-1.5 rounded-full font-semibold transition-all active:scale-[0.96] ${grade ? 'w-full' : ''}`}
                     >
                       Excluir
                     </button>

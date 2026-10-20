@@ -93,7 +93,7 @@ function Orcamentos() {
           </div>
           <button
             onClick={() => navigate(`/orcamentos/${servicoId}/novo`)}
-            className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold"
+            className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold transition-all active:scale-[0.96]"
           >
             + Novo
           </button>
@@ -161,13 +161,13 @@ function Orcamentos() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => confirmando.acao === 'aprovar' ? aprovar(o.id) : reprovar(o.id)}
-                      className={`flex-1 text-xs text-white py-2 rounded-xl font-semibold ${confirmando.acao === 'aprovar' ? 'bg-[#16a34a]' : 'bg-[#dc2626]'}`}
+                      className={`flex-1 text-xs text-white py-2 rounded-xl font-semibold transition-all active:scale-[0.96] ${confirmando.acao === 'aprovar' ? 'bg-[#16a34a]' : 'bg-[#dc2626]'}`}
                     >
                       {confirmando.acao === 'aprovar' ? 'Sim, aprovar' : 'Sim, reprovar'}
                     </button>
                     <button
                       onClick={() => setConfirmando(null)}
-                      className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold"
+                      className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold transition-all active:scale-[0.96]"
                     >
                       Cancelar
                     </button>
@@ -178,7 +178,7 @@ function Orcamentos() {
                   {o.status === 'pendente' && (
                     <button
                       onClick={() => setConfirmando({ id: o.id, acao: 'aprovar' })}
-                      className="text-xs bg-[#16a34a] text-white px-3 py-1.5 rounded-full font-semibold"
+                      className="text-xs bg-[#16a34a] text-white px-3 py-1.5 rounded-full font-semibold transition-all active:scale-[0.96]"
                     >
                       Aprovar
                     </button>
@@ -186,14 +186,14 @@ function Orcamentos() {
                   {o.status !== 'reprovado' && (
                     <button
                       onClick={() => setConfirmando({ id: o.id, acao: 'reprovar' })}
-                      className="text-xs bg-[#dc2626] text-white px-3 py-1.5 rounded-full font-semibold"
+                      className="text-xs bg-[#dc2626] text-white px-3 py-1.5 rounded-full font-semibold transition-all active:scale-[0.96]"
                     >
                       Reprovar
                     </button>
                   )}
                   <button
                     onClick={() => navigate(`/orcamentos/${servicoId}/editar/${o.id}`)}
-                    className="text-xs bg-[#2563eb] text-white px-3 py-1.5 rounded-full font-semibold"
+                    className="text-xs bg-[#2563eb] text-white px-3 py-1.5 rounded-full font-semibold transition-all active:scale-[0.96]"
                   >
                     Editar
                   </button>

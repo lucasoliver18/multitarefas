@@ -188,14 +188,14 @@ function Prazos() {
       <div className="flex gap-2 mt-3">
         <button
           onClick={() => navigate(`/servicos/${s.id}/anotacoes`)}
-          className="flex-1 text-xs bg-amber-50 text-amber-700 border border-amber-200 px-3 py-2 rounded-xl font-semibold text-center inline-flex items-center justify-center gap-1"
+          className="flex-1 text-xs bg-amber-50 text-amber-700 border border-amber-200 px-3 py-2 rounded-xl font-semibold text-center inline-flex items-center justify-center gap-1 transition-all active:scale-[0.96]"
         >
           <NotebookPen size={13} />
           Anotações
         </button>
         <button
           onClick={() => navigate(`/editar/${s.id}`)}
-          className="flex-1 text-xs bg-slate-50 text-[#2563eb] border border-slate-200 px-3 py-2 rounded-xl font-semibold text-center"
+          className="flex-1 text-xs bg-slate-50 text-[#2563eb] border border-slate-200 px-3 py-2 rounded-xl font-semibold text-center transition-all active:scale-[0.96]"
         >
           Editar serviço
         </button>
@@ -213,7 +213,7 @@ function Prazos() {
         </div>
         <button
           onClick={() => navigate('/novo')}
-          className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold"
+          className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold transition-all active:scale-[0.96]"
         >
           + Novo
         </button>
@@ -419,7 +419,7 @@ function Prazos() {
                 </div>
                 <button
                   onClick={() => navigate(`/editar/${s.id}`)}
-                  className="mt-3 w-full text-xs bg-slate-50 text-[#2563eb] border border-slate-200 px-3 py-2 rounded-xl font-semibold text-center"
+                  className="mt-3 w-full text-xs bg-slate-50 text-[#2563eb] border border-slate-200 px-3 py-2 rounded-xl font-semibold text-center transition-all active:scale-[0.96]"
                 >
                   Definir prazo →
                 </button>

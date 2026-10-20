@@ -270,7 +270,7 @@ function Servicos() {
       {...(!selecaoAtiva ? attributes : {})}
       {...(!selecaoAtiva ? listeners : {})}
       onClick={() => selecaoAtiva ? alternarItem(s.id) : navigate(`/editar/${s.id}`)}
-      className={`bg-white rounded-xl p-2 border border-slate-100 border-l-4 ${borderPrioridade(s.prioridade)} shadow-sm cursor-pointer min-w-0 touch-none transition-shadow ${isDragging ? 'opacity-50 shadow-lg' : ''}`}
+      className={`bg-white rounded-xl p-2 border border-slate-100 border-l-4 ${borderPrioridade(s.prioridade)} shadow-sm cursor-pointer min-w-0 touch-none transition-shadow hover:shadow-md active:scale-[0.98] ${isDragging ? 'opacity-50 shadow-lg' : ''}`}
     >
       <div className="flex items-start gap-1.5">
         {selecaoAtiva && (
@@ -328,7 +328,7 @@ function Servicos() {
   const ServicoLinhaCompacta = ({ s }) => (
     <div
       onClick={() => selecaoAtiva ? alternarItem(s.id) : navigate(`/editar/${s.id}`)}
-      className={`bg-white rounded-xl px-3 py-2.5 border border-slate-100 border-l-4 ${borderPrioridade(s.prioridade)} shadow-sm flex items-center gap-3 cursor-pointer`}
+      className={`bg-white rounded-xl px-3 py-2.5 border border-slate-100 border-l-4 ${borderPrioridade(s.prioridade)} shadow-sm flex items-center gap-3 cursor-pointer transition-shadow hover:shadow-md active:scale-[0.98]`}
     >
       {selecaoAtiva && (
         <input
@@ -429,20 +429,20 @@ function Servicos() {
           <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-3 gap-2">
             <button
               onClick={() => navigate(`/editar/${s.id}`)}
-              className="text-xs bg-[#2563eb] text-white py-2 rounded-xl font-semibold"
+              className="text-xs bg-[#2563eb] text-white py-2 rounded-xl font-semibold transition-all active:scale-[0.96]"
             >
               Editar
             </button>
             <button
               onClick={() => navigate(`/servicos/${s.id}/anotacoes`)}
-              className="text-xs bg-amber-50 text-amber-700 border border-amber-100 py-2 rounded-xl font-semibold inline-flex items-center justify-center gap-1"
+              className="text-xs bg-amber-50 text-amber-700 border border-amber-100 py-2 rounded-xl font-semibold inline-flex items-center justify-center gap-1 transition-all active:scale-[0.96]"
             >
               <NotebookPen size={13} />
               Anotações
             </button>
             <button
               onClick={() => navigate(`/orcamentos/${s.id}`)}
-              className="text-xs bg-indigo-50 text-indigo-700 border border-indigo-100 py-2 rounded-xl font-semibold inline-flex items-center justify-center gap-1"
+              className="text-xs bg-indigo-50 text-indigo-700 border border-indigo-100 py-2 rounded-xl font-semibold inline-flex items-center justify-center gap-1 transition-all active:scale-[0.96]"
             >
               <Receipt size={13} />
               Orçamentos
@@ -455,13 +455,13 @@ function Servicos() {
               <div className="flex gap-2">
                 <button
                   onClick={() => handleDeletar(s.id)}
-                  className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold"
+                  className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold transition-all active:scale-[0.96]"
                 >
                   Sim, excluir
                 </button>
                 <button
                   onClick={() => setConfirmandoId(null)}
-                  className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold"
+                  className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold transition-all active:scale-[0.96]"
                 >
                   Cancelar
                 </button>
@@ -471,7 +471,7 @@ function Servicos() {
             <div className="mt-2 flex justify-end px-1">
               <button
                 onClick={() => setConfirmandoId(s.id)}
-                className="text-xs text-red-400 font-medium"
+                className="text-xs text-red-400 font-medium transition-colors hover:text-red-600"
               >
                 Excluir
               </button>
