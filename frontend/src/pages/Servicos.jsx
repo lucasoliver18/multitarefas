@@ -49,8 +49,8 @@ function Servicos() {
   const [searchParams, setSearchParams] = useSearchParams()
   const hojeStr = hojeISO()
 
-  const [busca, setBusca] = useState('')
-  const [filtroStatus, setFiltroStatus] = useState('')
+  const [busca, setBusca] = useState(() => searchParams.get('busca') || '')
+  const [filtroStatus, setFiltroStatus] = useState(() => searchParams.get('status') || '')
   const [filtroPrioridade, setFiltroPrioridade] = useState('')
   const [filtroTag, setFiltroTag] = useState('')
   const [filtroPrazoDe, setFiltroPrazoDe] = useState('')

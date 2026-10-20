@@ -191,7 +191,11 @@ function Home() {
         ) : (
           <div className="flex flex-col gap-2">
             {proximos.map(s => (
-              <div key={s.id} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+              <div
+                key={s.id}
+                onClick={() => navigate(`/servicos?busca=${encodeURIComponent(s.titulo)}`)}
+                className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm cursor-pointer transition-transform active:scale-[0.98] hover:shadow-md"
+              >
                 <div className="flex items-center gap-3">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-800 truncate">{s.titulo}</p>
@@ -224,7 +228,11 @@ function Home() {
         ) : (
           <div className="flex flex-col gap-2">
             {emAndamento.map(s => (
-              <div key={s.id} className="bg-white rounded-2xl p-3 border border-slate-100 shadow-sm flex justify-between items-center">
+              <div
+                key={s.id}
+                onClick={() => navigate(`/servicos?busca=${encodeURIComponent(s.titulo)}`)}
+                className="bg-white rounded-2xl p-3 border border-slate-100 shadow-sm flex justify-between items-center cursor-pointer transition-transform active:scale-[0.98] hover:shadow-md"
+              >
                 <div className="flex-1 min-w-0 pr-2">
                   <p className="text-sm font-semibold text-slate-800 truncate">{s.titulo}</p>
                   <p className="text-xs text-slate-400 mt-0.5">{s.cliente}</p>
@@ -237,7 +245,7 @@ function Home() {
           </div>
         )}
 
-        <p onClick={() => navigate('/servicos')} className="text-xs text-[#2563eb] mt-2 cursor-pointer font-medium">
+        <p onClick={() => navigate('/servicos?status=em_andamento')} className="text-xs text-[#2563eb] mt-2 cursor-pointer font-medium">
           Ver todos →
         </p>
       </div>
