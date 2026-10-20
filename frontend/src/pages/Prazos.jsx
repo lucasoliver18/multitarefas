@@ -96,18 +96,30 @@ function Prazos() {
     return servicosFiltrados.filter(s => s.prazo === dateStr)
   }, [servicosFiltrados, diaSelecionado, ano, mes])
 
+  // Sempre retorna exatamente 6 semanas (42 células), para o calendário nunca
+  // mudar de altura entre meses. Os espaços antes do dia 1 e depois do
+  // último dia são preenchidos com dias do mês anterior/seguinte
+  // (mesAtual: false), exibidos em cinza claro só como referência visual.
   const semanas = useMemo(() => {
     const diasNoMes = new Date(ano, mes + 1, 0).getDate()
+    const diasMesAnterior = new Date(ano, mes, 0).getDate()
     const primeiroDia = new Date(ano, mes, 1).getDay()
-    const resultado = []
-    let semana = Array(primeiroDia).fill(null)
-    for (let dia = 1; dia <= diasNoMes; dia++) {
-      semana.push(dia)
-      if (semana.length === 7) { resultado.push(semana); semana = [] }
+
+    const celulas = []
+    for (let i = primeiroDia - 1; i >= 0; i--) {
+      celulas.push({ dia: diasMesAnterior - i, mesAtual: false })
     }
-    if (semana.length > 0) {
-      while (semana.length < 7) semana.push(null)
-      resultado.push(semana)
+    for (let dia = 1; dia <= diasNoMes; dia++) {
+      celulas.push({ dia, mesAtual: true })
+    }
+    let diaProximo = 1
+    while (celulas.length < 42) {
+      celulas.push({ dia: diaProximo++, mesAtual: false })
+    }
+
+    const resultado = []
+    for (let i = 0; i < 42; i += 7) {
+      resultado.push(celulas.slice(i, i + 7))
     }
     return resultado
   }, [ano, mes])
@@ -315,8 +327,17 @@ function Prazos() {
 
           {semanas.map((semana, i) => (
             <div key={i} className="grid grid-cols-7">
-              {semana.map((dia, j) => {
-                if (!dia) return <div key={j} className="h-9" />
+              {semana.map(({ dia, mesAtual }, j) => {
+                if (!mesAtual) {
+                  return (
+                    <div key={j} className="flex flex-col items-center py-0.5">
+                      <div className="w-7 h-7 flex items-center justify-center rounded-full text-xs text-slate-300">
+                        {dia}
+                      </div>
+                    </div>
+                  )
+                }
+
                 const servsDia = servicosDaData(dia)
                 const isSelected = dia === diaSelecionado
                 const isHoje = ano === hoje.getFullYear() && mes === hoje.getMonth() && dia === hoje.getDate()
