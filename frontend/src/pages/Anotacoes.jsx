@@ -4,6 +4,9 @@ import api from '../services/api'
 import Navbar from '../components/Navbar'
 import { useToast } from '../hooks/useToast'
 
+const LIMITE_CARACTERES = 500
+const LIMITE_AVISO = 450
+
 function Anotacoes() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -78,11 +81,15 @@ function Anotacoes() {
           <p className="text-xs font-semibold text-slate-600 mb-2">Nova anotação</p>
           <textarea
             value={novaAnotacao}
-            onChange={e => setNovaAnotacao(e.target.value)}
-            placeholder="Escreva sua anotação aqui..."
+            onChange={e => setNovaAnotacao(e.target.value.slice(0, LIMITE_CARACTERES))}
+            placeholder="Escreva sua anotação aqui... (máximo 500 caracteres)"
             rows={4}
+            maxLength={LIMITE_CARACTERES}
             className="w-full text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none resize-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           />
+          <p className={`text-xs text-right mt-1 ${novaAnotacao.length >= LIMITE_AVISO ? 'text-amber-600 font-semibold' : 'text-slate-400'}`}>
+            {novaAnotacao.length}/{LIMITE_CARACTERES}
+          </p>
           <button
             onClick={salvarAnotacao}
             disabled={salvando || !novaAnotacao.trim()}
@@ -111,7 +118,7 @@ function Anotacoes() {
                   Remover
                 </button>
               </div>
-              <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{a.conteudo}</p>
+              <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap break-words">{a.conteudo}</p>
             </div>
           ))
         )}

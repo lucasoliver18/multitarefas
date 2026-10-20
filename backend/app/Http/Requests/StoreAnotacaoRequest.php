@@ -11,7 +11,7 @@ class StoreAnotacaoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'conteudo' => 'required|string',
+            'conteudo' => 'required|string|max:500',
         ];
     }
 }
