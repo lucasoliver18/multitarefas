@@ -11,6 +11,7 @@ import Paginacao from '../components/Paginacao'
 import PainelFiltros from '../components/PainelFiltros'
 import BarraSelecao from '../components/BarraSelecao'
 import { useSelecaoMultipla } from '../hooks/useSelecaoMultipla'
+import { useEstadoPersistido } from '../hooks/useEstadoPersistido'
 import { excluirEmMassa } from '../utils/exclusaoEmMassa'
 import { UNIDADES, estaComEstoqueBaixo } from '../utils/materiais'
 import { sanitizarNumero } from '../utils/numeros'
@@ -23,18 +24,21 @@ function Materiais() {
   const toast = useToast()
   const { materiais, carregando, deletar, atualizarEstoque } = useMateriais()
   const [confirmandoId, setConfirmandoId] = useState(null)
-  const [busca, setBusca] = useState('')
-  const [visualizacao, setVisualizacao] = useState('lista')
   const { ativo: selecaoAtiva, selecionados, alternarModo, alternarItem, cancelar, quantidade } = useSelecaoMultipla()
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const [filtroUnidade, setFiltroUnidade] = useState('')
-  const [filtroPrecoMin, setFiltroPrecoMin] = useState('')
-  const [filtroPrecoMax, setFiltroPrecoMax] = useState('')
-  const [filtroQtdMin, setFiltroQtdMin] = useState('')
-  const [filtroQtdMax, setFiltroQtdMax] = useState('')
-  const [filtroForaEstoque, setFiltroForaEstoque] = useState(false)
-  const [filtroEstoqueBaixo, setFiltroEstoqueBaixo] = useState(() => searchParams.get('estoqueBaixo') === '1')
+  // Visualização e filtros ficam salvos entre visitas à tela.
+  const [busca, setBusca] = useEstadoPersistido('materiais:busca', '')
+  const [visualizacao, setVisualizacao] = useEstadoPersistido('materiais:visualizacao', 'lista')
+  const [filtroUnidade, setFiltroUnidade] = useEstadoPersistido('materiais:filtroUnidade', '')
+  const [filtroPrecoMin, setFiltroPrecoMin] = useEstadoPersistido('materiais:filtroPrecoMin', '')
+  const [filtroPrecoMax, setFiltroPrecoMax] = useEstadoPersistido('materiais:filtroPrecoMax', '')
+  const [filtroQtdMin, setFiltroQtdMin] = useEstadoPersistido('materiais:filtroQtdMin', '')
+  const [filtroQtdMax, setFiltroQtdMax] = useEstadoPersistido('materiais:filtroQtdMax', '')
+  const [filtroForaEstoque, setFiltroForaEstoque] = useEstadoPersistido('materiais:filtroForaEstoque', false)
+  const [filtroEstoqueBaixo, setFiltroEstoqueBaixo] = useEstadoPersistido(
+    'materiais:filtroEstoqueBaixo', false, searchParams.get('estoqueBaixo') === '1' ? true : undefined
+  )
 
   const quantidadeFiltrosAtivos = [filtroUnidade, filtroPrecoMin, filtroPrecoMax, filtroQtdMin, filtroQtdMax]
     .filter(Boolean).length

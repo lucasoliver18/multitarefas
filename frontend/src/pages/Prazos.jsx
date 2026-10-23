@@ -5,6 +5,7 @@ import Navbar from '../components/Navbar'
 import StatusBadge from '../components/StatusBadge'
 import { useToast } from '../hooks/useToast'
 import { useServicos } from '../hooks/useServicos'
+import { useEstadoPersistido } from '../hooks/useEstadoPersistido'
 import {
   TAG_LABEL,
   STATUS_OPCOES,
@@ -34,9 +35,10 @@ function Prazos() {
   const [ano, setAno] = useState(hoje.getFullYear())
   const [mes, setMes] = useState(hoje.getMonth())
   const [diaSelecionado, setDiaSelecionado] = useState(hoje.getDate())
-  const [filtroTags, setFiltroTags] = useState([])
-  const [filtroPrioridade, setFiltroPrioridade] = useState(null)
-  const [filtroStatus, setFiltroStatus] = useState(null)
+  // Filtros ficam salvos entre visitas à tela.
+  const [filtroTags, setFiltroTags] = useEstadoPersistido('prazos:filtroTags', [])
+  const [filtroPrioridade, setFiltroPrioridade] = useEstadoPersistido('prazos:filtroPrioridade', null)
+  const [filtroStatus, setFiltroStatus] = useEstadoPersistido('prazos:filtroStatus', null)
   const [menuStatus, setMenuStatus] = useState(null)
 
   const mudarStatus = async (id, novoStatus) => {

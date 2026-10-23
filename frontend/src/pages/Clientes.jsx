@@ -13,6 +13,7 @@ import { usePaginacao } from '../hooks/usePaginacao'
 import Paginacao from '../components/Paginacao'
 import BarraSelecao from '../components/BarraSelecao'
 import { useSelecaoMultipla } from '../hooks/useSelecaoMultipla'
+import { useEstadoPersistido } from '../hooks/useEstadoPersistido'
 import { excluirEmMassa } from '../utils/exclusaoEmMassa'
 import { TAG_LABEL } from '../utils/status'
 
@@ -23,8 +24,9 @@ function Clientes() {
   const navigate = useNavigate()
   const toast = useToast()
   const { clientes, carregando, buscar, deletar, transferirServicos } = useClientes()
-  const [busca, setBusca] = useState('')
-  const [visualizacao, setVisualizacao] = useState('lista')
+  // Visualização e filtros ficam salvos entre visitas à tela.
+  const [busca, setBusca] = useEstadoPersistido('clientes:busca', '')
+  const [visualizacao, setVisualizacao] = useEstadoPersistido('clientes:visualizacao', 'lista')
   const [expandido, setExpandido] = useState(null)
   const [servicosCliente, setServicosCliente] = useState({})
   const [mostrarTodosServicos, setMostrarTodosServicos] = useState({})
@@ -33,8 +35,8 @@ function Clientes() {
   const [transferindoCliente, setTransferindoCliente] = useState(null)
   const [novoClienteId, setNovoClienteId] = useState('')
   const [novoClienteTexto, setNovoClienteTexto] = useState('')
-  const [filtroTipoPessoa, setFiltroTipoPessoa] = useState('')
-  const [filtroServicos, setFiltroServicos] = useState('')
+  const [filtroTipoPessoa, setFiltroTipoPessoa] = useEstadoPersistido('clientes:filtroTipoPessoa', '')
+  const [filtroServicos, setFiltroServicos] = useEstadoPersistido('clientes:filtroServicos', '')
   const { ativo: selecaoAtiva, selecionados, alternarModo, alternarItem, cancelar, quantidade } = useSelecaoMultipla()
 
   const quantidadeFiltrosAtivos = [filtroTipoPessoa, filtroServicos].filter(Boolean).length
