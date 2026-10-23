@@ -13,6 +13,7 @@ import Paginacao from '../components/Paginacao'
 import PainelFiltros from '../components/PainelFiltros'
 import BarraSelecao from '../components/BarraSelecao'
 import { useSelecaoMultipla } from '../hooks/useSelecaoMultipla'
+import { useEstadoPersistido } from '../hooks/useEstadoPersistido'
 import { excluirEmMassa } from '../utils/exclusaoEmMassa'
 import { hojeISO, estaVencido } from '../utils/prazos'
 import { mensagemErro } from '../utils/erros'
@@ -46,22 +47,23 @@ function Servicos() {
   const [menuStatus, setMenuStatus] = useState(null)
   const [confirmandoId, setConfirmandoId] = useState(null)
   const { ativo: selecaoAtiva, selecionados, alternarModo, alternarItem, cancelar, quantidade } = useSelecaoMultipla()
-  // Sempre inicia em Kanban ao entrar na tela (não persiste a última escolhida)
-  const [visualizacao, setVisualizacao] = useState('kanban')
   const [searchParams, setSearchParams] = useSearchParams()
   const hojeStr = hojeISO()
 
-  const [busca, setBusca] = useState(() => searchParams.get('busca') || '')
-  const [filtroStatus, setFiltroStatus] = useState(() => searchParams.get('status') || '')
-  const [filtroPrioridade, setFiltroPrioridade] = useState('')
-  const [filtroTag, setFiltroTag] = useState('')
-  const [filtroPrazoDe, setFiltroPrazoDe] = useState('')
-  const [filtroPrazoAte, setFiltroPrazoAte] = useState('')
-  const [filtroSituacaoPrazo, setFiltroSituacaoPrazo] = useState(() =>
-    searchParams.get('vencidos') === '1' ? 'atrasado' : ''
+  // Visualização e filtros ficam salvos entre visitas à tela (ex: editar um
+  // serviço e voltar não deve resetar o que o usuário tinha configurado).
+  const [visualizacao, setVisualizacao] = useEstadoPersistido('servicos:visualizacao', 'kanban')
+  const [busca, setBusca] = useEstadoPersistido('servicos:busca', '', searchParams.get('busca'))
+  const [filtroStatus, setFiltroStatus] = useEstadoPersistido('servicos:filtroStatus', '', searchParams.get('status'))
+  const [filtroPrioridade, setFiltroPrioridade] = useEstadoPersistido('servicos:filtroPrioridade', '')
+  const [filtroTag, setFiltroTag] = useEstadoPersistido('servicos:filtroTag', '')
+  const [filtroPrazoDe, setFiltroPrazoDe] = useEstadoPersistido('servicos:filtroPrazoDe', '')
+  const [filtroPrazoAte, setFiltroPrazoAte] = useEstadoPersistido('servicos:filtroPrazoAte', '')
+  const [filtroSituacaoPrazo, setFiltroSituacaoPrazo] = useEstadoPersistido(
+    'servicos:filtroSituacaoPrazo', '', searchParams.get('vencidos') === '1' ? 'atrasado' : undefined
   )
-  const [filtroPago, setFiltroPago] = useState('')
-  const [filtroOrcamento, setFiltroOrcamento] = useState('')
+  const [filtroPago, setFiltroPago] = useEstadoPersistido('servicos:filtroPago', '')
+  const [filtroOrcamento, setFiltroOrcamento] = useEstadoPersistido('servicos:filtroOrcamento', '')
   const [limiteColuna, setLimiteColuna] = useState({})
 
   // Reseta os limites de "carregar mais" do quadro sempre que os filtros mudam,
@@ -310,7 +312,15 @@ function Servicos() {
         </p>
       )}
       {!selecaoAtiva && (
-        <div className="flex justify-end mt-1.5 pt-1.5 border-t border-slate-100" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-end gap-1 mt-1.5 pt-1.5 border-t border-slate-100" onClick={e => e.stopPropagation()}>
+          <button
+            onClick={() => navigate(`/servicos/${s.id}/anotacoes`)}
+            aria-label="Anotações"
+            className="inline-flex items-center gap-1 text-xs text-amber-700 font-semibold px-1.5 py-0.5 rounded-lg hover:bg-amber-50 active:scale-95 transition-all"
+          >
+            <NotebookPen size={12} />
+            Anotações
+          </button>
           <button
             onClick={() => navigate(`/orcamentos/${s.id}`)}
             aria-label="Orçamentos"
@@ -352,13 +362,28 @@ function Servicos() {
           </span>
         )
       )}
-      {!selecaoAtiva && s.pago && (
-        <ICONE_PAGO size={13} className="text-green-600 shrink-0" aria-label="Pago" />
+      {!selecaoAtiva && (
+        <button
+          onClick={e => { e.stopPropagation(); handleMudarPago(s.id, !s.pago) }}
+          aria-label={s.pago ? 'Marcar como não pago' : 'Marcar como pago'}
+          className="p-1 shrink-0 rounded-lg hover:bg-slate-100 active:scale-90 transition-all"
+        >
+          <ICONE_PAGO size={14} className={s.pago ? 'text-green-600' : 'text-slate-300'} />
+        </button>
       )}
       {!selecaoAtiva && !s.tem_orcamento && (
         <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 shrink-0">
           Sem orç.
         </span>
+      )}
+      {!selecaoAtiva && (
+        <button
+          onClick={e => { e.stopPropagation(); navigate(`/servicos/${s.id}/anotacoes`) }}
+          aria-label="Anotações"
+          className="p-1 text-amber-700 shrink-0 rounded-lg hover:bg-amber-50 active:scale-90 transition-all"
+        >
+          <NotebookPen size={14} />
+        </button>
       )}
       {!selecaoAtiva && (
         <button
