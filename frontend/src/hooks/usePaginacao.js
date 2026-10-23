@@ -1,8 +1,14 @@
 import { useMemo, useState } from 'react'
+import { useEstadoPersistido } from './useEstadoPersistido'
+
+// Chave única compartilhada por todas as telas com paginação: a preferência
+// de "quantos itens por página" é do usuário, não da tela — se ele prefere
+// ver 50 por vez, isso vale em Serviços, Materiais, Clientes e Orçamentos.
+const CHAVE_TAMANHO = 'paginacao:tamanhoPagina'
 
 export function usePaginacao(itens, tamanhoInicial = 10) {
   const [pagina, setPagina] = useState(1)
-  const [tamanhoPagina, setTamanhoPagina] = useState(tamanhoInicial)
+  const [tamanhoPagina, setTamanhoPaginaPersistido] = useEstadoPersistido(CHAVE_TAMANHO, tamanhoInicial)
   const [totalPaginasAnterior, setTotalPaginasAnterior] = useState(1)
 
   const totalPaginas = Math.max(1, Math.ceil(itens.length / tamanhoPagina))
@@ -18,7 +24,7 @@ export function usePaginacao(itens, tamanhoInicial = 10) {
   }, [itens, pagina, tamanhoPagina])
 
   const mudarTamanhoPagina = (novoTamanho) => {
-    setTamanhoPagina(novoTamanho)
+    setTamanhoPaginaPersistido(novoTamanho)
     setPagina(1)
   }
 
