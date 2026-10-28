@@ -18,8 +18,7 @@ export const STATUS_ICONE = {
   finalizado:   CheckCircle2,
 }
 
-// Ordem da esteira de status: um serviço só pode avançar (pendente -> em
-// andamento -> finalizado), nunca retroceder.
+// Esteira de status: um serviço só avança, nunca retrocede.
 export const PESO_STATUS = { pendente: 0, em_andamento: 1, finalizado: 2 }
 
 export const statusSeguintes = (statusAtual) =>

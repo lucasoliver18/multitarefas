@@ -2,13 +2,17 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\NormalizaCnpj;
 use App\Rules\CnpjValido;
 use App\Rules\CpfValido;
+use App\Support\LimitesBanco;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreClienteRequest extends FormRequest
 {
+    use NormalizaCnpj;
+
     public function authorize(): bool { return true; }
 
     public function rules(): array
@@ -30,7 +34,7 @@ class StoreClienteRequest extends FormRequest
                 new CnpjValido,
                 Rule::unique('clientes', 'cnpj')->where(fn ($query) => $query->whereNull('deleted_at')),
             ],
-            'observacoes' => 'nullable|string',
+            'observacoes' => 'nullable|string|max:' . LimitesBanco::TEXTO_MAX,
         ];
     }
 }

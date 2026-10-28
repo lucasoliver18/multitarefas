@@ -1,10 +1,6 @@
 import { ChevronDown } from 'lucide-react'
 
-/**
- * Wrapper fino sobre <select> nativo: remove a seta do navegador (que fica
- * colada no texto/borda em vários SOs) e desenha uma seta consistente com o
- * resto dos ícones do sistema.
- */
+// Substitui a seta nativa do <select>, que fica colada no texto em vários SOs.
 function Select({ className = '', children, ...props }) {
   return (
     <div className="relative">

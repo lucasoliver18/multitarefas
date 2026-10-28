@@ -1,21 +1,30 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../services/api'
 
-export function useServicos() {
+// `params` são filtros aplicados no servidor (ex.: { cliente_id }, { status,
+// prazo_de, prazo_ate }); valores vazios são ignorados.
+export function useServicos({ params } = {}) {
   const [servicos, setServicos] = useState([])
   const [carregando, setCarregando] = useState(true)
 
+  const paramsLimpos = Object.fromEntries(
+    Object.entries(params || {}).filter(([, v]) => v !== undefined && v !== null && v !== '')
+  )
+  const chaveParams = JSON.stringify(paramsLimpos)
+
+  // Só a primeira carga mostra "Carregando...": as recargas depois de uma
+  // ação atualizam a lista em silêncio, sem trocá-la por um aviso (o "piscar").
   const buscar = useCallback(async () => {
-    setCarregando(true)
+    const filtros = JSON.parse(chaveParams)
     try {
-      const res = await api.get('/servicos')
+      const res = await api.get('/servicos', { params: Object.keys(filtros).length ? filtros : undefined })
       setServicos(Array.isArray(res.data) ? res.data : [])
     } catch {
-      setServicos([])
+      // Mantém a lista atual se uma recarga falhar.
     } finally {
       setCarregando(false)
     }
-  }, [])
+  }, [chaveParams])
 
   useEffect(() => { buscar() }, [buscar])
 

@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { Trash2 } from 'lucide-react'
 import api from '../services/api'
-import Navbar from '../components/Navbar'
+import Button from '../components/Button'
+import { Pagina, CabecalhoPagina, Carregando } from '../components/Pagina'
 import { useToast } from '../hooks/useToast'
+import { mensagemErro } from '../utils/erros'
 
 const LIMITE_CARACTERES = 500
 const LIMITE_AVISO = 450
@@ -24,9 +27,11 @@ function Anotacoes() {
     ]).then(([resServico, resAnotacoes]) => {
       setServico(resServico.data)
       setAnotacoes(Array.isArray(resAnotacoes.data) ? resAnotacoes.data : [])
-    }).catch(() => {
-      toast.erro('Erro ao carregar anotações.')
+    }).catch(e => {
+      toast.erro(mensagemErro(e, 'Erro ao carregar anotações.'))
+      navigate('/servicos')
     }).finally(() => setCarregando(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   const salvarAnotacao = async () => {
@@ -36,9 +41,9 @@ function Anotacoes() {
       const res = await api.post(`/servicos/${id}/anotacoes`, { conteudo: novaAnotacao.trim() })
       setAnotacoes(prev => [res.data, ...prev])
       setNovaAnotacao('')
-      toast.sucesso('Anotação salva!')
-    } catch {
-      toast.erro('Erro ao salvar anotação.')
+      toast.sucesso('Anotação salva')
+    } catch (e) {
+      toast.erro(mensagemErro(e, 'Erro ao salvar anotação.'))
     } finally {
       setSalvando(false)
     }
@@ -49,9 +54,9 @@ function Anotacoes() {
       try {
         await api.delete(`/anotacoes/${anotacaoId}`)
         setAnotacoes(prev => prev.filter(a => a.id !== anotacaoId))
-        toast.sucesso('Anotação removida.')
-      } catch {
-        toast.erro('Erro ao remover anotação.')
+        toast.sucesso('Anotação removida')
+      } catch (e) {
+        toast.erro(mensagemErro(e, 'Erro ao remover anotação.'))
       }
     })
   }
@@ -61,71 +66,69 @@ function Anotacoes() {
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
   }
 
-  if (carregando) {
-    return <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-400 text-sm">Carregando...</div>
-  }
+  if (carregando) return <Carregando />
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col pb-24">
+    <Pagina largura="max-w-6xl">
+      <CabecalhoPagina
+        titulo="Anotações"
+        subtitulo={servico ? [servico.titulo, servico.cliente].filter(Boolean).join(' · ') : null}
+        voltar={{ label: 'Voltar', onClick: () => navigate(-1) }}
+      />
 
-      <div className="page-header bg-[#1e3a5f] px-6 pb-5">
-        <button onClick={() => navigate(-1)} className="text-xs text-slate-300 mb-3 block hover:text-white active:scale-95 transition-all">← Voltar</button>
-        <h1 className="text-lg font-bold text-white">Anotações</h1>
-        {servico && (
-          <p className="text-xs text-slate-300 mt-0.5 truncate">{servico.titulo}</p>
-        )}
-      </div>
-
-      <div className="px-6 pt-5 mb-4">
-        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
-          <p className="text-xs font-semibold text-slate-600 mb-2">Nova anotação</p>
+      <div className="grid grid-cols-[22rem_minmax(0,1fr)] gap-6 items-start">
+        <div className="sticky top-8 bg-white rounded-2xl p-6 border border-slate-200 flex flex-col">
+          <p className="text-base font-bold text-slate-800 mb-3">Nova anotação</p>
           <textarea
             value={novaAnotacao}
             onChange={e => setNovaAnotacao(e.target.value.slice(0, LIMITE_CARACTERES))}
-            placeholder="Escreva sua anotação aqui... (máximo 500 caracteres)"
-            rows={4}
+            onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) salvarAnotacao() }}
+            placeholder="Escreva sua anotação aqui..."
+            rows={8}
             maxLength={LIMITE_CARACTERES}
-            className="w-full text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none resize-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            className="w-full text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none resize-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           />
-          <p className={`text-xs text-right mt-1 ${novaAnotacao.length >= LIMITE_AVISO ? 'text-amber-600 font-semibold' : 'text-slate-400'}`}>
-            {novaAnotacao.length}/{LIMITE_CARACTERES}
-          </p>
-          <button
+          <div className="flex justify-between items-center mt-1.5">
+            <span className="text-xs text-slate-400">Ctrl + Enter para salvar</span>
+            <span className={`text-xs ${novaAnotacao.length >= LIMITE_AVISO ? 'text-amber-600 font-semibold' : 'text-slate-400'}`}>
+              {novaAnotacao.length}/{LIMITE_CARACTERES}
+            </span>
+          </div>
+          <Button
             onClick={salvarAnotacao}
             disabled={salvando || !novaAnotacao.trim()}
-            className="mt-3 w-full bg-[#2563eb] text-white text-sm font-semibold py-2.5 rounded-xl transition-all hover:bg-[#1e3a5f] active:scale-[0.97] disabled:opacity-50 disabled:active:scale-100"
+            className="mt-4 text-sm font-semibold py-2.5 rounded-xl"
           >
-            {salvando ? 'Salvando...' : '+ Salvar anotação'}
-          </button>
+            {salvando ? 'Salvando...' : 'Salvar anotação'}
+          </Button>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          {anotacoes.length === 0 ? (
+            <div className="text-center text-slate-400 text-sm py-16 bg-white rounded-2xl border border-dashed border-slate-200">
+              Nenhuma anotação ainda. Adicione a primeira ao lado!
+            </div>
+          ) : (
+            anotacoes.map(a => (
+              <div key={a.id} className="bg-white rounded-2xl p-5 border border-slate-200 group">
+                <div className="flex justify-between items-center gap-2 mb-2">
+                  <span className="text-xs font-medium text-slate-400">{formatarData(a.created_at)}</span>
+                  <button
+                    onClick={() => deletarAnotacao(a.id)}
+                    aria-label="Remover anotação"
+                    title="Remover"
+                    className="p-1.5 text-red-400 rounded-lg shrink-0 hover:text-red-600 hover:bg-red-50 active:scale-90 transition-all"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap break-words">{a.conteudo}</p>
+              </div>
+            ))
+          )}
         </div>
       </div>
-
-      <div className="px-6 flex flex-col gap-3">
-        {anotacoes.length === 0 ? (
-          <div className="text-center text-slate-400 text-sm py-8 bg-white rounded-2xl border border-slate-100">
-            Nenhuma anotação ainda.<br />
-            <span className="text-xs">Adicione a primeira acima!</span>
-          </div>
-        ) : (
-          anotacoes.map(a => (
-            <div key={a.id} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
-              <div className="flex justify-between items-start gap-2 mb-2">
-                <span className="text-xs text-slate-400">{formatarData(a.created_at)}</span>
-                <button
-                  onClick={() => deletarAnotacao(a.id)}
-                  className="text-xs text-red-400 font-semibold shrink-0 hover:text-red-600 active:scale-95 transition-all"
-                >
-                  Remover
-                </button>
-              </div>
-              <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap break-words">{a.conteudo}</p>
-            </div>
-          ))
-        )}
-      </div>
-
-      <Navbar />
-    </div>
+    </Pagina>
   )
 }
 

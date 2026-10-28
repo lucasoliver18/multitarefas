@@ -14,13 +14,23 @@ class Material extends Model
 
     protected $fillable = [
         'nome',
-        'marca',
+        'marca_id',
         'descricao',
+        'tags',
         'unidade_medida',
         'preco_unitario',
         'quantidade_estoque',
         'quantidade_minima',
     ];
+
+    protected $casts = [
+        'tags' => 'array',
+    ];
+
+    public function marca()
+    {
+        return $this->belongsTo(Marca::class);
+    }
 
     public function orcamentos()
     {

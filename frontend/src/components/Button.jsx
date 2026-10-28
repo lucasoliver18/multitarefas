@@ -1,7 +1,4 @@
-// Botão padrão do sistema: cada variante só define cor, o tamanho/raio/fonte
-// fica a cargo de quem usa via className (evita conflito de utilitários do
-// Tailwind quando dois definem a mesma propriedade). O feedback de "isto é
-// clicável" (active:scale + transição) é sempre o mesmo em qualquer variante.
+// Variantes só definem cor; tamanho/raio/fonte vêm do className de quem usa.
 const VARIANTES = {
   primary:   'bg-[#2563eb] hover:bg-[#1e3a5f] text-white',
   secondary: 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50',

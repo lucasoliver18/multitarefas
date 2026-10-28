@@ -1,24 +1,19 @@
 import { useState } from 'react'
 
-/**
- * Estado que se comporta como useState, mas persiste em localStorage sob
- * `chave` — usado para o sistema lembrar a última visualização/filtro do
- * usuário em cada tela (kanban x lista, lista x grade, filtros ativos, etc.)
- * e não forçar o usuário a reconfigurar tudo toda vez que volta à tela.
- *
- * `valorUrl`, quando presente (ex: um parâmetro lido da URL de um link
- * profundo como `/servicos?status=em_andamento`), tem prioridade sobre o
- * valor salvo — uma navegação explícita não deve ser ofuscada pelo último
- * estado lembrado.
- */
-export function useEstadoPersistido(chave, valorPadrao, valorUrl) {
+// useState persistido em localStorage. `valorUrl` (ex.: parâmetro de um link)
+// tem prioridade sobre o valor salvo. Com `ignorarSalvo`, começa do padrão
+// (ou do valorUrl) mesmo havendo valor salvo — usado quando se chega por um
+// link que define os filtros. Com `chave` nula, funciona como um useState
+// comum (sem salvar nada).
+export function useEstadoPersistido(chave, valorPadrao, valorUrl, { ignorarSalvo = false } = {}) {
   const [valor, setValor] = useState(() => {
     if (valorUrl !== undefined && valorUrl !== null && valorUrl !== '') return valorUrl
+    if (!chave || ignorarSalvo) return valorPadrao
     try {
       const salvo = localStorage.getItem(chave)
       if (salvo !== null) return JSON.parse(salvo)
     } catch {
-      // localStorage indisponível (ex: modo privado) — segue sem persistir
+      // localStorage indisponível (ex: modo privado)
     }
     return valorPadrao
   })
@@ -26,10 +21,12 @@ export function useEstadoPersistido(chave, valorPadrao, valorUrl) {
   const atualizar = (novoValor) => {
     setValor(prev => {
       const resolvido = typeof novoValor === 'function' ? novoValor(prev) : novoValor
-      try {
-        localStorage.setItem(chave, JSON.stringify(resolvido))
-      } catch {
-        // localStorage indisponível — segue sem persistir
+      if (chave) {
+        try {
+          localStorage.setItem(chave, JSON.stringify(resolvido))
+        } catch {
+          // localStorage indisponível
+        }
       }
       return resolvido
     })

@@ -168,4 +168,43 @@ class ServicoTest extends TestCase
         $this->assertSoftDeleted('servicos', ['id' => $servico->id]);
         $this->getJson('/api/servicos')->assertJsonMissing(['id' => $servico->id]);
     }
+
+    public function test_lista_apenas_servicos_do_cliente_informado(): void
+    {
+        $cliente = Cliente::factory()->create();
+        Servico::factory()->count(2)->create(['cliente_id' => $cliente->id, 'cliente' => $cliente->nome]);
+        Servico::factory()->create();
+
+        $res = $this->getJson("/api/servicos?cliente_id={$cliente->id}")->assertOk()->json();
+
+        $this->assertCount(2, $res);
+        $this->assertEquals([$cliente->id], array_values(array_unique(array_column($res, 'cliente_id'))));
+    }
+
+    public function test_filtra_por_status_e_periodo_de_prazo(): void
+    {
+        Servico::factory()->create(['titulo' => 'Dentro', 'status' => 'pendente', 'prazo' => '2026-11-10']);
+        Servico::factory()->create(['titulo' => 'Fora do periodo', 'status' => 'pendente', 'prazo' => '2027-01-10']);
+        Servico::factory()->create(['titulo' => 'Sem prazo', 'status' => 'pendente', 'prazo' => null]);
+        Servico::factory()->create(['titulo' => 'Outro status', 'status' => 'finalizado', 'prazo' => '2026-11-10']);
+
+        $titulos = collect($this->getJson('/api/servicos?status=pendente&prazo_de=2026-10-26&prazo_ate=2026-11-26')
+            ->assertOk()->json())->pluck('titulo')->all();
+
+        $this->assertEquals(['Dentro'], $titulos);
+    }
+
+    public function test_periodo_de_prazo_invertido_e_barrado_na_validacao(): void
+    {
+        $this->getJson('/api/servicos?prazo_de=2026-12-01&prazo_ate=2026-11-01')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['prazo_ate']);
+    }
+
+    public function test_cliente_id_invalido_e_barrado_na_validacao(): void
+    {
+        $this->getJson('/api/servicos?cliente_id=abc')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['cliente_id']);
+    }
 }

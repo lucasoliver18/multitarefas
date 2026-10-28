@@ -19,13 +19,14 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const token = localStorage.getItem(CHAVE_TOKEN)
-    if (!token) return
 
-    definirTokenAuth(token)
-    api.get('/auth/me')
-      .then(res => setUser(res.data))
-      .catch(() => sair())
-      .finally(() => setCarregando(false))
+    if (token) {
+      definirTokenAuth(token)
+      api.get('/auth/me')
+        .then(res => setUser(res.data))
+        .catch(() => sair())
+        .finally(() => setCarregando(false))
+    }
   }, [sair])
 
   useEffect(() => {
@@ -33,14 +34,14 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener('auth:unauthorized', sair)
   }, [sair])
 
-  const entrarComGoogle = async (credential) => {
+  const entrar = async (email, password) => {
     try {
-      const res = await api.post('/auth/google', { credential })
+      const res = await api.post('/auth/login', { email, password })
       localStorage.setItem(CHAVE_TOKEN, res.data.token)
       definirTokenAuth(res.data.token)
       setUser(res.data.user)
     } catch (e) {
-      toast.erro(mensagemErro(e, 'Erro ao entrar com o Google.'))
+      toast.erro(mensagemErro(e, 'Erro ao entrar.'))
     }
   }
 
@@ -50,7 +51,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, carregando, entrarComGoogle, logout }}>
+    <AuthContext.Provider value={{ user, carregando, entrar, logout }}>
       {children}
     </AuthContext.Provider>
   )

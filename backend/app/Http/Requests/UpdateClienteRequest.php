@@ -2,13 +2,17 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\NormalizaCnpj;
 use App\Rules\CnpjValido;
 use App\Rules\CpfValido;
+use App\Support\LimitesBanco;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class UpdateClienteRequest extends FormRequest
 {
+    use NormalizaCnpj;
+
     public function authorize(): bool { return true; }
 
     public function rules(): array
@@ -16,8 +20,8 @@ class UpdateClienteRequest extends FormRequest
         $clienteId = $this->route('cliente')?->id;
 
         return [
-            'nome'        => 'sometimes|string|max:255',
-            'tipo_pessoa' => 'sometimes|in:fisica,juridica',
+            'nome'        => 'sometimes|required|string|max:255',
+            'tipo_pessoa' => 'sometimes|required|in:fisica,juridica',
             'telefone'    => ['nullable', 'string', 'regex:/^\(\d{2}\)\s\d{4,5}-\d{4}$/'],
             'email'       => 'nullable|email|max:255',
             'cpf'         => [
@@ -32,7 +36,7 @@ class UpdateClienteRequest extends FormRequest
                 new CnpjValido,
                 Rule::unique('clientes', 'cnpj')->ignore($clienteId)->where(fn ($query) => $query->whereNull('deleted_at')),
             ],
-            'observacoes' => 'nullable|string',
+            'observacoes' => 'nullable|string|max:' . LimitesBanco::TEXTO_MAX,
         ];
     }
 }

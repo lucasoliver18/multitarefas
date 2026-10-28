@@ -157,7 +157,28 @@ return [
     'uuid' => 'O campo :attribute deve ser um UUID válido.',
 
     'custom' => [
-        //
+        'cpf' => [
+            'required_if' => 'Informe o CPF para pessoa física.',
+        ],
+        'cnpj' => [
+            'required_if' => 'Informe o CNPJ para pessoa jurídica.',
+        ],
+        'prazo' => [
+            'date_format' => 'Informe um prazo com data válida.',
+            'after_or_equal' => 'Informe um prazo com data válida.',
+            'before_or_equal' => 'Informe um prazo com data válida.',
+        ],
+        'materiais.*.id' => [
+            'exists' => 'Material não encontrado. Remova-o do orçamento.',
+            'distinct' => 'Material repetido no orçamento.',
+        ],
+        'tags.*' => [
+            'in' => 'Selecione apenas tags válidas.',
+            'distinct' => 'Tag repetida.',
+        ],
+        'novo_cliente_id' => [
+            'not_in' => 'Escolha outro cliente.',
+        ],
     ],
 
     'attributes' => [
@@ -182,11 +203,25 @@ return [
         'unidade_medida' => 'unidade de medida',
         'preco_unitario' => 'preço unitário',
         'margem_lucro' => 'margem de lucro',
+        'tipo_margem' => 'tipo de margem',
+        'marca_id' => 'marca',
+        'prazo_de' => 'prazo inicial',
+        'prazo_ate' => 'prazo final',
         'materiais' => 'materiais',
         'texto' => 'texto',
         'busca' => 'busca',
         'password' => 'senha',
         'email_verified_at' => 'e-mail verificado em',
+        'marca' => 'marca',
+        'tags' => 'tags',
+        'tags.*' => 'tag',
+        'pago' => 'pagamento',
+        'quantidade_minima' => 'estoque mínimo',
+        'conteudo' => 'anotação',
+        'novo_cliente_id' => 'novo cliente',
+        'por_pagina' => 'itens por página',
+        'materiais.*.id' => 'material',
+        'materiais.*.quantidade' => 'quantidade do material',
     ],
 
 ];

@@ -4,6 +4,14 @@ use App\Models\User;
 
 return [
 
+    // Único usuário com acesso ao sistema, criado/atualizado pelo
+    // DatabaseSeeder (php artisan db:seed). Não existe cadastro pela API.
+    'admin' => [
+        'name' => env('ADMIN_NAME'),
+        'email' => env('ADMIN_EMAIL'),
+        'password' => env('ADMIN_PASSWORD'),
+    ],
+
     'defaults' => [
         'guard' => env('AUTH_GUARD', 'web'),
         'passwords' => env('AUTH_PASSWORD_BROKER', 'users'),

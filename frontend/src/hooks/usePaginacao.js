@@ -1,9 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useEstadoPersistido } from './useEstadoPersistido'
 
-// Chave única compartilhada por todas as telas com paginação: a preferência
-// de "quantos itens por página" é do usuário, não da tela — se ele prefere
-// ver 50 por vez, isso vale em Serviços, Materiais, Clientes e Orçamentos.
+// Chave global: a preferência de itens por página vale para todas as telas.
 const CHAVE_TAMANHO = 'paginacao:tamanhoPagina'
 
 export function usePaginacao(itens, tamanhoInicial = 10) {

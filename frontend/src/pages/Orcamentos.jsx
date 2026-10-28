@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Clock, CheckCircle2, XCircle } from 'lucide-react'
+import { Clock, CheckCircle2, XCircle, Plus, Pencil, Trash2 } from 'lucide-react'
 import api from '../services/api'
-import Navbar from '../components/Navbar'
+import Button from '../components/Button'
+import { Pagina, CabecalhoPagina, Carregando, Vazio } from '../components/Pagina'
 import { useToast } from '../hooks/useToast'
 import { usePaginacao } from '../hooks/usePaginacao'
 import Paginacao from '../components/Paginacao'
+import { mensagemErro } from '../utils/erros'
+import { TAG_LABEL } from '../utils/status'
+import { formatarPreco, calcularValorFinal, descreverMargem } from '../utils/orcamentos'
 
 const badgeOrcStatus = (s) => ({
   aprovado:  'bg-[#dcfce7] text-[#166534]',
@@ -14,6 +18,16 @@ const badgeOrcStatus = (s) => ({
 }[s] || 'bg-[#fef9c3] text-[#854d0e]')
 
 const labelStatus = { pendente: 'Pendente', aprovado: 'Aprovado', reprovado: 'Reprovado' }
+
+// Texto da confirmação de cada ação. Excluir um aprovado avisa que ele está
+// aprovado e que o estoque debitado volta.
+const CONFIRMACOES = {
+  aprovar: () => 'Aprovar? O estoque será debitado.',
+  reprovar: () => 'Reprovar este orçamento?',
+  excluir: (o) => o.status === 'aprovado'
+    ? 'Orçamento aprovado. Excluir mesmo assim? O estoque será devolvido.'
+    : 'Excluir este orçamento?',
+}
 const iconeOrcStatus = { pendente: Clock, aprovado: CheckCircle2, reprovado: XCircle }
 
 function Orcamentos() {
@@ -33,7 +47,11 @@ function Orcamentos() {
     ]).then(([resOrc, resSrv]) => {
       setOrcamentos(resOrc.data)
       setServico(resSrv.data)
+    }).catch(e => {
+      toast.erro(mensagemErro(e, 'Erro ao carregar orçamentos.'))
+      navigate('/servicos')
     }).finally(() => setCarregando(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [servicoId])
 
   const recarregarOrcamentos = async () => {
@@ -46,21 +64,21 @@ function Orcamentos() {
     try {
       await api.patch(`/orcamentos/${id}/reprovar`)
       await recarregarOrcamentos()
-      toast.sucesso('Orçamento reprovado.')
+      toast.sucesso('Orçamento reprovado')
     } catch (e) {
-      toast.erro(e.response?.data?.message || 'Erro ao reprovar orçamento.')
+      toast.erro(mensagemErro(e, 'Erro ao reprovar orçamento.'))
     }
   }
 
   const perguntarEmAndamento = () => {
-    if (!servico || servico.status === 'em_andamento') return
-    toast.confirmar('Orçamento aprovado! Deseja marcar o serviço como "Em andamento"?', async () => {
+    if (!servico || servico.status !== 'pendente') return
+    toast.confirmar('Orçamento aprovado. Mudar serviço para "Em andamento"?', async () => {
       try {
         const res = await api.patch(`/servicos/${servicoId}`, { status: 'em_andamento' })
         setServico(res.data)
-        toast.sucesso('Serviço marcado como Em andamento!')
-      } catch {
-        toast.erro('Erro ao atualizar status do serviço.')
+        toast.sucesso('Serviço em andamento')
+      } catch (e) {
+        toast.erro(mensagemErro(e, 'Erro ao atualizar status.'))
       }
     })
   }
@@ -70,142 +88,145 @@ function Orcamentos() {
     try {
       await api.patch(`/orcamentos/${id}/aprovar`)
       await recarregarOrcamentos()
-      toast.sucesso('Orçamento aprovado!')
+      toast.sucesso('Orçamento aprovado')
       perguntarEmAndamento()
     } catch (e) {
-      toast.erro(e.response?.data?.message || 'Erro ao aprovar orçamento.')
+      toast.erro(mensagemErro(e, 'Erro ao aprovar orçamento.'))
     }
   }
 
-  if (carregando) {
-    return <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-400 text-sm">Carregando...</div>
+  const excluir = async (id) => {
+    setConfirmando(null)
+    try {
+      await api.delete(`/orcamentos/${id}`)
+      await recarregarOrcamentos()
+      toast.sucesso('Orçamento excluído')
+    } catch (e) {
+      toast.erro(mensagemErro(e, 'Erro ao excluir orçamento.'))
+    }
   }
 
+  if (carregando) return <Carregando />
+
+  const subtitulo = servico
+    ? [servico.titulo, servico.cliente, servico.tag ? `Tag: ${TAG_LABEL[servico.tag] || servico.tag}` : null].filter(Boolean).join(' · ')
+    : null
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <Pagina largura="max-w-6xl">
+      <CabecalhoPagina
+        titulo="Orçamentos"
+        subtitulo={subtitulo}
+        voltar={{ label: 'Serviços', onClick: () => navigate('/servicos') }}
+        acoes={
+          <Button onClick={() => navigate(`/orcamentos/${servicoId}/novo`)} className="text-sm font-semibold px-5 py-2.5 rounded-xl inline-flex items-center gap-2">
+            <Plus size={16} />
+            Novo orçamento
+          </Button>
+        }
+      />
 
-      <div className="page-header bg-[#1e3a5f] px-6 pb-5">
-        <button onClick={() => navigate('/servicos')} className="text-xs text-slate-300 mb-3 hover:text-white active:scale-95 transition-all">← Serviços</button>
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-lg font-bold text-white">Orçamentos</h1>
-            {servico && <p className="text-xs text-slate-300 mt-0.5">{servico.titulo}</p>}
-          </div>
-          <button
-            onClick={() => navigate(`/orcamentos/${servicoId}/novo`)}
-            className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold transition-all hover:bg-[#1e3a5f] active:scale-[0.96]"
-          >
-            + Novo
-          </button>
-        </div>
-      </div>
+      {orcamentos.length === 0 && <Vazio>Nenhum orçamento cadastrado para este serviço.</Vazio>}
 
-      <div className="px-6 pt-4 flex flex-col gap-3 mb-24">
-        {orcamentos.length === 0 && (
-          <div className="text-center text-slate-400 text-sm mt-10">
-            Nenhum orçamento cadastrado para este serviço.
-          </div>
-        )}
+      {orcamentos.length > 0 && (
+        <Paginacao pagina={pagina} setPagina={setPagina} tamanhoPagina={tamanhoPagina}
+          mudarTamanhoPagina={mudarTamanhoPagina} totalPaginas={totalPaginas} total={orcamentos.length} />
+      )}
 
-        {orcamentos.length > 0 && (
-          <Paginacao pagina={pagina} setPagina={setPagina} tamanhoPagina={tamanhoPagina}
-            mudarTamanhoPagina={mudarTamanhoPagina} totalPaginas={totalPaginas} />
-        )}
-
+      <div className="grid grid-cols-2 gap-5">
         {itensPagina.map(o => {
           const valorMateriais = (o.materiais || []).reduce((acc, m) =>
             acc + parseFloat(m.pivot.quantidade) * parseFloat(m.pivot.preco_unitario_snapshot), 0)
-          const valorFinal = valorMateriais * (1 + parseFloat(o.margem_lucro) / 100)
+          const valorFinal = calcularValorFinal(valorMateriais, o.margem_lucro, o.tipo_margem)
           const IconeStatus = iconeOrcStatus[o.status] || Clock
 
           return (
-            <div key={o.id} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
-              <div className="flex justify-between items-start gap-2">
+            <div key={o.id} className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col">
+              <div className="flex justify-between items-start gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-800">{o.titulo}</p>
-                  {o.descricao && <p className="text-xs text-slate-500 mt-1">{o.descricao}</p>}
+                  <p className="text-base font-semibold text-slate-800">{o.titulo}</p>
+                  {o.descricao && <p className="text-sm text-slate-500 mt-1">{o.descricao}</p>}
                 </div>
-                <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${badgeOrcStatus(o.status)}`}>
-                  <IconeStatus size={12} />
+                <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${badgeOrcStatus(o.status)}`}>
+                  <IconeStatus size={13} />
                   {labelStatus[o.status]}
                 </span>
               </div>
 
-              <div className="mt-3 flex flex-col gap-1">
-                <p className="text-xs text-slate-500">
-                  Materiais: <span className="font-semibold text-slate-800">R$ {valorMateriais.toFixed(2)}</span>
-                </p>
-                <p className="text-xs text-slate-500">
-                  Margem: <span className="font-semibold text-slate-800">{o.margem_lucro}%</span>
-                </p>
-                <p className="text-xs text-slate-700 font-bold">
-                  Total: R$ {valorFinal.toFixed(2)}
-                </p>
+              <div className="mt-4 grid grid-cols-3 gap-3 bg-slate-50 rounded-xl p-4">
+                <div>
+                  <p className="text-xs text-slate-500">Materiais</p>
+                  <p className="text-sm font-semibold text-slate-800 mt-0.5">{formatarPreco(valorMateriais)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Margem</p>
+                  <p className="text-sm font-semibold text-slate-800 mt-0.5">{descreverMargem(o.margem_lucro, o.tipo_margem)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Total</p>
+                  <p className="text-base font-bold text-[#2563eb] mt-0.5">{formatarPreco(valorFinal)}</p>
+                </div>
               </div>
 
               {(o.materiais || []).length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1">
+                <div className="mt-4 flex flex-wrap gap-1.5">
                   {o.materiais.map(m => (
-                    <span key={m.id} className="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full">
+                    <span key={m.id} className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full">
                       {m.nome} × {parseFloat(m.pivot.quantidade)} {m.unidade_medida}
                     </span>
                   ))}
                 </div>
               )}
 
-              {confirmando?.id === o.id ? (
-                <div className="mt-3 pt-3 border-t border-slate-100">
-                  <p className="text-xs text-slate-500 mb-2 text-center">
-                    {confirmando.acao === 'aprovar' ? 'Aprovar este orçamento?' : 'Reprovar este orçamento?'}
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => confirmando.acao === 'aprovar' ? aprovar(o.id) : reprovar(o.id)}
-                      className={`flex-1 text-xs text-white py-2 rounded-xl font-semibold transition-all active:scale-[0.96] ${confirmando.acao === 'aprovar' ? 'bg-[#16a34a] hover:bg-green-700' : 'bg-[#dc2626] hover:bg-red-700'}`}
+              <div className="mt-auto pt-4">
+                {confirmando?.id === o.id ? (
+                  <div className="pt-4 border-t border-slate-100 flex items-center gap-2">
+                    <p className={`text-sm flex-1 ${confirmando.acao === 'excluir' && o.status === 'aprovado' ? 'text-red-700 font-medium' : 'text-slate-600'}`}>
+                      {CONFIRMACOES[confirmando.acao](o)}
+                    </p>
+                    <Button
+                      variant={confirmando.acao === 'aprovar' ? 'success' : 'danger'}
+                      onClick={() => ({ aprovar, reprovar, excluir })[confirmando.acao](o.id)}
+                      className="text-sm px-3 py-1.5 rounded-lg font-semibold"
                     >
-                      {confirmando.acao === 'aprovar' ? 'Sim, aprovar' : 'Sim, reprovar'}
-                    </button>
-                    <button
-                      onClick={() => setConfirmando(null)}
-                      className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold transition-all hover:bg-slate-200 active:scale-[0.96]"
-                    >
+                      {{ aprovar: 'Sim, aprovar', reprovar: 'Sim, reprovar', excluir: 'Sim, excluir' }[confirmando.acao]}
+                    </Button>
+                    <Button variant="ghost" onClick={() => setConfirmando(null)} className="text-sm px-3 py-1.5 rounded-lg font-semibold">
                       Cancelar
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="pt-4 border-t border-slate-100 flex justify-end gap-2">
+                    {o.status === 'pendente' && (
+                      <Button variant="success" onClick={() => setConfirmando({ id: o.id, acao: 'aprovar' })} className="text-sm px-4 py-1.5 rounded-lg font-semibold">
+                        Aprovar
+                      </Button>
+                    )}
+                    {o.status !== 'reprovado' && (
+                      <Button variant="danger" onClick={() => setConfirmando({ id: o.id, acao: 'reprovar' })} className="text-sm px-4 py-1.5 rounded-lg font-semibold">
+                        Reprovar
+                      </Button>
+                    )}
+                    <Button onClick={() => navigate(`/orcamentos/${servicoId}/editar/${o.id}`)} className="text-sm px-4 py-1.5 rounded-lg font-semibold inline-flex items-center gap-1.5">
+                      <Pencil size={14} />
+                      Editar
+                    </Button>
+                    <button
+                      onClick={() => setConfirmando({ id: o.id, acao: 'excluir' })}
+                      aria-label="Excluir orçamento"
+                      title="Excluir"
+                      className="p-2 text-red-400 rounded-lg transition-all hover:text-red-600 hover:bg-red-50 active:scale-90"
+                    >
+                      <Trash2 size={16} />
                     </button>
                   </div>
-                </div>
-              ) : (
-                <div className="flex justify-end gap-2 mt-3 flex-wrap">
-                  {o.status === 'pendente' && (
-                    <button
-                      onClick={() => setConfirmando({ id: o.id, acao: 'aprovar' })}
-                      className="text-xs bg-[#16a34a] text-white px-3 py-1.5 rounded-full font-semibold transition-all hover:bg-green-700 active:scale-[0.96]"
-                    >
-                      Aprovar
-                    </button>
-                  )}
-                  {o.status !== 'reprovado' && (
-                    <button
-                      onClick={() => setConfirmando({ id: o.id, acao: 'reprovar' })}
-                      className="text-xs bg-[#dc2626] text-white px-3 py-1.5 rounded-full font-semibold transition-all hover:bg-red-700 active:scale-[0.96]"
-                    >
-                      Reprovar
-                    </button>
-                  )}
-                  <button
-                    onClick={() => navigate(`/orcamentos/${servicoId}/editar/${o.id}`)}
-                    className="text-xs bg-[#2563eb] text-white px-3 py-1.5 rounded-full font-semibold transition-all hover:bg-[#1e3a5f] active:scale-[0.96]"
-                  >
-                    Editar
-                  </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )
         })}
       </div>
-
-      <Navbar />
-    </div>
+    </Pagina>
   )
 }
 

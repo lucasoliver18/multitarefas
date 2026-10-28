@@ -149,4 +149,54 @@ class OrcamentoTest extends TestCase
         $this->assertEquals('aprovado', $novoOrcamento->fresh()->status);
         $this->assertEquals(10, $material->fresh()->quantidade_estoque);
     }
+
+    public function test_lista_pendentes_com_servico_do_mais_antigo_ao_mais_novo(): void
+    {
+        $servico = Servico::factory()->create(['titulo' => 'Pintura da sala']);
+        $novo = Orcamento::factory()->create(['servico_id' => $servico->id, 'status' => 'pendente', 'created_at' => now()]);
+        $antigo = Orcamento::factory()->create(['servico_id' => $servico->id, 'status' => 'pendente', 'created_at' => now()->subDays(5)]);
+        Orcamento::factory()->create(['status' => 'aprovado']);
+        $excluido = Servico::factory()->create();
+        Orcamento::factory()->create(['servico_id' => $excluido->id, 'status' => 'pendente']);
+        $excluido->delete();
+
+        $res = $this->getJson('/api/orcamentos?status=pendente')->assertOk()->json();
+
+        $this->assertEquals([$antigo->id, $novo->id], array_column($res, 'id'));
+        $this->assertEquals('Pintura da sala', $res[0]['servico']['titulo']);
+        $this->assertArrayHasKey('valor_final', $res[0]);
+    }
+
+    public function test_status_invalido_na_listagem_e_barrado(): void
+    {
+        $this->getJson('/api/orcamentos?status=qualquer')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['status']);
+    }
+
+    public function test_excluir_orcamento_aprovado_devolve_estoque(): void
+    {
+        $material  = Material::factory()->create(['quantidade_estoque' => 10]);
+        $orcamento = Orcamento::factory()->create();
+        $orcamento->materiais()->attach($material->id, ['quantidade' => 3, 'preco_unitario_snapshot' => 5]);
+        $this->patchJson("/api/orcamentos/{$orcamento->id}/aprovar")->assertOk();
+        $this->assertEquals(7, $material->fresh()->quantidade_estoque);
+
+        $this->deleteJson("/api/orcamentos/{$orcamento->id}")->assertOk();
+
+        $this->assertSoftDeleted('orcamentos', ['id' => $orcamento->id]);
+        $this->assertEquals(10, $material->fresh()->quantidade_estoque);
+    }
+
+    public function test_excluir_orcamento_pendente_nao_mexe_no_estoque(): void
+    {
+        $material  = Material::factory()->create(['quantidade_estoque' => 10]);
+        $orcamento = Orcamento::factory()->create(['status' => 'pendente']);
+        $orcamento->materiais()->attach($material->id, ['quantidade' => 3, 'preco_unitario_snapshot' => 5]);
+
+        $this->deleteJson("/api/orcamentos/{$orcamento->id}")->assertOk();
+
+        $this->assertSoftDeleted('orcamentos', ['id' => $orcamento->id]);
+        $this->assertEquals(10, $material->fresh()->quantidade_estoque);
+    }
 }

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import api from '../services/api'
 import Button from './Button'
 import { useToast } from '../hooks/useToast'
-import { apenasDigitos, mascararCpf, mascararCnpj } from '../utils/mascaras'
+import { apenasDigitos, mascararCpf, mascararCnpj, cnpjValido } from '../utils/mascaras'
 import { mensagemErro } from '../utils/erros'
 
 const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
@@ -18,12 +18,12 @@ function MiniCadastroCliente({ nomeInicial, onCriado, onCancelar }) {
   const handleCnpjChange = e => setForm({ ...form, cnpj: mascararCnpj(e.target.value) })
 
   const salvar = async () => {
-    if (!form.nome) { toast.erro('O nome do cliente é obrigatório.'); return }
+    if (!form.nome) { toast.erro('Informe o nome.'); return }
     if (form.tipo_pessoa === 'fisica' && apenasDigitos(form.cpf).length !== 11) {
-      toast.erro('Informe um CPF válido.'); return
+      toast.erro('CPF inválido.'); return
     }
-    if (form.tipo_pessoa === 'juridica' && apenasDigitos(form.cnpj).length !== 14) {
-      toast.erro('Informe um CNPJ válido.'); return
+    if (form.tipo_pessoa === 'juridica' && !cnpjValido(form.cnpj)) {
+      toast.erro('CNPJ inválido.'); return
     }
 
     setSalvando(true)
@@ -48,7 +48,7 @@ function MiniCadastroCliente({ nomeInicial, onCriado, onCancelar }) {
 
       <div>
         <label className={LABEL}>Nome *</label>
-        <input name="nome" value={form.nome} onChange={handleChange} className={INPUT} placeholder="Ex: João Silva" />
+        <input name="nome" value={form.nome} onChange={handleChange} className={INPUT} />
       </div>
 
       <div>
@@ -82,8 +82,8 @@ function MiniCadastroCliente({ nomeInicial, onCriado, onCancelar }) {
         <div>
           <label className={LABEL}>CNPJ *</label>
           <input name="cnpj" value={form.cnpj} onChange={handleCnpjChange}
-            inputMode="numeric" placeholder="00.000.000/0000-00" maxLength={18}
-            className={INPUT} />
+            placeholder="00.000.000/0000-00" maxLength={18} autoComplete="off" spellCheck={false}
+            className={`${INPUT} uppercase`} />
         </div>
       )}
 

@@ -1,7 +1,11 @@
-import { createContext, useContext, useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useMemo } from 'react'
+import { ToastContext } from '../contexts/ToastContext'
+
+// Tempo na tela dos avisos comuns. Os de confirmação ("confirmar") não somem
+// sozinhos: esperam o usuário escolher.
+const DURACAO_AVISO_MS = 4000
 import { Check, X, AlertTriangle, HelpCircle } from 'lucide-react'
 
-export const ToastContext = createContext(null)
 
 const STYLES = {
   sucesso:   { bg: 'bg-[#16a34a]', Icone: Check },
@@ -50,7 +54,7 @@ function ToastItem({ toast, onRemove }) {
 function ToastDisplay({ toasts, onRemove }) {
   if (!toasts.length) return null
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[200] flex flex-col gap-2 w-[calc(100%-2rem)] max-w-sm pointer-events-none">
+    <div className="fixed top-6 right-6 z-[200] flex flex-col gap-2 w-[26rem] pointer-events-none">
       {toasts.map(t => (
         <div key={t.id} className="pointer-events-auto">
           <ToastItem toast={t} onRemove={onRemove} />
@@ -73,12 +77,16 @@ export function ToastProvider({ children }) {
     const id = ++nextId.current
     setToasts(prev => [...prev, { id, type, message, leaving: false, ...extras }])
     if (type !== 'confirmar') {
-      setTimeout(() => remove(id), 3000)
+      setTimeout(() => remove(id), DURACAO_AVISO_MS)
     }
   }, [remove])
 
+  // Valor estável: sem isso, cada aviso criava um objeto novo e fazia todas as
+  // telas (que usam useToast) renderizarem de novo, dando a impressão de "piscar".
+  const valor = useMemo(() => ({ add, remove }), [add, remove])
+
   return (
-    <ToastContext.Provider value={{ add, remove }}>
+    <ToastContext.Provider value={valor}>
       {children}
       <ToastDisplay toasts={toasts} onRemove={remove} />
     </ToastContext.Provider>

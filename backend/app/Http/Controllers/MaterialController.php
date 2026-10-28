@@ -6,23 +6,36 @@ use App\Http\Requests\StoreMaterialRequest;
 use App\Http\Requests\UpdateMaterialRequest;
 use App\Http\Resources\MaterialResource;
 use App\Models\Material;
+use App\Support\LimitesBanco;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class MaterialController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Material::query();
+        $filtros = $request->validate([
+            'busca'      => 'nullable|string|max:255',
+            'tag'        => ['nullable', Rule::in(LimitesBanco::TAGS)],
+            'por_pagina' => 'nullable|integer|min:1|max:100',
+        ]);
 
-        if ($request->filled('busca')) {
-            $query->where('nome', 'like', '%' . $request->busca . '%');
+        $query = Material::with('marca');
+
+        if (! empty($filtros['busca'])) {
+            $termo = '%' . $filtros['busca'] . '%';
+            $query->where(fn ($q) => $q->where('nome', 'like', $termo)
+                ->orWhereHas('marca', fn ($m) => $m->where('nome', 'like', $termo)));
+        }
+
+        if (! empty($filtros['tag'])) {
+            $query->whereJsonContains('tags', $filtros['tag']);
         }
 
         $query->orderBy('nome');
 
-        if ($request->filled('por_pagina')) {
-            $porPagina = min((int) $request->por_pagina, 100);
-            return MaterialResource::collection($query->paginate($porPagina));
+        if (! empty($filtros['por_pagina'])) {
+            return MaterialResource::collection($query->paginate($filtros['por_pagina']));
         }
 
         return MaterialResource::collection($query->get());
@@ -49,6 +62,6 @@ class MaterialController extends Controller
     public function destroy(Material $material)
     {
         $material->delete();
-        return response()->json(['message' => 'Material removido com sucesso!']);
+        return response()->json(['message' => 'Material removido.']);
     }
 }

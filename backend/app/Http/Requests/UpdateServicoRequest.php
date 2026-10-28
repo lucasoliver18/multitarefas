@@ -2,14 +2,14 @@
 
 namespace App\Http\Requests;
 
+use App\Support\LimitesBanco;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class UpdateServicoRequest extends FormRequest
 {
-    // Ordem da esteira de status: um serviço só pode avançar
-    // (pendente -> em_andamento -> finalizado), nunca retroceder.
+    // Esteira de status: um serviço só avança, nunca retrocede.
     private const ORDEM_STATUS = ['pendente' => 0, 'em_andamento' => 1, 'finalizado' => 2];
 
     public function authorize(): bool { return true; }
@@ -17,14 +17,14 @@ class UpdateServicoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'titulo'     => 'sometimes|string|max:255',
+            'titulo'     => 'sometimes|required|string|max:255',
             'cliente_id' => ['sometimes', 'integer', Rule::exists('clientes', 'id')->where(fn ($q) => $q->whereNull('deleted_at'))],
-            'prioridade' => 'sometimes|in:alta,media,baixa',
-            'status'     => 'sometimes|in:pendente,em_andamento,finalizado',
-            'pago'       => 'sometimes|boolean',
-            'prazo'      => 'nullable|date_format:Y-m-d',
-            'descricao'  => 'nullable|string',
-            'tag'        => 'nullable|in:informatica,pintura,outros',
+            'prioridade' => 'sometimes|required|in:alta,media,baixa',
+            'status'     => 'sometimes|required|in:pendente,em_andamento,finalizado',
+            'pago'       => 'sometimes|required|boolean',
+            'prazo'      => 'nullable|date_format:Y-m-d|after_or_equal:' . LimitesBanco::DATA_MIN . '|before_or_equal:' . LimitesBanco::DATA_MAX,
+            'descricao'  => 'nullable|string|max:' . LimitesBanco::TEXTO_MAX,
+            'tag'        => ['nullable', Rule::in(LimitesBanco::TAGS)],
         ];
     }
 

@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class AuthTest extends TestCase
@@ -18,46 +17,30 @@ class AuthTest extends TestCase
         $this->getJson('/api/servicos')->assertUnauthorized();
     }
 
-    public function test_login_rejeita_email_nao_permitido(): void
+    public function test_login_rejeita_senha_errada(): void
     {
-        config(['services.google.allowed_emails' => ['dono@empresa.com']]);
+        User::factory()->create(['email' => 'dono@empresa.com', 'password' => 'senha-certa']);
 
-        Http::fake([
-            'oauth2.googleapis.com/*' => Http::response([
-                'aud' => config('services.google.client_id'),
-                'email' => 'estranho@gmail.com',
-                'email_verified' => 'true',
-                'sub' => 'google-id-123',
-                'name' => 'Estranho',
-            ]),
-        ]);
-
-        $this->postJson('/api/auth/google', ['credential' => 'token-falso'])
+        $this->postJson('/api/auth/login', ['email' => 'dono@empresa.com', 'password' => 'senha-errada'])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['credential']);
+            ->assertJsonValidationErrors(['email']);
     }
 
-    public function test_login_aceita_email_permitido_e_devolve_token(): void
+    public function test_login_rejeita_email_inexistente(): void
     {
-        config(['services.google.allowed_emails' => ['dono@empresa.com']]);
+        $this->postJson('/api/auth/login', ['email' => 'estranho@gmail.com', 'password' => 'qualquer'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['email']);
+    }
 
-        Http::fake([
-            'oauth2.googleapis.com/*' => Http::response([
-                'aud' => config('services.google.client_id'),
-                'email' => 'dono@empresa.com',
-                'email_verified' => 'true',
-                'sub' => 'google-id-123',
-                'name' => 'Dono',
-                'picture' => 'https://exemplo.com/avatar.jpg',
-            ]),
-        ]);
+    public function test_login_com_credenciais_corretas_devolve_token(): void
+    {
+        User::factory()->create(['email' => 'dono@empresa.com', 'password' => 'senha-certa']);
 
-        $this->postJson('/api/auth/google', ['credential' => 'token-falso'])
+        $this->postJson('/api/auth/login', ['email' => 'dono@empresa.com', 'password' => 'senha-certa'])
             ->assertOk()
             ->assertJsonStructure(['token', 'user' => ['id', 'name', 'email']])
-            ->assertJsonFragment(['email' => 'dono@empresa.com']);
-
-        $this->assertDatabaseHas('users', ['email' => 'dono@empresa.com', 'google_id' => 'google-id-123']);
+            ->assertJsonMissingPath('user.password');
     }
 
     public function test_me_retorna_usuario_autenticado(): void

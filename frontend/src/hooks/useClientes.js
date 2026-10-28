@@ -6,12 +6,12 @@ export function useClientes() {
   const [carregando, setCarregando] = useState(true)
 
   const buscar = useCallback(async () => {
-    setCarregando(true)
+    // Só a primeira carga mostra "Carregando..."; recargas atualizam em silêncio.
     try {
       const res = await api.get('/clientes')
       setClientes(Array.isArray(res.data) ? res.data : [])
     } catch {
-      setClientes([])
+      // Mantém a lista atual se uma recarga falhar.
     } finally {
       setCarregando(false)
     }
@@ -36,11 +36,7 @@ export function useClientes() {
   return { clientes, carregando, buscar, deletar, transferirServicos }
 }
 
-/**
- * Busca paginada/filtrada de clientes, para uso em combobox assíncrono
- * (ComboboxAsync). Função independente do hook para não disparar o fetch
- * completo de useClientes() quando só se precisa buscar sob demanda.
- */
+// Separada do hook para buscar sob demanda sem disparar o fetch completo de useClientes().
 export async function buscarClientesPagina(busca, pagina) {
   const res = await api.get('/clientes', { params: { busca, por_pagina: 20, page: pagina } })
   return {

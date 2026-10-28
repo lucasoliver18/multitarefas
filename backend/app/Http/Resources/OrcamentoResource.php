@@ -14,8 +14,17 @@ class OrcamentoResource extends JsonResource
             'titulo'       => $this->titulo,
             'descricao'    => $this->descricao,
             'margem_lucro' => $this->margem_lucro,
+            'tipo_margem'  => $this->tipo_margem ?? 'percentual',
+            'valor_final'  => $this->whenLoaded('materiais', fn () => round($this->valor_final, 2)),
             'status'       => $this->status,
+            'aprovado_em'  => $this->aprovado_em,
             'created_at'   => $this->created_at,
+            'servico'      => $this->whenLoaded('servico', fn () => [
+                'id'      => $this->servico->id,
+                'titulo'  => $this->servico->titulo,
+                'cliente' => $this->servico->clienteRelacao?->nome ?? $this->servico->cliente,
+                'tag'     => $this->servico->tag,
+            ]),
             'materiais'    => $this->whenLoaded('materiais', function () {
                 return $this->materiais->map(fn ($m) => [
                     'id'             => $m->id,

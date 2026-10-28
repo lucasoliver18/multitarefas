@@ -1,119 +1,79 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { DndContext, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
-import { User, Calendar, NotebookPen, Receipt, List, LayoutList, Kanban, AlertTriangle, Search, X } from 'lucide-react'
-import Navbar from '../components/Navbar'
-import StatusBadge from '../components/StatusBadge'
-import Select from '../components/Select'
+import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { List, LayoutList, Kanban, AlertTriangle, Plus } from 'lucide-react'
+import Button from '../components/Button'
+import { Pagina, CabecalhoPagina, CampoBusca, AlternadorVisualizacao, Carregando, Vazio } from '../components/Pagina'
+import FiltrosServicos from '../components/servicos/FiltrosServicos'
+import ModalServicos from '../components/servicos/ModalServicos'
+import {
+  ServicoCardKanban, ColunaKanban, ServicoLinha, CabecalhoListaServicos, ServicoCardDetalhado, FecharMenuStatus,
+} from '../components/servicos/ItensServico'
 import { useToast } from '../hooks/useToast'
 import { useServicos } from '../hooks/useServicos'
+import { useFiltrosServicos, useServicosFiltrados } from '../hooks/useFiltrosServicos'
+import { useAcoesServico } from '../hooks/useAcoesServico'
 import { usePaginacao } from '../hooks/usePaginacao'
 import { useServicosOrdenados } from '../hooks/useServicosOrdenados'
 import Paginacao from '../components/Paginacao'
-import PainelFiltros from '../components/PainelFiltros'
 import BarraSelecao from '../components/BarraSelecao'
 import { useSelecaoMultipla } from '../hooks/useSelecaoMultipla'
 import { useEstadoPersistido } from '../hooks/useEstadoPersistido'
 import { excluirEmMassa } from '../utils/exclusaoEmMassa'
-import { hojeISO, estaVencido } from '../utils/prazos'
+import { hojeISO } from '../utils/prazos'
 import { mensagemErro } from '../utils/erros'
-import {
-  borderPrioridade,
-  labelPrioridade,
-  corTextoPrioridade,
-  corFundoPrioridade,
-  STATUS_ICONE,
-  TAG_LABEL,
-  STATUS_OPCOES,
-  PRIORIDADE_OPCOES,
-  TAG_OPCOES,
-  PAGO_OPCOES,
-  ICONE_PAGO,
-  badgePago,
-  labelPago,
-  labelStatus,
-  statusSeguintes,
-} from '../utils/status'
+import { STATUS_ICONE, STATUS_OPCOES, labelStatus } from '../utils/status'
+import { plural } from '../utils/texto'
 
-const SELECT = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-600'
-const LABEL = 'text-xs font-semibold text-slate-600 mb-1 block'
-const LIMITE_KANBAN_INICIAL = 3
-const INCREMENTO_KANBAN = 3
+// Cada coluna do quadro mostra no máximo 3 serviços; o restante fica no modal
+// "Ver mais", que por padrão busca só prazos do próximo mês (não carrega a
+// base inteira de uma vez).
+const LIMITE_POR_COLUNA = 3
+
+const periodoPadraoModal = () => {
+  const hoje = new Date()
+  const fim = new Date(hoje)
+  fim.setMonth(fim.getMonth() + 1)
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return { prazoDe: iso(hoje), prazoAte: iso(fim) }
+}
+
+const VISUALIZACOES = [
+  { val: 'kanban', label: 'Quadro', icone: Kanban },
+  { val: 'lista', label: 'Lista', icone: List },
+  { val: 'detalhado', label: 'Detalhado', icone: LayoutList },
+]
 
 function Servicos() {
   const navigate = useNavigate()
   const toast = useToast()
   const { servicos, carregando, buscar, deletar, mudarStatus, mudarPago } = useServicos()
-  const [menuStatus, setMenuStatus] = useState(null)
-  const [confirmandoId, setConfirmandoId] = useState(null)
+  const acoes = useAcoesServico({ deletar, mudarStatus, mudarPago, buscar })
   const { ativo: selecaoAtiva, selecionados, alternarModo, alternarItem, cancelar, quantidade } = useSelecaoMultipla()
   const [searchParams, setSearchParams] = useSearchParams()
   const hojeStr = hojeISO()
 
-  // Visualização e filtros ficam salvos entre visitas à tela (ex: editar um
-  // serviço e voltar não deve resetar o que o usuário tinha configurado).
   const [visualizacao, setVisualizacao] = useEstadoPersistido('servicos:visualizacao', 'kanban')
-  const [busca, setBusca] = useEstadoPersistido('servicos:busca', '', searchParams.get('busca'))
-  const [filtroStatus, setFiltroStatus] = useEstadoPersistido('servicos:filtroStatus', '', searchParams.get('status'))
-  const [filtroPrioridade, setFiltroPrioridade] = useEstadoPersistido('servicos:filtroPrioridade', '')
-  const [filtroTag, setFiltroTag] = useEstadoPersistido('servicos:filtroTag', '')
-  const [filtroPrazoDe, setFiltroPrazoDe] = useEstadoPersistido('servicos:filtroPrazoDe', '')
-  const [filtroPrazoAte, setFiltroPrazoAte] = useEstadoPersistido('servicos:filtroPrazoAte', '')
-  const [filtroSituacaoPrazo, setFiltroSituacaoPrazo] = useEstadoPersistido(
-    'servicos:filtroSituacaoPrazo', '', searchParams.get('vencidos') === '1' ? 'atrasado' : undefined
-  )
-  const [filtroPago, setFiltroPago] = useEstadoPersistido('servicos:filtroPago', '')
-  const [filtroOrcamento, setFiltroOrcamento] = useEstadoPersistido('servicos:filtroOrcamento', '')
-  const [limiteColuna, setLimiteColuna] = useState({})
+  const filtros = useFiltrosServicos({
+    prefixo: 'servicos',
+    valoresIniciais: {
+      busca: searchParams.get('busca'),
+      status: searchParams.get('status'),
+      situacaoPrazo: searchParams.get('vencidos') === '1' ? 'atrasado' : undefined,
+      pago: searchParams.get('pago'),
+      orcamento: searchParams.get('orcamento'),
+    },
+  })
+  const filtrados = useServicosFiltrados(servicos, filtros)
+  const [colunaModal, setColunaModal] = useState(null)
 
-  // Reseta os limites de "carregar mais" do quadro sempre que os filtros mudam,
-  // ajustando o estado durante a renderização em vez de usar um efeito.
-  const filtrosChave = JSON.stringify([filtroStatus, filtroPrioridade, filtroTag, filtroPago, filtroOrcamento, filtroPrazoDe, filtroPrazoAte, filtroSituacaoPrazo])
-  const [filtrosChaveAnterior, setFiltrosChaveAnterior] = useState(filtrosChave)
-  if (filtrosChaveAnterior !== filtrosChave) {
-    setFiltrosChaveAnterior(filtrosChave)
-    setLimiteColuna({})
-  }
+  // Ao fechar o modal, recarrega em silêncio (status/pagamento podem ter mudado nele).
+  const fecharModal = useCallback(() => {
+    setColunaModal(null)
+    buscar()
+  }, [buscar])
 
-  const quantidadeFiltrosAtivos = [filtroStatus, filtroPrioridade, filtroTag, filtroPrazoDe, filtroPrazoAte, filtroSituacaoPrazo, filtroPago, filtroOrcamento]
-    .filter(Boolean).length
-
-  const limparFiltros = () => {
-    setFiltroStatus('')
-    setFiltroPrioridade('')
-    setFiltroTag('')
-    setFiltroPrazoDe('')
-    setFiltroPrazoAte('')
-    setFiltroSituacaoPrazo('')
-    setFiltroPago('')
-    setFiltroOrcamento('')
-  }
-
-  const servicosFiltrados = useMemo(() => {
-    return servicos.filter(s => {
-      if (busca.trim()) {
-        const termo = busca.trim().toLowerCase()
-        const combina = s.titulo.toLowerCase().includes(termo) || (s.cliente || '').toLowerCase().includes(termo)
-        if (!combina) return false
-      }
-      if (filtroSituacaoPrazo === 'atrasado' && !estaVencido(s, hojeStr)) return false
-      if (filtroSituacaoPrazo === 'no_prazo' && estaVencido(s, hojeStr)) return false
-      if (filtroStatus && s.status !== filtroStatus) return false
-      if (filtroPrioridade && s.prioridade !== filtroPrioridade) return false
-      if (filtroTag && s.tag !== filtroTag) return false
-      if (filtroPago && String(Number(!!s.pago)) !== filtroPago) return false
-      if (filtroOrcamento === 'com' && !s.tem_orcamento) return false
-      if (filtroOrcamento === 'sem' && s.tem_orcamento) return false
-      if ((filtroPrazoDe || filtroPrazoAte) ) {
-        if (!s.prazo) return false
-        if (filtroPrazoDe && s.prazo < filtroPrazoDe) return false
-        if (filtroPrazoAte && s.prazo > filtroPrazoAte) return false
-      }
-      return true
-    })
-  }, [servicos, busca, filtroSituacaoPrazo, hojeStr, filtroStatus, filtroPrioridade, filtroTag, filtroPago, filtroOrcamento, filtroPrazoDe, filtroPrazoAte])
-
-  const servicosOrdenados = useServicosOrdenados(servicosFiltrados)
+  const servicosOrdenados = useServicosOrdenados(filtrados)
 
   const servicosPorStatus = useMemo(() => {
     const grupos = { pendente: [], em_andamento: [], finalizado: [] }
@@ -123,37 +83,7 @@ function Servicos() {
 
   const { pagina, setPagina, tamanhoPagina, mudarTamanhoPagina, totalPaginas, itensPagina } = usePaginacao(servicosOrdenados)
 
-  const handleDeletar = async (id) => {
-    setConfirmandoId(null)
-    try {
-      await deletar(id)
-      toast.sucesso('Serviço excluído com sucesso!')
-    } catch {
-      toast.erro('Erro ao excluir serviço.')
-    }
-  }
-
-  const handleMudarStatus = async (id, novoStatus) => {
-    try {
-      await mudarStatus(id, novoStatus)
-      toast.sucesso('Status atualizado!')
-    } catch {
-      buscar()
-      toast.erro('Erro ao atualizar status.')
-    }
-  }
-
-  const confirmarMudarStatus = (s, novoStatus) => {
-    setMenuStatus(null)
-    const exigeOrcamento = (novoStatus === 'em_andamento' || novoStatus === 'finalizado') && !s.tem_orcamento_aprovado
-    const mensagem = exigeOrcamento
-      ? `Este serviço não possui nenhum orçamento aprovado. Tem certeza que deseja alterar o status para "${labelStatus(novoStatus)}" mesmo assim?`
-      : `Tem certeza que deseja alterar o status para "${labelStatus(novoStatus)}"?`
-    toast.confirmar(mensagem, () => handleMudarStatus(s.id, novoStatus))
-  }
-
-  // Arrastar um card entre colunas do kanban já salva a mudança de status
-  // direto, sem pedir confirmação (diferente do menu de status, que pergunta).
+  // Arrastar entre colunas salva o status direto, sem confirmação.
   const sensoresArraste = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   const handleDragEnd = async ({ active, over }) => {
@@ -166,9 +96,9 @@ function Servicos() {
       await mudarStatus(servico.id, novoStatus)
       const exigeOrcamento = (novoStatus === 'em_andamento' || novoStatus === 'finalizado') && !servico.tem_orcamento_aprovado
       if (exigeOrcamento) {
-        toast.alerta(`Status atualizado, mas este serviço ainda não possui orçamento aprovado.`)
+        toast.alerta('Status atualizado. Serviço sem orçamento aprovado.')
       } else {
-        toast.sucesso('Status atualizado!')
+        toast.sucesso('Status atualizado')
       }
     } catch (e) {
       buscar()
@@ -176,583 +106,147 @@ function Servicos() {
     }
   }
 
-  const handleMudarPago = async (id, novoPago) => {
-    try {
-      await mudarPago(id, novoPago)
-      toast.sucesso(novoPago ? 'Serviço marcado como pago!' : 'Serviço marcado como não pago.')
-    } catch {
-      toast.erro('Erro ao atualizar situação de pagamento.')
-    }
-  }
-
-  const PagoBadge = ({ s }) => (
-    <button
-      onClick={e => { e.stopPropagation(); handleMudarPago(s.id, !s.pago) }}
-      className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full cursor-pointer transition-all hover:brightness-95 active:scale-95 ${badgePago(s.pago)}`}
-    >
-      <ICONE_PAGO size={11} />
-      {labelPago(s.pago)}
-    </button>
-  )
-
-  // Indica serviços que ainda não têm nenhum orçamento gerado (de qualquer
-  // status), para o usuário saber para quais precisa montar um.
-  const OrcamentoBadge = ({ s }) => (
-    !s.tem_orcamento && (
-      <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
-        Sem orçamento
-      </span>
-    )
-  )
-
   const handleExcluirSelecionados = () => {
-    toast.confirmar(`Excluir ${quantidade} serviço(s) selecionado(s)?`, async () => {
+    toast.confirmar(`Excluir ${plural(quantidade, 'serviço', 'serviços')}?`, async () => {
       const { sucesso, falhas } = await excluirEmMassa([...selecionados], deletar)
       cancelar()
-      if (falhas.length === 0) toast.sucesso(`${sucesso} serviço(s) excluído(s) com sucesso!`)
-      else if (sucesso === 0) toast.erro(`Nenhum serviço excluído (${falhas.length} falharam).`)
-      else toast.alerta(`${sucesso} excluído(s), ${falhas.length} não puderam ser excluídos.`)
+      if (falhas.length === 0) toast.sucesso(plural(sucesso, 'serviço excluído', 'serviços excluídos'))
+      else if (sucesso === 0) toast.erro('Nenhum serviço excluído.')
+      else toast.alerta(`${plural(sucesso, 'excluído', 'excluídos')}; ${falhas.length} com erro.`)
     })
   }
 
-  const MenuStatusServico = ({ s }) => {
-    if (menuStatus !== s.id) return null
-    return (
-      <div className="absolute right-0 top-full mt-1 bg-white rounded-xl border border-slate-200 shadow-lg z-20 min-w-[150px] overflow-hidden">
-        {statusSeguintes(s.status).map(o => {
-          const Icone = STATUS_ICONE[o.val]
-          return (
-            <button
-              key={o.val}
-              onClick={() => confirmarMudarStatus(s, o.val)}
-              className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition-colors border-b border-slate-100 last:border-0 flex items-center gap-2"
-            >
-              <Icone size={12} />
-              {o.label}
-            </button>
-          )
-        })}
-      </div>
-    )
-  }
+  const ctx = { navigate, hojeStr, selecaoAtiva, selecionados, alternarItem, ...acoes }
 
-  // Badge de status: só vira botão com menu quando há próximos status
-  // possíveis na esteira (pendente -> em andamento -> finalizado). Em
-  // "finalizado" não há mais para onde avançar, então fica só leitura.
-  const StatusAcao = ({ s, className }) => {
-    if (statusSeguintes(s.status).length === 0) {
-      return <StatusBadge status={s.status} className={className} />
-    }
-    return (
-      <>
-        <StatusBadge
-          status={s.status}
-          as="button"
-          className={className}
-          onClick={() => setMenuStatus(prev => prev === s.id ? null : s.id)}
-        />
-        <MenuStatusServico s={s} />
-      </>
-    )
-  }
+  const subtitulo = carregando ? 'Carregando...'
+    : servicos.length === 0 ? 'Nenhum serviço'
+    : servicos.length === 1 ? '1 serviço'
+    : `${servicos.length} serviços`
 
-  const ServicoCardKanban = ({ s }) => {
-    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-      id: s.id,
-      disabled: selecaoAtiva,
-    })
-    const style = transform
-      ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 50 }
-      : undefined
+  return (
+    <Pagina largura="max-w-[1600px]">
+      <CabecalhoPagina
+        titulo="Serviços"
+        subtitulo={subtitulo}
+        acoes={
+          <>
+            <Button variant="secondary" onClick={alternarModo} className="text-sm font-semibold px-4 py-2.5 rounded-xl">
+              {selecaoAtiva ? 'Cancelar seleção' : 'Selecionar'}
+            </Button>
+            <Button onClick={() => navigate('/novo')} className="text-sm font-semibold px-5 py-2.5 rounded-xl inline-flex items-center gap-2">
+              <Plus size={16} />
+              Novo serviço
+            </Button>
+          </>
+        }
+      />
 
-    return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...(!selecaoAtiva ? attributes : {})}
-      {...(!selecaoAtiva ? listeners : {})}
-      onClick={() => selecaoAtiva ? alternarItem(s.id) : navigate(`/editar/${s.id}`)}
-      className={`bg-white rounded-xl p-2 border border-slate-100 border-l-4 ${borderPrioridade(s.prioridade)} shadow-sm cursor-pointer min-w-0 touch-none transition-shadow hover:shadow-md active:scale-[0.98] ${isDragging ? 'opacity-50 shadow-lg' : ''}`}
-    >
-      <div className="flex items-start gap-1.5">
-        {selecaoAtiva && (
-          <input
-            type="checkbox"
-            checked={selecionados.has(s.id)}
-            onChange={() => alternarItem(s.id)}
-            onClick={e => e.stopPropagation()}
-            className="w-4 h-4 accent-blue-600 shrink-0 mt-0.5"
-          />
-        )}
-        <p className="text-xs font-semibold text-slate-800 leading-snug flex-1 break-words">{s.titulo}</p>
-      </div>
-      {!selecaoAtiva && (
-        <div className="relative mt-1.5" onClick={e => e.stopPropagation()}>
-          <StatusAcao s={s} className="px-2 py-0.5" />
-        </div>
-      )}
-      <p className="text-xs text-slate-400 mt-1 truncate">{s.cliente}</p>
-      <div className="flex items-center gap-2 mt-2 flex-wrap">
-        <span className={`inline-flex items-center gap-1 text-xs font-medium ${corTextoPrioridade(s.prioridade)}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${corFundoPrioridade(s.prioridade)}`} />
-          {labelPrioridade(s.prioridade)}
-        </span>
-        {s.tag && (
-          <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">
-            {TAG_LABEL[s.tag] || s.tag}
-          </span>
-        )}
-        {!selecaoAtiva && <PagoBadge s={s} />}
-        {!selecaoAtiva && <OrcamentoBadge s={s} />}
-      </div>
-      {s.prazo && (
-        <p className={`text-xs mt-1.5 inline-flex items-center gap-1 ${estaVencido(s, hojeStr) ? 'text-red-600 font-semibold' : 'text-slate-400'}`}>
-          <Calendar size={11} />
-          {estaVencido(s, hojeStr) ? 'Atrasado' : new Date(s.prazo + 'T00:00:00').toLocaleDateString('pt-BR')}
-        </p>
-      )}
-      {!selecaoAtiva && (
-        <div className="flex items-center justify-end gap-1 mt-1.5 pt-1.5 border-t border-slate-100" onClick={e => e.stopPropagation()}>
-          <button
-            onClick={() => navigate(`/servicos/${s.id}/anotacoes`)}
-            aria-label="Anotações"
-            className="inline-flex items-center gap-1 text-xs text-amber-700 font-semibold px-1.5 py-0.5 rounded-lg hover:bg-amber-50 active:scale-95 transition-all"
-          >
-            <NotebookPen size={12} />
-            Anotações
-          </button>
-          <button
-            onClick={() => navigate(`/orcamentos/${s.id}`)}
-            aria-label="Orçamentos"
-            className="inline-flex items-center gap-1 text-xs text-indigo-600 font-semibold px-1.5 py-0.5 rounded-lg hover:bg-indigo-50 active:scale-95 transition-all"
-          >
-            <Receipt size={12} />
-            Orçamentos
-          </button>
-        </div>
-      )}
-    </div>
-    )
-  }
+      <FecharMenuStatus ctx={ctx} />
 
-  const ServicoLinhaCompacta = ({ s }) => (
-    <div
-      onClick={() => selecaoAtiva ? alternarItem(s.id) : navigate(`/editar/${s.id}`)}
-      className={`bg-white rounded-xl px-3 py-2.5 border border-slate-100 border-l-4 ${borderPrioridade(s.prioridade)} shadow-sm flex items-center gap-3 cursor-pointer transition-shadow hover:shadow-md active:scale-[0.98]`}
-    >
-      {selecaoAtiva && (
-        <input
-          type="checkbox"
-          checked={selecionados.has(s.id)}
-          onChange={() => alternarItem(s.id)}
-          onClick={e => e.stopPropagation()}
-          className="w-4 h-4 accent-blue-600 shrink-0"
-        />
-      )}
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-slate-800 truncate">{s.titulo}</p>
-        <p className="text-xs text-slate-400 truncate">{s.cliente}</p>
-      </div>
-      {s.prazo && (
-        estaVencido(s, hojeStr) ? (
-          <span className="text-xs font-bold text-red-600 shrink-0">Atrasado</span>
-        ) : (
-          <span className="text-xs text-slate-400 shrink-0">
-            {new Date(s.prazo + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-          </span>
-        )
-      )}
-      {!selecaoAtiva && (
-        <button
-          onClick={e => { e.stopPropagation(); handleMudarPago(s.id, !s.pago) }}
-          aria-label={s.pago ? 'Marcar como não pago' : 'Marcar como pago'}
-          className="p-1 shrink-0 rounded-lg hover:bg-slate-100 active:scale-90 transition-all"
-        >
-          <ICONE_PAGO size={14} className={s.pago ? 'text-green-600' : 'text-slate-300'} />
-        </button>
-      )}
-      {!selecaoAtiva && !s.tem_orcamento && (
-        <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 shrink-0">
-          Sem orç.
-        </span>
-      )}
-      {!selecaoAtiva && (
-        <button
-          onClick={e => { e.stopPropagation(); navigate(`/servicos/${s.id}/anotacoes`) }}
-          aria-label="Anotações"
-          className="p-1 text-amber-700 shrink-0 rounded-lg hover:bg-amber-50 active:scale-90 transition-all"
-        >
-          <NotebookPen size={14} />
-        </button>
-      )}
-      {!selecaoAtiva && (
-        <button
-          onClick={e => { e.stopPropagation(); navigate(`/orcamentos/${s.id}`) }}
-          aria-label="Orçamentos"
-          className="p-1 text-indigo-600 shrink-0 rounded-lg hover:bg-indigo-50 active:scale-90 transition-all"
-        >
-          <Receipt size={14} />
-        </button>
-      )}
-      {!selecaoAtiva && (
-        <div className="relative shrink-0" onClick={e => e.stopPropagation()}>
-          <StatusAcao s={s} className="px-2 py-1" />
-        </div>
-      )}
-    </div>
-  )
+      {carregando && <Carregando texto="Carregando serviços..." />}
+      {!carregando && servicos.length === 0 && <Vazio>Nenhum serviço cadastrado ainda!</Vazio>}
 
-  const ServicoCardDetalhado = ({ s }) => (
-    <div
-      onClick={() => selecaoAtiva && alternarItem(s.id)}
-      className={`bg-white rounded-2xl p-4 border border-slate-100 border-l-4 ${borderPrioridade(s.prioridade)} shadow-sm`}
-    >
-      <div className="flex justify-between items-start gap-2">
-        {selecaoAtiva && (
-          <input
-            type="checkbox"
-            checked={selecionados.has(s.id)}
-            onChange={() => alternarItem(s.id)}
-            onClick={e => e.stopPropagation()}
-            className="w-5 h-5 accent-blue-600 shrink-0 mt-0.5"
-          />
-        )}
-        <p className="text-sm font-semibold text-slate-800 flex-1 leading-snug">{s.titulo}</p>
-        {!selecaoAtiva && (
-          <div className="relative shrink-0">
-            <StatusAcao s={s} />
-          </div>
-        )}
-      </div>
-
-      <div className="mt-2 flex flex-col gap-0.5">
-        <p className="text-xs text-slate-500 inline-flex items-center gap-1"><User size={12} />{s.cliente}</p>
-        {s.prazo && (
-          <p className={`text-xs inline-flex items-center gap-1 ${estaVencido(s, hojeStr) ? 'text-red-600 font-semibold' : 'text-slate-500'}`}>
-            <Calendar size={12} />
-            {new Date(s.prazo + 'T00:00:00').toLocaleDateString('pt-BR')}
-            {estaVencido(s, hojeStr) && ' · Prazo vencido'}
-          </p>
-        )}
-        <div className="flex items-center gap-2 mt-1 flex-wrap">
-          <span className={`inline-flex items-center gap-1 text-xs font-medium ${corTextoPrioridade(s.prioridade)}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${corFundoPrioridade(s.prioridade)}`} />
-            {labelPrioridade(s.prioridade)}
-          </span>
-          {s.tag && (
-            <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">
-              {TAG_LABEL[s.tag] || s.tag}
-            </span>
-          )}
-          {!selecaoAtiva && <PagoBadge s={s} />}
-          {!selecaoAtiva && <OrcamentoBadge s={s} />}
-        </div>
-      </div>
-
-      {!selecaoAtiva && (
+      {!carregando && servicos.length > 0 && (
         <>
-          <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-3 gap-2">
-            <button
-              onClick={() => navigate(`/editar/${s.id}`)}
-              className="text-xs bg-[#2563eb] text-white py-2 rounded-xl font-semibold transition-all hover:bg-[#1e3a5f] active:scale-[0.96]"
-            >
-              Editar
-            </button>
-            <button
-              onClick={() => navigate(`/servicos/${s.id}/anotacoes`)}
-              className="text-xs bg-amber-50 text-amber-700 border border-amber-100 py-2 rounded-xl font-semibold inline-flex items-center justify-center gap-1 transition-all hover:bg-amber-100 active:scale-[0.96]"
-            >
-              <NotebookPen size={13} />
-              Anotações
-            </button>
-            <button
-              onClick={() => navigate(`/orcamentos/${s.id}`)}
-              className="text-xs bg-indigo-50 text-indigo-700 border border-indigo-100 py-2 rounded-xl font-semibold inline-flex items-center justify-center gap-1 transition-all hover:bg-indigo-100 active:scale-[0.96]"
-            >
-              <Receipt size={13} />
-              Orçamentos
-            </button>
+          <div className="flex items-center justify-between gap-4">
+            <CampoBusca valor={filtros.busca} onChange={filtros.setBusca} placeholder="Buscar serviço pelo título ou cliente..." />
+            <AlternadorVisualizacao opcoes={VISUALIZACOES} valor={visualizacao} onChange={setVisualizacao} />
           </div>
 
-          {confirmandoId === s.id ? (
-            <div className="mt-2 pt-2 border-t border-slate-100">
-              <p className="text-xs text-slate-500 mb-2 text-center">Excluir este serviço?</p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleDeletar(s.id)}
-                  className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold transition-all hover:bg-red-700 active:scale-[0.96]"
-                >
-                  Sim, excluir
-                </button>
-                <button
-                  onClick={() => setConfirmandoId(null)}
-                  className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold transition-all hover:bg-slate-200 active:scale-[0.96]"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="mt-2 flex justify-end px-1">
+          {filtros.valores.situacaoPrazo === 'atrasado' && (
+            <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-3 flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold text-red-700 inline-flex items-center gap-2">
+                <AlertTriangle size={16} />
+                Mostrando apenas serviços em atraso
+              </span>
               <button
-                onClick={() => setConfirmandoId(s.id)}
-                className="text-xs text-red-400 font-medium transition-colors hover:text-red-600"
+                onClick={() => { filtros.setters.situacaoPrazo(''); setSearchParams({}) }}
+                className="text-sm text-red-700 underline font-medium shrink-0 hover:text-red-900 active:scale-95 transition-all"
               >
-                Excluir
+                Ver todos os serviços
               </button>
             </div>
+          )}
+
+          <FiltrosServicos filtros={filtros} />
+
+          {filtrados.length === 0 && <Vazio>Nenhum serviço encontrado para estes filtros.</Vazio>}
+
+          {visualizacao === 'kanban' && filtrados.length > 0 && (
+            <DndContext sensors={sensoresArraste} onDragEnd={handleDragEnd}>
+              <div className="grid grid-cols-3 gap-5 items-start">
+                {STATUS_OPCOES.map(coluna => {
+                  const todosItens = servicosPorStatus[coluna.val] || []
+                  const itens = todosItens.slice(0, LIMITE_POR_COLUNA)
+                  const restantes = todosItens.length - itens.length
+                  const IconeColuna = STATUS_ICONE[coluna.val]
+                  return (
+                    <ColunaKanban key={coluna.val} id={coluna.val}>
+                      <div className="flex items-center justify-between px-1">
+                        <span className="inline-flex items-center gap-2 text-sm font-bold text-slate-700">
+                          <IconeColuna size={16} className="text-slate-500 shrink-0" />
+                          {coluna.label}
+                        </span>
+                        <span className="text-xs font-semibold text-slate-500 bg-white rounded-full px-2.5 py-0.5">{todosItens.length}</span>
+                      </div>
+                      {itens.length === 0 ? (
+                        <div className="text-center text-sm text-slate-400 py-10 border-2 border-dashed border-slate-300/70 rounded-xl">
+                          Nenhum serviço
+                        </div>
+                      ) : itens.map(s => <ServicoCardKanban key={s.id} s={s} ctx={ctx} />)}
+                      {restantes > 0 && (
+                        <button
+                          onClick={() => setColunaModal(coluna.val)}
+                          className="text-sm text-blue-600 font-semibold text-center py-2 bg-white/70 border border-dashed border-blue-200 rounded-xl hover:bg-white active:scale-[0.98] transition-all"
+                        >
+                          Ver mais ({restantes})
+                        </button>
+                      )}
+                    </ColunaKanban>
+                  )
+                })}
+              </div>
+            </DndContext>
+          )}
+
+          {visualizacao !== 'kanban' && filtrados.length > 0 && (
+            <>
+              <Paginacao pagina={pagina} setPagina={setPagina} tamanhoPagina={tamanhoPagina}
+                mudarTamanhoPagina={mudarTamanhoPagina} totalPaginas={totalPaginas} total={filtrados.length} />
+
+              {visualizacao === 'lista' ? (
+                <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
+                  <CabecalhoListaServicos />
+                  {itensPagina.map(s => <ServicoLinha key={s.id} s={s} ctx={ctx} />)}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 2xl:grid-cols-3 gap-5">
+                  {itensPagina.map(s => <ServicoCardDetalhado key={s.id} s={s} ctx={ctx} />)}
+                </div>
+              )}
+            </>
           )}
         </>
       )}
-    </div>
-  )
 
-  // Zona de soltar de uma coluna do kanban: fica destacada em azul claro
-  // enquanto um card é arrastado sobre ela.
-  const ColunaKanban = ({ id, children }) => {
-    const { setNodeRef, isOver } = useDroppable({ id })
-    return (
-      <div ref={setNodeRef} className={`min-w-0 flex flex-col gap-2 rounded-xl transition-colors ${isOver ? 'bg-blue-50' : ''}`}>
-        {children}
-      </div>
-    )
-  }
+      <ModalServicos
+        aberto={!!colunaModal}
+        chave={colunaModal}
+        titulo={colunaModal ? `Serviços: ${labelStatus(colunaModal)}` : ''}
+        subtitulo="Clique em um serviço para editá-lo"
+        parametros={{ status: colunaModal }}
+        filtrosIniciais={periodoPadraoModal()}
+        ocultarFiltros={['status']}
+        onFechar={fecharModal}
+      />
 
-  return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-
-      <div className="page-header bg-[#1e3a5f] px-6 pb-5">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-lg font-bold text-white">Serviços</h1>
-            <p className="text-xs text-slate-300 mt-0.5">
-              {carregando ? 'Carregando...' : servicos.length === 0 ? 'Nenhum serviço' : servicos.length === 1 ? '1 serviço' : `${servicos.length} serviços`}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={alternarModo}
-              className="bg-white/10 text-white text-xs px-3 py-2 rounded-full font-semibold transition-all hover:bg-white/20 active:scale-[0.96]"
-            >
-              {selecaoAtiva ? 'Cancelar' : 'Selecionar'}
-            </button>
-            <button
-              onClick={() => navigate('/novo')}
-              className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold transition-all hover:bg-[#1e3a5f] active:scale-[0.96]"
-            >
-              + Novo
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-4 flex items-center gap-2 bg-white/10 border border-white/20 rounded-xl px-4 py-3">
-          <Search size={16} className="text-slate-300" />
-          <input
-            value={busca}
-            onChange={e => setBusca(e.target.value)}
-            className="flex-1 text-xs text-white placeholder-slate-400 outline-none bg-transparent"
-            placeholder="Buscar serviço pelo título ou cliente..."
-          />
-          {busca && (
-            <button onClick={() => setBusca('')} className="text-slate-400 hover:text-white active:scale-90 transition-all">
-              <X size={14} />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {menuStatus && (
-        <div className="fixed inset-0 z-10" onClick={() => setMenuStatus(null)} />
+      {selecaoAtiva && (
+        <>
+          <div className="h-16" />
+          <BarraSelecao quantidade={quantidade} onExcluir={handleExcluirSelecionados} onCancelar={cancelar} />
+        </>
       )}
-
-      <div className="px-6 pt-4 flex flex-col gap-5 mb-24">
-        {carregando && (
-          <div className="text-center text-slate-400 text-sm mt-10">Carregando serviços...</div>
-        )}
-        {!carregando && servicos.length === 0 && (
-          <div className="text-center text-slate-400 text-sm mt-10">
-            Nenhum serviço cadastrado ainda!
-          </div>
-        )}
-
-        {filtroSituacaoPrazo === 'atrasado' && (
-          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2">
-            <span className="text-xs font-semibold text-red-700 inline-flex items-center gap-1.5">
-              <AlertTriangle size={14} />
-              Mostrando apenas serviços em atraso
-            </span>
-            <button
-              onClick={() => { setFiltroSituacaoPrazo(''); setSearchParams({}) }}
-              className="text-xs text-red-700 underline font-medium shrink-0 hover:text-red-900 active:scale-95 transition-all"
-            >
-              Ver todos os serviços
-            </button>
-          </div>
-        )}
-
-        {!carregando && servicos.length > 0 && (
-          <div className="flex justify-end">
-            <div className="inline-flex bg-slate-200/70 rounded-full p-1 gap-1">
-              <button
-                onClick={() => setVisualizacao('kanban')}
-                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-all active:scale-95 ${
-                  visualizacao === 'kanban' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:bg-white/60 hover:text-slate-700'
-                }`}
-              >
-                <Kanban size={13} />
-                Quadro
-              </button>
-              <button
-                onClick={() => setVisualizacao('lista')}
-                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-all active:scale-95 ${
-                  visualizacao === 'lista' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:bg-white/60 hover:text-slate-700'
-                }`}
-              >
-                <List size={13} />
-                Lista
-              </button>
-              <button
-                onClick={() => setVisualizacao('detalhado')}
-                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-all active:scale-95 ${
-                  visualizacao === 'detalhado' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:bg-white/60 hover:text-slate-700'
-                }`}
-              >
-                <LayoutList size={13} />
-                Detalhado
-              </button>
-            </div>
-          </div>
-        )}
-
-        {!carregando && servicos.length > 0 && (
-          <PainelFiltros quantidadeAtiva={quantidadeFiltrosAtivos} onLimpar={limparFiltros}>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={LABEL}>Status</label>
-                <Select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)} className={SELECT}>
-                  <option value="">Todos</option>
-                  {STATUS_OPCOES.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
-                </Select>
-              </div>
-              <div>
-                <label className={LABEL}>Prioridade</label>
-                <Select value={filtroPrioridade} onChange={e => setFiltroPrioridade(e.target.value)} className={SELECT}>
-                  <option value="">Todas</option>
-                  {PRIORIDADE_OPCOES.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={LABEL}>Tag</label>
-                <Select value={filtroTag} onChange={e => setFiltroTag(e.target.value)} className={SELECT}>
-                  <option value="">Todas</option>
-                  {TAG_OPCOES.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
-                </Select>
-              </div>
-              <div>
-                <label className={LABEL}>Situação do prazo</label>
-                <Select value={filtroSituacaoPrazo} onChange={e => setFiltroSituacaoPrazo(e.target.value)} className={SELECT}>
-                  <option value="">Todos</option>
-                  <option value="no_prazo">Dentro do prazo</option>
-                  <option value="atrasado">Atrasado</option>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={LABEL}>Prazo de</label>
-                <input type="date" value={filtroPrazoDe} onChange={e => setFiltroPrazoDe(e.target.value)} className={SELECT} />
-              </div>
-              <div>
-                <label className={LABEL}>Prazo até</label>
-                <input type="date" value={filtroPrazoAte} onChange={e => setFiltroPrazoAte(e.target.value)} className={SELECT} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={LABEL}>Pagamento</label>
-                <Select value={filtroPago} onChange={e => setFiltroPago(e.target.value)} className={SELECT}>
-                  <option value="">Todos</option>
-                  {PAGO_OPCOES.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
-                </Select>
-              </div>
-              <div>
-                <label className={LABEL}>Orçamento</label>
-                <Select value={filtroOrcamento} onChange={e => setFiltroOrcamento(e.target.value)} className={SELECT}>
-                  <option value="">Todos</option>
-                  <option value="com">Com orçamento</option>
-                  <option value="sem">Sem orçamento</option>
-                </Select>
-              </div>
-            </div>
-          </PainelFiltros>
-        )}
-
-        {!carregando && servicos.length > 0 && servicosFiltrados.length === 0 && (
-          <div className="text-center text-slate-400 text-sm mt-6">
-            Nenhum serviço encontrado para estes filtros.
-          </div>
-        )}
-
-        {visualizacao !== 'kanban' && servicosFiltrados.length > 0 && (
-          <Paginacao pagina={pagina} setPagina={setPagina} tamanhoPagina={tamanhoPagina}
-            mudarTamanhoPagina={mudarTamanhoPagina} totalPaginas={totalPaginas} />
-        )}
-
-        {visualizacao === 'kanban' && servicosFiltrados.length > 0 && (
-          <DndContext sensors={sensoresArraste} onDragEnd={handleDragEnd}>
-            <div className="grid grid-cols-3 gap-2">
-              {STATUS_OPCOES.map(coluna => {
-                const todosItens = servicosPorStatus[coluna.val] || []
-                const limite = limiteColuna[coluna.val] ?? LIMITE_KANBAN_INICIAL
-                const itens = todosItens.slice(0, limite)
-                const restantes = todosItens.length - itens.length
-                const IconeColuna = STATUS_ICONE[coluna.val]
-                return (
-                  <ColunaKanban key={coluna.val} id={coluna.val}>
-                    <div className="flex flex-col items-start gap-1 px-0.5">
-                      <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-700 leading-tight">
-                        <IconeColuna size={12} className="text-slate-500 shrink-0" />
-                        {coluna.label}
-                      </span>
-                      <span className="text-[10px] text-slate-400 bg-slate-100 rounded-full px-1.5 py-0.5">{todosItens.length}</span>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      {itens.length === 0 ? (
-                        <div className="text-center text-[10px] text-slate-300 py-6 px-1 border border-dashed border-slate-200 rounded-xl">
-                          Nenhum serviço
-                        </div>
-                      ) : itens.map(s => <ServicoCardKanban key={s.id} s={s} />)}
-                    </div>
-                    {restantes > 0 && (
-                      <button
-                        onClick={() => setLimiteColuna(prev => ({ ...prev, [coluna.val]: limite + INCREMENTO_KANBAN }))}
-                        className="text-[10px] text-blue-600 font-semibold text-center py-1.5 border border-dashed border-blue-200 rounded-xl hover:bg-blue-50 active:scale-[0.97] transition-all"
-                      >
-                        Carregar mais ({restantes})
-                      </button>
-                    )}
-                  </ColunaKanban>
-                )
-              })}
-            </div>
-          </DndContext>
-        )}
-
-        {visualizacao !== 'kanban' && itensPagina.map(s => (
-          visualizacao === 'lista'
-            ? <ServicoLinhaCompacta key={s.id} s={s} />
-            : <ServicoCardDetalhado key={s.id} s={s} />
-        ))}
-      </div>
-
-      {selecaoAtiva ? (
-        <BarraSelecao quantidade={quantidade} onExcluir={handleExcluirSelecionados} onCancelar={cancelar} />
-      ) : (
-        <Navbar />
-      )}
-    </div>
+    </Pagina>
   )
 }
 

@@ -3,11 +3,7 @@ import { PESO_PRIORIDADE } from '../utils/status'
 
 const PESO_STATUS = { em_andamento: 0, pendente: 1, finalizado: 2 }
 
-/**
- * Ordena primariamente por prioridade (alta primeiro), depois por status (em
- * andamento primeiro, finalizado por último) e por fim por prazo mais
- * próximo de vencer (sem prazo vai para o final do grupo).
- */
+// Ordem: prioridade, depois status, depois prazo mais próximo (sem prazo por último).
 export function useServicosOrdenados(servicos) {
   return useMemo(() => [...servicos].sort((a, b) => {
     const prioA = PESO_PRIORIDADE[a.prioridade] ?? 1

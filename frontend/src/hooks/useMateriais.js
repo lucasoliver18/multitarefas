@@ -6,12 +6,12 @@ export function useMateriais() {
   const [carregando, setCarregando] = useState(true)
 
   const buscar = useCallback(async () => {
-    setCarregando(true)
+    // Só a primeira carga mostra "Carregando..."; recargas atualizam em silêncio.
     try {
       const res = await api.get('/materiais')
       setMateriais(Array.isArray(res.data) ? res.data : [])
     } catch {
-      setMateriais([])
+      // Mantém a lista atual se uma recarga falhar.
     } finally {
       setCarregando(false)
     }
@@ -43,12 +43,10 @@ export function useMateriais() {
   return { materiais, carregando, buscar, deletar, atualizarEstoque }
 }
 
-/**
- * Busca paginada/filtrada de materiais, para uso em combobox assíncrono
- * (ComboboxAsync), sem disparar o fetch completo de useMateriais().
- */
-export async function buscarMateriaisPagina(busca, pagina) {
-  const res = await api.get('/materiais', { params: { busca, por_pagina: 20, page: pagina } })
+// Separada do hook para buscar sob demanda sem disparar o fetch completo de useMateriais().
+// `tag` limita aos materiais daquela tag (ex.: só os de Pintura num serviço de Pintura).
+export async function buscarMateriaisPagina(busca, pagina, tag) {
+  const res = await api.get('/materiais', { params: { busca, tag: tag || undefined, por_pagina: 20, page: pagina } })
   return {
     itens: res.data.data ?? [],
     temMais: (res.data.meta?.current_page ?? 1) < (res.data.meta?.last_page ?? 1),

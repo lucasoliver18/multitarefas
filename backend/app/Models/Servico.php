@@ -23,8 +23,24 @@ class Servico extends Model
     ];
 
     protected $casts = [
-        'pago' => 'boolean',
+        'pago'          => 'boolean',
+        'pago_em'       => 'datetime',
+        'finalizado_em' => 'datetime',
     ];
+
+    // Registra quando o serviço foi pago e quando foi finalizado, para os
+    // indicadores de período da tela inicial. Desmarcar o pagamento limpa a data.
+    protected static function booted(): void
+    {
+        static::saving(function (Servico $servico) {
+            if ($servico->isDirty('pago')) {
+                $servico->pago_em = $servico->pago ? now() : null;
+            }
+            if ($servico->isDirty('status')) {
+                $servico->finalizado_em = $servico->status === 'finalizado' ? ($servico->finalizado_em ?? now()) : null;
+            }
+        });
+    }
 
     public function clienteRelacao()
     {

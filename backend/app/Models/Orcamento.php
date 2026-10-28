@@ -15,10 +15,25 @@ class Orcamento extends Model
         'titulo',
         'descricao',
         'margem_lucro',
+        'tipo_margem',
         'status',
     ];
 
     protected $appends = ['valor_materiais', 'valor_final'];
+
+    protected $casts = [
+        'aprovado_em' => 'datetime',
+    ];
+
+    // Registra quando o orçamento foi aprovado; reprovar limpa a data.
+    protected static function booted(): void
+    {
+        static::saving(function (Orcamento $orcamento) {
+            if ($orcamento->isDirty('status')) {
+                $orcamento->aprovado_em = $orcamento->status === 'aprovado' ? now() : null;
+            }
+        });
+    }
 
     public function servico()
     {
@@ -39,8 +54,13 @@ class Orcamento extends Model
         });
     }
 
+    // Margem em valor (R$) soma direto ao custo; em porcentagem, incide sobre ele.
     public function getValorFinalAttribute(): float
     {
+        if ($this->tipo_margem === 'valor') {
+            return $this->valor_materiais + $this->margem_lucro;
+        }
+
         return $this->valor_materiais * (1 + $this->margem_lucro / 100);
     }
 }

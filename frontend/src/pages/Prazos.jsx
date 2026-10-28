@@ -1,29 +1,51 @@
-import { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { NotebookPen, AlertTriangle } from 'lucide-react'
-import Navbar from '../components/Navbar'
+import { useState, useMemo, useRef } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { NotebookPen, AlertTriangle, ChevronLeft, ChevronRight, Plus, Pencil } from 'lucide-react'
 import StatusBadge from '../components/StatusBadge'
+import Button from '../components/Button'
+import { Pagina, CabecalhoPagina } from '../components/Pagina'
 import { useToast } from '../hooks/useToast'
 import { useServicos } from '../hooks/useServicos'
 import { useEstadoPersistido } from '../hooks/useEstadoPersistido'
+import { mensagemErro } from '../utils/erros'
 import {
   TAG_LABEL,
   STATUS_OPCOES,
   PRIORIDADE_OPCOES,
   PESO_PRIORIDADE,
-  labelPrioridade,
+  borderPrioridade,
   labelStatus,
   statusSeguintes,
-  corTextoPrioridade,
   corFundoPrioridade,
 } from '../utils/status'
-import { hojeISO, estaVencido } from '../utils/prazos'
+import { hojeISO, estaVencido, dataValida } from '../utils/prazos'
+import { plural } from '../utils/texto'
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 const DIAS_SEMANA = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
 
 const TAGS_FIXAS = ['informatica', 'pintura', 'outros']
-const LIMITE_VENCIDOS = 3
+const LIMITE_VENCIDOS = 4
+// Cada dia mostra bolinhas coloridas com a quantidade de serviços: uma por
+// prioridade (serviços em aberto) e uma cinza para os finalizados. Os nomes
+// ficam no painel ao lado, ao selecionar o dia.
+const INDICADORES = [
+  { chave: 'alta',       rotulos: ['serviço de prioridade alta', 'serviços de prioridade alta'],   cor: corFundoPrioridade('alta') },
+  { chave: 'media',      rotulos: ['serviço de prioridade média', 'serviços de prioridade média'], cor: corFundoPrioridade('media') },
+  { chave: 'baixa',      rotulos: ['serviço de prioridade baixa', 'serviços de prioridade baixa'], cor: corFundoPrioridade('baixa') },
+  { chave: 'finalizado', rotulos: ['serviço finalizado', 'serviços finalizados'],                 cor: 'bg-slate-400' },
+]
+
+const indicadoresDoDia = (servicosDoDia) => {
+  const contagem = {}
+  servicosDoDia.forEach(s => {
+    const chave = s.status === 'finalizado' ? 'finalizado' : (s.prioridade || 'media')
+    contagem[chave] = (contagem[chave] || 0) + 1
+  })
+  return INDICADORES
+    .filter(ind => contagem[ind.chave])
+    .map(ind => ({ ...ind, quantidade: contagem[ind.chave] }))
+}
 
 function Prazos() {
   const navigate = useNavigate()
@@ -31,22 +53,30 @@ function Prazos() {
   const hoje = new Date()
   const hojeStr = hojeISO()
 
+  // ?data=AAAA-MM-DD (ex.: vindo da agenda da tela inicial) abre o calendário
+  // já nesse dia, sem filtros salvos que possam esconder os serviços dele.
+  const [searchParams] = useSearchParams()
+  const dataLink = dataValida(searchParams.get('data') || '') ? searchParams.get('data') : null
+  const [anoLink, mesLink, diaLink] = dataLink ? dataLink.split('-').map(Number) : []
+  const opcoes = { ignorarSalvo: !!dataLink }
+
   const { servicos, mudarStatus: mudarStatusHook } = useServicos()
-  const [ano, setAno] = useState(hoje.getFullYear())
-  const [mes, setMes] = useState(hoje.getMonth())
-  const [diaSelecionado, setDiaSelecionado] = useState(hoje.getDate())
-  // Filtros ficam salvos entre visitas à tela.
-  const [filtroTags, setFiltroTags] = useEstadoPersistido('prazos:filtroTags', [])
-  const [filtroPrioridade, setFiltroPrioridade] = useEstadoPersistido('prazos:filtroPrioridade', null)
-  const [filtroStatus, setFiltroStatus] = useEstadoPersistido('prazos:filtroStatus', null)
+  const [ano, setAno] = useState(anoLink ?? hoje.getFullYear())
+  const [mes, setMes] = useState(dataLink ? mesLink - 1 : hoje.getMonth())
+  const [diaSelecionado, setDiaSelecionado] = useState(diaLink ?? hoje.getDate())
+  const [filtroTags, setFiltroTags] = useEstadoPersistido('prazos:filtroTags', [], undefined, opcoes)
+  // Prioridade e status aceitam várias opções ao mesmo tempo, como as tags.
+  // (Chaves novas: as antigas guardavam um valor só.)
+  const [filtroPrioridades, setFiltroPrioridades] = useEstadoPersistido('prazos:filtroPrioridades', [], undefined, opcoes)
+  const [filtroStatus, setFiltroStatus] = useEstadoPersistido('prazos:filtroStatusLista', [], undefined, opcoes)
   const [menuStatus, setMenuStatus] = useState(null)
 
   const mudarStatus = async (id, novoStatus) => {
     try {
       await mudarStatusHook(id, novoStatus)
-      toast.sucesso('Status atualizado!')
-    } catch {
-      toast.erro('Erro ao atualizar status.')
+      toast.sucesso('Status atualizado')
+    } catch (e) {
+      toast.erro(mensagemErro(e, 'Erro ao atualizar status.'))
     }
   }
 
@@ -54,22 +84,21 @@ function Prazos() {
     setMenuStatus(null)
     const exigeOrcamento = (novoStatus === 'em_andamento' || novoStatus === 'finalizado') && !s.tem_orcamento_aprovado
     const mensagem = exigeOrcamento
-      ? `Este serviço não possui nenhum orçamento aprovado. Tem certeza que deseja alterar o status para "${labelStatus(novoStatus)}" mesmo assim?`
-      : `Tem certeza que deseja alterar o status para "${labelStatus(novoStatus)}"?`
+      ? `Serviço sem orçamento aprovado. Mudar para "${labelStatus(novoStatus)}" mesmo assim?`
+      : `Mudar status para "${labelStatus(novoStatus)}"?`
     toast.confirmar(mensagem, () => mudarStatus(s.id, novoStatus))
   }
 
   const servicosFiltrados = useMemo(() => {
     return servicos.filter(s => {
       if (filtroTags.length > 0 && !filtroTags.includes(s.tag)) return false
-      if (filtroPrioridade && s.prioridade !== filtroPrioridade) return false
-      if (filtroStatus && s.status !== filtroStatus) return false
+      if (filtroPrioridades.length > 0 && !filtroPrioridades.includes(s.prioridade)) return false
+      if (filtroStatus.length > 0 && !filtroStatus.includes(s.status)) return false
       return true
     })
-  }, [servicos, filtroTags, filtroPrioridade, filtroStatus])
+  }, [servicos, filtroTags, filtroPrioridades, filtroStatus])
 
-  // Usa a lista completa de serviços (não a filtrada): o aviso de vencidos
-  // precisa mostrar todos os prazos vencidos independente dos filtros da tela.
+  // Usa a lista sem filtros: o aviso deve mostrar todos os prazos vencidos.
   const vencidos = useMemo(() =>
     servicos
       .filter(s => estaVencido(s, hojeStr))
@@ -87,21 +116,21 @@ function Prazos() {
     [servicosFiltrados]
   )
 
-  const servicosDaData = (d) => {
-    const dateStr = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-    return servicosFiltrados.filter(s => s.prazo === dateStr)
-  }
+  const dataStr = (d) => `${ano}-${String(mes + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 
-  const servicosDiaSelecionado = useMemo(() => {
-    if (!diaSelecionado) return []
-    const dateStr = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(diaSelecionado).padStart(2, '0')}`
-    return servicosFiltrados.filter(s => s.prazo === dateStr)
-  }, [servicosFiltrados, diaSelecionado, ano, mes])
+  const servicosPorData = useMemo(() => {
+    const mapa = {}
+    servicosFiltrados.forEach(s => {
+      if (!s.prazo) return
+      ;(mapa[s.prazo] ??= []).push(s)
+    })
+    Object.values(mapa).forEach(lista => lista.sort((a, b) => (PESO_PRIORIDADE[a.prioridade] ?? 1) - (PESO_PRIORIDADE[b.prioridade] ?? 1)))
+    return mapa
+  }, [servicosFiltrados])
 
-  // Sempre retorna exatamente 6 semanas (42 células), para o calendário nunca
-  // mudar de altura entre meses. Os espaços antes do dia 1 e depois do
-  // último dia são preenchidos com dias do mês anterior/seguinte
-  // (mesAtual: false), exibidos em cinza claro só como referência visual.
+  const servicosDiaSelecionado = diaSelecionado ? (servicosPorData[dataStr(diaSelecionado)] || []) : []
+
+  // Sempre 6 semanas (42 células) para o calendário ter a mesma altura em todos os meses.
   const semanas = useMemo(() => {
     const diasNoMes = new Date(ano, mes + 1, 0).getDate()
     const diasMesAnterior = new Date(ano, mes, 0).getDate()
@@ -136,304 +165,359 @@ function Prazos() {
     setDiaSelecionado(null)
   }
 
+  const irParaHoje = () => {
+    setAno(hoje.getFullYear())
+    setMes(hoje.getMonth())
+    setDiaSelecionado(hoje.getDate())
+    if (campoDataRef.current) campoDataRef.current.value = ''
+  }
+
+  // "Data específica": leva o calendário direto ao mês da data e seleciona o
+  // dia, sem precisar passar mês a mês.
+  const campoDataRef = useRef(null)
+
+  const irParaData = (valor, avisarSeInvalida) => {
+    const [a, m, d] = (valor || '').split('-').map(Number)
+    if (!dataValida(valor) || a < 1900 || a > 2999) {
+      if (avisarSeInvalida) toast.erro('Data inválida.')
+      return
+    }
+    setAno(a)
+    setMes(m - 1)
+    setDiaSelecionado(d)
+  }
+
+  // Enquanto o ano é digitado, o campo nativo já emite datas como 0002-05-10;
+  // só navega quando o ano estiver completo (>= 1900), sem pular para o ano 2.
+  const handleDataEspecifica = (e) => {
+    const ano = Number((e.target.value || '').slice(0, 4))
+    if (ano >= 1900) irParaData(e.target.value, false)
+  }
+
   const toggleTag = (tag) =>
     setFiltroTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])
-  const togglePrioridade = (p) => setFiltroPrioridade(prev => prev === p ? null : p)
-  const toggleStatus = (s) => setFiltroStatus(prev => prev === s ? null : s)
-  const limparFiltros = () => { setFiltroTags([]); setFiltroPrioridade(null); setFiltroStatus(null) }
-  const temFiltroAtivo = filtroTags.length > 0 || filtroPrioridade || filtroStatus
+  const alternarNaLista = (setLista) => (valor) =>
+    setLista(prev => prev.includes(valor) ? prev.filter(v => v !== valor) : [...prev, valor])
+  const togglePrioridade = alternarNaLista(setFiltroPrioridades)
+  const toggleStatus = alternarNaLista(setFiltroStatus)
+  const limparFiltros = () => { setFiltroTags([]); setFiltroPrioridades([]); setFiltroStatus([]) }
+  const temFiltroAtivo = filtroTags.length > 0 || filtroPrioridades.length > 0 || filtroStatus.length > 0
 
-  const CardServico = ({ s }) => {
+  const chip = (ativo) =>
+    `text-sm px-3 py-1 rounded-lg font-medium transition-all active:scale-95 ${ativo ? 'bg-[#2563eb] text-white hover:bg-[#1e3a5f]' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`
+
+  // Função de renderização (e não componente criado dentro da tela), para o
+  // React não remontar os cartões a cada atualização.
+  const renderCardServico = (s) => {
     const proximos = statusSeguintes(s.status)
     return (
-    <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
-      <div className="flex justify-between items-start gap-2">
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-slate-800 truncate">{s.titulo}</p>
-          <p className="text-xs text-slate-500 mt-0.5">Cliente: {s.cliente}</p>
+      <div key={s.id} className={`bg-white rounded-xl p-4 border border-slate-200 border-l-4 ${borderPrioridade(s.prioridade)}`}>
+        <div className="flex justify-between items-start gap-2">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-slate-800 truncate">{s.titulo}</p>
+            <p className="text-sm text-slate-500 truncate">{s.cliente}</p>
+          </div>
+          <div className="relative shrink-0">
+            <StatusBadge
+              status={s.status}
+              className="px-2 py-0.5"
+              {...(proximos.length > 0
+                ? { as: 'button', title: 'Alterar status', onClick: () => setMenuStatus(prev => prev === s.id ? null : s.id) }
+                : {})}
+            />
+            {menuStatus === s.id && proximos.length > 0 && (
+              <div className="absolute right-0 top-full mt-1 bg-white rounded-xl border border-slate-200 shadow-lg z-20 min-w-[160px] overflow-hidden">
+                {proximos.map(o => (
+                  <button
+                    key={o.val}
+                    onClick={() => confirmarMudarStatus(s, o.val)}
+                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition-colors border-b border-slate-100 last:border-0 block"
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-        <div className="relative shrink-0">
-          <StatusBadge
-            status={s.status}
-            {...(proximos.length > 0
-              ? { as: 'button', onClick: () => setMenuStatus(prev => prev === s.id ? null : s.id) }
-              : {})}
-          />
-          {menuStatus === s.id && proximos.length > 0 && (
-            <div className="absolute right-0 top-full mt-1 bg-white rounded-xl border border-slate-200 shadow-lg z-20 min-w-[150px] overflow-hidden">
-              {proximos.map(o => (
-                <button
-                  key={o.val}
-                  onClick={() => confirmarMudarStatus(s, o.val)}
-                  className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition-colors border-b border-slate-100 last:border-0 block"
-                >
-                  {o.label}
-                </button>
-              ))}
-            </div>
-          )}
+
+        <div className="flex items-center justify-between gap-2 mt-3">
+          {s.tag ? (
+            <span className="bg-blue-100 text-blue-700 text-xs font-medium px-2 py-0.5 rounded-full">
+              {TAG_LABEL[s.tag] || s.tag}
+            </span>
+          ) : <span />}
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={() => navigate(`/servicos/${s.id}/anotacoes`)}
+              aria-label="Anotações" title="Anotações"
+              className="p-1.5 text-amber-700 rounded-lg hover:bg-amber-50 active:scale-90 transition-all"
+            >
+              <NotebookPen size={15} />
+            </button>
+            <button
+              onClick={() => navigate(`/editar/${s.id}`)}
+              aria-label="Editar serviço" title="Editar serviço"
+              className="p-1.5 text-[#2563eb] rounded-lg hover:bg-blue-50 active:scale-90 transition-all"
+            >
+              <Pencil size={15} />
+            </button>
+          </div>
         </div>
       </div>
-
-      <div className="flex items-center gap-2 mt-2">
-        <span className={`inline-flex items-center gap-1 text-xs font-semibold ${corTextoPrioridade(s.prioridade)}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${corFundoPrioridade(s.prioridade)}`} />
-          {labelPrioridade(s.prioridade)}
-        </span>
-        {s.tag && (
-          <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">
-            {TAG_LABEL[s.tag] || s.tag}
-          </span>
-        )}
-      </div>
-
-      <div className="flex gap-2 mt-3">
-        <button
-          onClick={() => navigate(`/servicos/${s.id}/anotacoes`)}
-          className="flex-1 text-xs bg-amber-50 text-amber-700 border border-amber-200 px-3 py-2 rounded-xl font-semibold text-center inline-flex items-center justify-center gap-1 transition-all hover:bg-amber-100 active:scale-[0.96]"
-        >
-          <NotebookPen size={13} />
-          Anotações
-        </button>
-        <button
-          onClick={() => navigate(`/editar/${s.id}`)}
-          className="flex-1 text-xs bg-slate-50 text-[#2563eb] border border-slate-200 px-3 py-2 rounded-xl font-semibold text-center transition-all hover:bg-slate-100 active:scale-[0.96]"
-        >
-          Editar serviço
-        </button>
-      </div>
-    </div>
-  )}
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-
-      <div className="page-header bg-[#1e3a5f] px-6 pb-5 flex justify-between items-center">
-        <div>
-          <h1 className="text-lg font-bold text-white">Prazos</h1>
-          <p className="text-xs text-slate-300 mt-0.5">Calendário de serviços</p>
-        </div>
-        <button
-          onClick={() => navigate('/novo')}
-          className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold transition-all hover:bg-[#1e3a5f] active:scale-[0.96]"
-        >
-          + Novo
-        </button>
-      </div>
+    <Pagina largura="max-w-[1600px]">
+      <CabecalhoPagina
+        titulo="Prazos"
+        subtitulo="Calendário de serviços"
+        acoes={
+          <Button onClick={() => navigate(diaSelecionado ? `/novo?prazo=${dataStr(diaSelecionado)}` : '/novo')} className="text-sm font-semibold px-5 py-2.5 rounded-xl inline-flex items-center gap-2">
+            <Plus size={16} />
+            Novo serviço
+          </Button>
+        }
+      />
 
       {menuStatus && (
         <div className="fixed inset-0 z-10" onClick={() => setMenuStatus(null)} />
       )}
 
-      {vencidos.length > 0 && (
-        <div className="px-6 pt-4">
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
-            <p className="text-sm font-bold text-red-700 mb-3 inline-flex items-center gap-1.5">
-              <AlertTriangle size={16} />
-              {vencidos.length} prazo{vencidos.length > 1 ? 's' : ''} vencido{vencidos.length > 1 ? 's' : ''}
-            </p>
-            <div className="flex flex-col gap-2">
-              {vencidos.slice(0, LIMITE_VENCIDOS).map(s => (
-                <div key={s.id} className="flex justify-between items-center gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-red-800 truncate">{s.titulo}</p>
-                    <p className="text-xs text-red-500">
-                      Venceu em {new Date(s.prazo + 'T00:00:00').toLocaleDateString('pt-BR')}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => navigate(`/editar/${s.id}`)}
-                    className="text-xs bg-red-600 text-white px-3 py-1.5 rounded-full font-semibold shrink-0 hover:bg-red-700 active:scale-95 transition-all"
-                  >
-                    Editar
-                  </button>
-                </div>
-              ))}
-            </div>
-            {vencidos.length > LIMITE_VENCIDOS && (
-              <button
-                onClick={() => navigate('/servicos?vencidos=1')}
-                className="text-xs text-red-700 font-semibold underline mt-3 hover:text-red-900 active:scale-95 transition-all"
-              >
-                Ver todos os {vencidos.length} prazos vencidos
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      <div className="px-6 pt-4 mb-3 flex flex-col gap-2">
-        <div className="flex gap-2 flex-wrap items-center">
-          <span className="text-xs text-slate-400">Tipo:</span>
+      <div className="flex items-center gap-6 flex-wrap bg-white border border-slate-200 rounded-2xl px-5 py-3">
+        <div className="flex gap-1.5 items-center">
+          <span className="text-sm text-slate-500 mr-1">Tipo:</span>
           {TAGS_FIXAS.map(tag => (
-            <button key={tag} onClick={() => toggleTag(tag)}
-              className={`text-xs px-3 py-1 rounded-full font-medium transition-all active:scale-95 ${filtroTags.includes(tag) ? 'bg-[#2563eb] text-white hover:bg-[#1e3a5f]' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>
+            <button key={tag} onClick={() => toggleTag(tag)} className={chip(filtroTags.includes(tag))}>
               {TAG_LABEL[tag] || tag}
             </button>
           ))}
         </div>
 
-        <div className="flex gap-2 flex-wrap items-center">
-          <span className="text-xs text-slate-400">Prioridade:</span>
+        <div className="flex gap-1.5 items-center">
+          <span className="text-sm text-slate-500 mr-1">Prioridade:</span>
           {PRIORIDADE_OPCOES.map(({ val, label }) => (
             <button key={val} onClick={() => togglePrioridade(val)}
-              className={`inline-flex items-center gap-1.5 text-xs px-3 py-1 rounded-full font-medium transition-all active:scale-95 ${filtroPrioridade === val ? `bg-slate-100 border border-slate-300 ${corTextoPrioridade(val)}` : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${corFundoPrioridade(val)}`} />
+              className={`${chip(filtroPrioridades.includes(val))} inline-flex items-center gap-1.5`}>
+              <span className={`w-2 h-2 rounded-full ${corFundoPrioridade(val)}`} />
               {label}
             </button>
           ))}
         </div>
 
-        <div className="flex gap-2 flex-wrap items-center">
-          <span className="text-xs text-slate-400">Status:</span>
+        <div className="flex gap-1.5 items-center">
+          <span className="text-sm text-slate-500 mr-1">Status:</span>
           {STATUS_OPCOES.map(({ val, label }) => (
-            <button key={val} onClick={() => toggleStatus(val)}
-              className={`text-xs px-3 py-1 rounded-full font-medium transition-all active:scale-95 ${filtroStatus === val ? 'bg-[#2563eb] text-white hover:bg-[#1e3a5f]' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+            <button key={val} onClick={() => toggleStatus(val)} className={chip(filtroStatus.includes(val))}>
               {label}
             </button>
           ))}
         </div>
 
         {temFiltroAtivo && (
-          <button onClick={limparFiltros} className="text-xs text-red-400 underline self-start hover:text-red-600 active:scale-95 transition-all">
+          <button onClick={limparFiltros} className="text-sm text-red-500 font-semibold ml-auto hover:text-red-700 active:scale-95 transition-all">
             Limpar filtros
           </button>
         )}
       </div>
 
-      <div className="px-6 mb-4">
-        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
-
-          <div className="flex items-center justify-between mb-3">
-            <button onClick={mesAnterior} className="w-8 h-8 flex items-center justify-center text-slate-500 text-lg hover:bg-slate-100 active:scale-90 transition-all rounded-full">
-              ‹
-            </button>
-            <p translate="no" className="text-sm font-semibold text-slate-700">
+      <div className="grid grid-cols-[minmax(0,1fr)_24rem] gap-6 items-start">
+        <div className="bg-white rounded-2xl border border-slate-200 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <p translate="no" className="text-lg font-bold text-slate-800">
               {MESES[mes]} {ano}
             </p>
-            <button onClick={proximoMes} className="w-8 h-8 flex items-center justify-center text-slate-500 text-lg hover:bg-slate-100 active:scale-90 transition-all rounded-full">
-              ›
-            </button>
+            <div className="flex items-center gap-1">
+              <label className="flex items-center gap-2 mr-3">
+                <span className="text-sm text-slate-500 whitespace-nowrap">Data específica:</span>
+                {/* Não-controlado: com value/onChange o re-render reseta os segmentos dia/mês/ano enquanto se digita. */}
+                <input
+                  ref={campoDataRef}
+                  type="date"
+                  min="1900-01-01"
+                  max="2999-12-31"
+                  onChange={handleDataEspecifica}
+                  onKeyDown={e => { if (e.key === 'Enter') irParaData(e.currentTarget.value, true) }}
+                  aria-label="Ir para uma data específica"
+                  className="text-sm bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => irParaData(campoDataRef.current?.value, true)}
+                  className="text-sm font-semibold text-white bg-[#2563eb] px-3 py-1.5 rounded-lg hover:bg-[#1e3a5f] active:scale-95 transition-all"
+                >
+                  Ir
+                </button>
+              </label>
+              <button onClick={irParaHoje} className="text-sm font-semibold text-slate-600 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 active:scale-95 transition-all mr-2">
+                Hoje
+              </button>
+              <button onClick={mesAnterior} aria-label="Mês anterior" className="p-2 text-slate-500 hover:bg-slate-100 active:scale-90 transition-all rounded-lg">
+                <ChevronLeft size={18} />
+              </button>
+              <button onClick={proximoMes} aria-label="Próximo mês" className="p-2 text-slate-500 hover:bg-slate-100 active:scale-90 transition-all rounded-lg">
+                <ChevronRight size={18} />
+              </button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-7 mb-1">
+          <div className="grid grid-cols-7 border-b border-slate-200">
             {DIAS_SEMANA.map(d => (
               <div
                 key={d}
                 data-dia={d}
                 translate="no"
-                className="cal-header text-center text-xs text-slate-400 font-medium py-1"
+                className="cal-header text-center text-xs text-slate-500 font-semibold uppercase tracking-wide pb-2"
               />
             ))}
           </div>
 
-          {semanas.map((semana, i) => (
-            <div key={i} className="grid grid-cols-7">
-              {semana.map(({ dia, mesAtual }, j) => {
-                if (!mesAtual) {
-                  return (
-                    <div key={j} className="flex flex-col items-center py-0.5">
-                      <div className="w-7 h-7 flex items-center justify-center rounded-full text-xs text-slate-300">
-                        {dia}
-                      </div>
-                    </div>
-                  )
-                }
-
-                const servsDia = servicosDaData(dia)
-                const isSelected = dia === diaSelecionado
-                const isHoje = ano === hoje.getFullYear() && mes === hoje.getMonth() && dia === hoje.getDate()
-                const pontosUnicos = [...new Set(servsDia.map(s => s.prioridade))]
-
+          <div className="grid grid-cols-7 border-l border-slate-100">
+            {semanas.flat().map(({ dia, mesAtual }, idx) => {
+              if (!mesAtual) {
                 return (
-                  <div key={j} onClick={() => setDiaSelecionado(dia)}
-                    className="flex flex-col items-center py-0.5 cursor-pointer">
-                    <div className={`w-7 h-7 flex items-center justify-center rounded-full text-xs transition-all active:scale-90
-                      ${isSelected ? 'bg-[#2563eb] text-white font-bold'
-                        : isHoje ? 'border-2 border-[#2563eb] text-[#2563eb] font-semibold hover:bg-blue-50'
-                        : 'text-slate-700 hover:bg-slate-100'}`}>
-                      {dia}
-                    </div>
-                    {pontosUnicos.length > 0 && (
-                      <div className="flex gap-0.5 mt-0.5">
-                        {pontosUnicos.map(p => (
-                          <div key={p} className={`w-1.5 h-1.5 rounded-full ${corFundoPrioridade(p)}`} />
-                        ))}
-                      </div>
-                    )}
+                  <div key={idx} className="min-h-28 border-r border-b border-slate-100 bg-slate-50/60 p-1.5">
+                    <span className="text-xs text-slate-300 px-1">{dia}</span>
                   </div>
                 )
-              })}
-            </div>
-          ))}
-        </div>
-      </div>
+              }
 
-      {diaSelecionado && (
-        <div className="px-6 mb-4">
-          <h2 className="text-sm font-bold text-slate-800 mb-3">
-            {diaSelecionado} de {MESES[mes]} de {ano}
-            <span className="text-xs font-normal text-slate-400 ml-2">
-              ({servicosDiaSelecionado.length === 0 ? 'nenhum' : servicosDiaSelecionado.length === 1 ? '1 serviço' : `${servicosDiaSelecionado.length} serviços`})
-            </span>
-          </h2>
+              const servsDia = servicosPorData[dataStr(dia)] || []
+              const isSelected = dia === diaSelecionado
+              const isHoje = ano === hoje.getFullYear() && mes === hoje.getMonth() && dia === hoje.getDate()
 
-          {servicosDiaSelecionado.length === 0 ? (
-            <div className="text-center text-slate-400 text-sm py-6 bg-white rounded-2xl border border-slate-100">
-              Nenhum serviço com prazo neste dia.
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {servicosDiaSelecionado.map(s => <CardServico key={s.id} s={s} />)}
-            </div>
-          )}
-        </div>
-      )}
-
-      {semPrazo.length > 0 && (
-        <div className="px-6 mb-4">
-          <h2 className="text-sm font-bold text-slate-800 mb-3">
-            Sem prazo definido
-            <span className="text-xs font-normal text-slate-400 ml-2">
-              ({semPrazo.length} serviço{semPrazo.length > 1 ? 's' : ''})
-            </span>
-          </h2>
-          <div className="flex flex-col gap-2">
-            {semPrazo.map(s => (
-              <div key={s.id} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
-                <div className="flex justify-between items-start gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-800 truncate">{s.titulo}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">{s.cliente}</p>
-                  </div>
-                  <StatusBadge status={s.status} className="px-3 py-1" />
-                </div>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className={`inline-flex items-center gap-1 text-xs font-semibold ${corTextoPrioridade(s.prioridade)}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${corFundoPrioridade(s.prioridade)}`} />
-                    {labelPrioridade(s.prioridade)}
+              return (
+                <button
+                  key={idx}
+                  onClick={() => setDiaSelecionado(dia)}
+                  className={`min-h-28 border-r border-b border-slate-100 p-1.5 text-left flex flex-col gap-1 transition-colors ${isSelected ? 'bg-blue-50 ring-2 ring-inset ring-[#2563eb]' : 'hover:bg-slate-50'}`}
+                >
+                  <span className={`text-xs w-6 h-6 flex items-center justify-center rounded-full shrink-0 ${
+                    isHoje ? 'bg-[#2563eb] text-white font-bold' : 'text-slate-700 font-medium'
+                  }`}>
+                    {dia}
                   </span>
-                  {s.tag && (
-                    <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">
-                      {TAG_LABEL[s.tag] || s.tag}
+                  {servsDia.length > 0 && (
+                    <span className="flex flex-wrap gap-1 mt-auto">
+                      {indicadoresDoDia(servsDia).map(ind => (
+                        <span
+                          key={ind.chave}
+                          title={plural(ind.quantidade, ...ind.rotulos)}
+                          className={`min-w-6 h-6 px-1.5 rounded-full text-xs font-bold text-white flex items-center justify-center ${ind.cor}`}
+                        >
+                          {ind.quantidade}
+                        </span>
+                      ))}
                     </span>
                   )}
-                </div>
-                <button
-                  onClick={() => navigate(`/editar/${s.id}`)}
-                  className="mt-3 w-full text-xs bg-slate-50 text-[#2563eb] border border-slate-200 px-3 py-2 rounded-xl font-semibold text-center transition-all hover:bg-slate-100 active:scale-[0.96]"
-                >
-                  Definir prazo →
                 </button>
-              </div>
+              )
+            })}
+          </div>
+
+          <div className="flex items-center gap-5 mt-4 text-xs text-slate-500">
+            {[
+              { cor: corFundoPrioridade('alta'), label: 'Alta' },
+              { cor: corFundoPrioridade('media'), label: 'Média' },
+              { cor: corFundoPrioridade('baixa'), label: 'Baixa' },
+              { cor: 'bg-slate-400', label: 'Finalizado' },
+            ].map(l => (
+              <span key={l.label} className="inline-flex items-center gap-1.5">
+                <span className={`w-2.5 h-2.5 rounded-full ${l.cor}`} />
+                {l.label}
+              </span>
             ))}
           </div>
         </div>
-      )}
 
-      <div className="h-24" />
-      <Navbar />
-    </div>
+        <div className="flex flex-col gap-5">
+          {vencidos.length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-5">
+              <p className="text-sm font-bold text-red-700 mb-3 inline-flex items-center gap-1.5">
+                <AlertTriangle size={16} />
+                {vencidos.length} prazo{vencidos.length > 1 ? 's' : ''} vencido{vencidos.length > 1 ? 's' : ''}
+              </p>
+              <div className="flex flex-col gap-2.5">
+                {vencidos.slice(0, LIMITE_VENCIDOS).map(s => (
+                  <div key={s.id} className="flex justify-between items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-red-800 truncate">{s.titulo}</p>
+                      <p className="text-xs text-red-500">
+                        Venceu em {new Date(s.prazo + 'T00:00:00').toLocaleDateString('pt-BR')}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => navigate(`/editar/${s.id}`)}
+                      className="text-xs bg-red-600 text-white px-3 py-1.5 rounded-lg font-semibold shrink-0 hover:bg-red-700 active:scale-95 transition-all"
+                    >
+                      Editar
+                    </button>
+                  </div>
+                ))}
+              </div>
+              {vencidos.length > LIMITE_VENCIDOS && (
+                <button
+                  onClick={() => navigate('/servicos?vencidos=1')}
+                  className="text-sm text-red-700 font-semibold underline mt-3 hover:text-red-900 active:scale-95 transition-all"
+                >
+                  Ver todos os {vencidos.length} prazos vencidos
+                </button>
+              )}
+            </div>
+          )}
+
+          <div>
+            <h2 className="text-base font-bold text-slate-800 mb-3">
+              {diaSelecionado ? `${diaSelecionado} de ${MESES[mes]}` : 'Selecione um dia'}
+              {diaSelecionado && (
+                <span className="text-sm font-normal text-slate-400 ml-2">
+                  ({servicosDiaSelecionado.length === 0 ? 'nenhum' : servicosDiaSelecionado.length === 1 ? '1 serviço' : `${servicosDiaSelecionado.length} serviços`})
+                </span>
+              )}
+            </h2>
+
+            {diaSelecionado && servicosDiaSelecionado.length === 0 && (
+              <div className="text-center text-slate-400 text-sm py-8 bg-white rounded-2xl border border-dashed border-slate-200">
+                Nenhum serviço com prazo neste dia.
+              </div>
+            )}
+            {servicosDiaSelecionado.length > 0 && (
+              <div className="flex flex-col gap-2">
+                {servicosDiaSelecionado.map(s => renderCardServico(s))}
+              </div>
+            )}
+          </div>
+
+          {semPrazo.length > 0 && (
+            <div>
+              <h2 className="text-base font-bold text-slate-800 mb-3">
+                Sem prazo definido
+                <span className="text-sm font-normal text-slate-400 ml-2">
+                  ({semPrazo.length} serviço{semPrazo.length > 1 ? 's' : ''})
+                </span>
+              </h2>
+              <div className="flex flex-col gap-2">
+                {semPrazo.map(s => (
+                  <div key={s.id} className={`bg-white rounded-xl p-4 border border-slate-200 border-l-4 ${borderPrioridade(s.prioridade)} flex items-center gap-3`}>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-800 truncate">{s.titulo}</p>
+                      <p className="text-sm text-slate-500 truncate">{s.cliente}</p>
+                    </div>
+                    <button
+                      onClick={() => navigate(`/editar/${s.id}`)}
+                      className="text-sm text-[#2563eb] font-semibold shrink-0 hover:text-[#1e3a5f] active:scale-95 transition-all"
+                    >
+                      Definir prazo →
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </Pagina>
   )
 }
 

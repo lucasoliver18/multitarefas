@@ -8,15 +8,28 @@ use App\Http\Resources\OrcamentoResource;
 use App\Models\Material;
 use App\Models\Orcamento;
 use App\Models\Servico;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class OrcamentoController extends Controller
 {
-    public function index()
+    // Lista geral (com o serviço de cada orçamento). `status` filtra, ex.: os
+    // pendentes para o modal "Em negociação" da tela inicial, do mais antigo
+    // (esperando há mais tempo) ao mais novo. Orçamentos de serviços
+    // excluídos ficam de fora.
+    public function index(Request $request)
     {
-        return OrcamentoResource::collection(
-            Orcamento::with('materiais')->orderBy('created_at', 'desc')->get()
-        );
+        $filtros = $request->validate([
+            'status' => 'nullable|in:pendente,aprovado,reprovado',
+        ]);
+
+        $orcamentos = Orcamento::with(['materiais', 'servico.clienteRelacao'])
+            ->whereHas('servico')
+            ->when(! empty($filtros['status']), fn ($q) => $q->where('status', $filtros['status']))
+            ->orderBy('created_at', ($filtros['status'] ?? null) === 'pendente' ? 'asc' : 'desc')
+            ->get();
+
+        return OrcamentoResource::collection($orcamentos);
     }
 
     public function byServico(Servico $servico)
@@ -28,20 +41,17 @@ class OrcamentoController extends Controller
 
     public function store(StoreOrcamentoRequest $request)
     {
-        $data     = $request->validated();
-        $orcamento = Orcamento::create($data);
+        $data = $request->validated();
 
-        if (!empty($data['materiais'])) {
-            $pivot = [];
-            foreach ($data['materiais'] as $item) {
-                $material = Material::find($item['id']);
-                $pivot[$item['id']] = [
-                    'quantidade'              => $item['quantidade'],
-                    'preco_unitario_snapshot' => $material->preco_unitario,
-                ];
+        $orcamento = DB::transaction(function () use ($data) {
+            $orcamento = Orcamento::create($data);
+
+            if (!empty($data['materiais'])) {
+                $orcamento->materiais()->attach($this->montarPivot($data['materiais']));
             }
-            $orcamento->materiais()->attach($pivot);
-        }
+
+            return $orcamento;
+        });
 
         return new OrcamentoResource($orcamento->load('materiais'));
     }
@@ -54,33 +64,57 @@ class OrcamentoController extends Controller
     public function update(UpdateOrcamentoRequest $request, Orcamento $orcamento)
     {
         $data = $request->validated();
-        $orcamento->update($data);
 
-        if (array_key_exists('materiais', $data)) {
-            $pivot = [];
-            foreach ($data['materiais'] ?? [] as $item) {
-                $material = Material::find($item['id']);
-                $pivot[$item['id']] = [
-                    'quantidade'              => $item['quantidade'],
-                    'preco_unitario_snapshot' => $material->preco_unitario,
-                ];
+        DB::transaction(function () use ($data, $orcamento) {
+            $orcamento->update($data);
+
+            if (array_key_exists('materiais', $data)) {
+                $orcamento->materiais()->sync($this->montarPivot($data['materiais'] ?? []));
             }
-            $orcamento->materiais()->sync($pivot);
-        }
+        });
 
         return new OrcamentoResource($orcamento->load('materiais'));
     }
 
+    // Grava o preço do material no momento do orçamento (snapshot). Usa
+    // withTrashed porque um material já vinculado pode ter sido excluído depois.
+    private function montarPivot(array $itens): array
+    {
+        $precos = Material::withTrashed()
+            ->whereIn('id', array_column($itens, 'id'))
+            ->pluck('preco_unitario', 'id');
+
+        $pivot = [];
+        foreach ($itens as $item) {
+            $pivot[$item['id']] = [
+                'quantidade'              => $item['quantidade'],
+                'preco_unitario_snapshot' => $precos[$item['id']],
+            ];
+        }
+
+        return $pivot;
+    }
+
+    // Excluir um orçamento aprovado devolve ao estoque o que a aprovação tinha
+    // debitado (mesma regra de reprovar).
     public function destroy(Orcamento $orcamento)
     {
-        $orcamento->delete();
-        return response()->json(['message' => 'Orçamento removido com sucesso!']);
+        DB::transaction(function () use ($orcamento) {
+            if ($orcamento->status === 'aprovado') {
+                foreach ($orcamento->materiais as $material) {
+                    $material->increment('quantidade_estoque', $material->pivot->quantidade);
+                }
+            }
+            $orcamento->delete();
+        });
+
+        return response()->json(['message' => 'Orçamento excluído.']);
     }
 
     public function aprovar(Orcamento $orcamento)
     {
         if ($orcamento->status === 'reprovado') {
-            return response()->json(['message' => 'Orçamento reprovado não pode ser alterado.'], 422);
+            return response()->json(['message' => 'Orçamento reprovado não pode ser aprovado.'], 422);
         }
 
         if ($orcamento->status === 'aprovado') {
@@ -106,7 +140,7 @@ class OrcamentoController extends Controller
             $nomes = collect($insuficientes)->pluck('nome')->implode(', ');
 
             return response()->json([
-                'message' => "Não foi possível aprovar: não há estoque suficiente para {$nomes}. Ajuste as quantidades do orçamento ou reponha o estoque antes de aprovar.",
+                'message' => "Estoque insuficiente para: {$nomes}.",
                 'materiais_insuficientes' => $insuficientes,
             ], 422);
         }
@@ -117,9 +151,7 @@ class OrcamentoController extends Controller
             }
             $orcamento->update(['status' => 'aprovado']);
 
-            // Não faz sentido ter dois orçamentos aprovados para o mesmo serviço:
-            // ao aprovar um, todos os outros (ainda não reprovados) do mesmo serviço
-            // são reprovados automaticamente.
+            // Só um orçamento aprovado por serviço: aprovar um reprova os demais.
             $outros = Orcamento::where('servico_id', $orcamento->servico_id)
                 ->where('id', '!=', $orcamento->id)
                 ->where('status', '!=', 'reprovado')

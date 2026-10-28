@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/* Escala de texto um pouco maior que o padrão do Tailwind: o sistema é usado
+   só no computador, e os tamanhos pequenos (xs/sm) ficavam difíceis de ler. */
+@theme {
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.15rem;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.375rem;
+}
+
 .nav-label::before {
   content: attr(data-titulo);
 }
@@ -9,13 +18,13 @@
 }
 
 @keyframes toast-in {
-  from { transform: translateY(-120%); opacity: 0; }
-  to   { transform: translateY(0);     opacity: 1; }
+  from { transform: translateX(120%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
 }
 
 @keyframes toast-out {
-  from { transform: translateY(0);     opacity: 1; }
-  to   { transform: translateY(-120%); opacity: 0; }
+  from { transform: translateX(0);    opacity: 1; }
+  to   { transform: translateX(120%); opacity: 0; }
 }
 
 .toast-enter {
@@ -26,58 +35,46 @@
   animation: toast-out 0.28s ease-in forwards;
 }
 
-/* Prevent iOS Safari zoom on input focus */
-input, select, textarea {
-  font-size: 16px !important;
+/* Entrada suave das telas e modais, para a navegação não parecer um recarregamento. */
+/* Termina em transform: none (e não translateY(0)): um transform que fica
+   aplicado faria os elementos "fixed" de dentro (barra de seleção, menus)
+   se posicionarem pela página em vez da janela. */
+@keyframes entrada-suave {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
 }
 
-/* Normalize date input on iOS (removes native oversized rendering) */
-input[type="date"] {
-  -webkit-appearance: none;
-  appearance: none;
-  line-height: normal;
+.entrada-suave {
+  animation: entrada-suave 0.18s ease-out both;
 }
 
-/* Prevent rubber-band overscroll */
-html, body {
-  overscroll-behavior: none;
-  overflow-x: hidden;
+/* "Carregando..." só aparece se a carga demorar: em respostas rápidas ele
+   nem chega a ser visto, evitando o pisca-pisca entre aviso e conteúdo. */
+@keyframes aparecer {
+  to { opacity: 1; }
 }
 
-/* Largura da "moldura" do app. Por padrão (auto), vira uma moldura de
-   celular só em telas largas; o toggle Celular/Desktop na tela inicial
-   força um dos dois modos independente do tamanho da janela, via o
-   atributo data-view-mode no <html>. */
-:root {
-  --app-max-width: 100%;
+.aparecer-com-atraso {
+  opacity: 0;
+  animation: aparecer 0.2s ease-out 0.3s forwards;
 }
 
-@media (min-width: 480px) {
-  :root {
-    --app-max-width: 480px;
-  }
+@keyframes fundo-modal {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
-html[data-view-mode="mobile"] {
-  --app-max-width: 480px;
+.fundo-modal {
+  animation: fundo-modal 0.15s ease-out both;
 }
 
-html[data-view-mode="desktop"] {
-  --app-max-width: none;
+@media (prefers-reduced-motion: reduce) {
+  .entrada-suave, .fundo-modal, .toast-enter, .toast-leave { animation: none; }
+  .aparecer-com-atraso { animation-duration: 0s; }
 }
 
 body {
-  background-color: #cbd5e1;
-}
-
-#root {
-  max-width: var(--app-max-width);
-  min-height: 100vh;
-  margin: 0 auto;
-  box-shadow: 0 0 40px rgba(15, 23, 42, 0.15);
-}
-
-/* Page header: accounts for iOS safe area (notch/dynamic island) */
-.page-header {
-  padding-top: calc(2.5rem + env(safe-area-inset-top, 0px));
+  background-color: #f1f5f9;
+  /* Abaixo disso o menu lateral e as colunas ficam espremidos; rola na horizontal. */
+  min-width: 1024px;
 }

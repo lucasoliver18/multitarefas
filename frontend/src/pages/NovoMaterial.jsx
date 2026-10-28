@@ -4,6 +4,7 @@ import api from '../services/api'
 import MaterialForm from '../components/MaterialForm'
 import { useToast } from '../hooks/useToast'
 import { mensagemErro } from '../utils/erros'
+import { erroMaterial, payloadMaterial } from '../utils/materiais'
 
 function NovoMaterial() {
   const navigate = useNavigate()
@@ -11,7 +12,9 @@ function NovoMaterial() {
   const [form, setForm] = useState({
     nome: '',
     marca: '',
+    marca_id: null,
     descricao: '',
+    tags: [],
     unidade_medida: 'un',
     preco_unitario: '',
     quantidade_estoque: '',
@@ -24,18 +27,15 @@ function NovoMaterial() {
   }
 
   const salvar = async () => {
-    if (!form.nome || !form.preco_unitario) {
-      toast.erro('Preencha nome e preço unitário.')
+    const erro = erroMaterial(form)
+    if (erro) {
+      toast.erro(erro)
       return
     }
     setSalvando(true)
     try {
-      await api.post('/materiais', {
-        ...form,
-        quantidade_estoque: form.quantidade_estoque === '' ? 0 : form.quantidade_estoque,
-        quantidade_minima: form.quantidade_minima === '' ? null : form.quantidade_minima,
-      })
-      toast.sucesso('Material adicionado ao estoque!')
+      await api.post('/materiais', payloadMaterial(form))
+      toast.sucesso('Material cadastrado')
       navigate('/materiais')
     } catch (e) {
       toast.erro(mensagemErro(e, 'Erro ao salvar material.'))
@@ -49,6 +49,8 @@ function NovoMaterial() {
       titulo="Novo Material"
       form={form}
       onChange={handleChange}
+      onChangeTags={tags => setForm(prev => ({ ...prev, tags }))}
+      onChangeCampos={campos => setForm(prev => ({ ...prev, ...campos }))}
       salvando={salvando}
       onSalvar={salvar}
       botaoLabel="Salvar Material"

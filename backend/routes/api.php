@@ -4,19 +4,25 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AnotacaoController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClienteController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\MarcaController;
 use App\Http\Controllers\MaterialController;
 use App\Http\Controllers\OrcamentoController;
 use App\Http\Controllers\ServicoController;
 
-Route::post('auth/google', [AuthController::class, 'loginGoogle']);
+// Limite de tentativas para dificultar adivinhação de senha.
+Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('auth/me', [AuthController::class, 'me']);
     Route::post('auth/logout', [AuthController::class, 'logout']);
 
+    Route::get('dashboard', [DashboardController::class, 'index']);
+
     Route::apiResource('servicos', ServicoController::class);
     Route::apiResource('clientes', ClienteController::class);
     Route::patch('clientes/{cliente}/transferir-servicos', [ClienteController::class, 'transferirServicos']);
+    Route::apiResource('marcas', MarcaController::class)->only(['index', 'store', 'destroy']);
     Route::apiResource('materiais', MaterialController::class)->parameters(['materiais' => 'material']);
     Route::apiResource('orcamentos', OrcamentoController::class);
 

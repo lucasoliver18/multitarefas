@@ -11,8 +11,7 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
-        // Todas as rotas da API exigem autenticação (auth:sanctum); os testes de
-        // Feature autenticam como um usuário genérico por padrão.
+        // Todas as rotas exigem auth:sanctum; autentica como usuário genérico por padrão.
         if (property_exists($this, 'autenticar') && $this->autenticar === false) {
             return;
         }

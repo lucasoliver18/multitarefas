@@ -2,10 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 const DEBOUNCE_MS = 300
 
-/**
- * Hook headless para um combobox com busca server-side e paginação incremental
- * (infinite scroll). `buscarPagina(query, pagina)` deve retornar `{ itens, temMais }`.
- */
+// `buscarPagina(query, pagina)` deve retornar `{ itens, temMais }`.
 export function useComboboxAssincrono({ buscarPagina, minCaracteres = 1 }) {
   const [query, setQuery] = useState('')
   const [itens, setItens] = useState([])

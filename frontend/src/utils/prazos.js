@@ -6,11 +6,7 @@ export const hojeISO = () => {
 export const estaVencido = (servico, hojeStr = hojeISO()) =>
   Boolean(servico.prazo && servico.status !== 'finalizado' && servico.prazo < hojeStr)
 
-/**
- * Confere se uma string "YYYY-MM-DD" é uma data de calendário real (rejeita
- * coisas como 31/09, que o construtor nativo de Date "rola" para o dia
- * seguinte do mês em vez de recusar).
- */
+// Rejeita datas inexistentes como 31/09, que o Date nativo "rola" para o mês seguinte.
 export const dataValida = (str) => {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(str)
   if (!match) return false

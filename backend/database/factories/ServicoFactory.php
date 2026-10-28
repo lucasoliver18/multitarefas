@@ -19,7 +19,8 @@ class ServicoFactory extends Factory
             'prioridade'=> $this->faker->randomElement(['alta', 'media', 'baixa']),
             'status'    => $this->faker->randomElement(['pendente', 'em_andamento', 'finalizado']),
             'prazo'     => $this->faker->optional()->dateTimeBetween('now', '+3 months')?->format('Y-m-d'),
-            'tag'       => $this->faker->optional()->randomElement(['informatica', 'pintura', 'outros']),
+            // Sem tag por padrão: com tag, o orçamento só aceita materiais da mesma tag.
+            'tag'       => null,
         ];
     }
 }

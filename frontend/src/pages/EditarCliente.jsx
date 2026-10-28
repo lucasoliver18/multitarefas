@@ -1,20 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '../services/api'
-import Navbar from '../components/Navbar'
-import Button from '../components/Button'
+import ClienteForm from '../components/ClienteForm'
+import { FORM_CLIENTE_VAZIO, payloadCliente } from '../utils/clientes'
+import { Carregando } from '../components/Pagina'
 import { useToast } from '../hooks/useToast'
-import { apenasDigitos, mascararTelefone, mascararCpf, mascararCnpj } from '../utils/mascaras'
 import { mensagemErro } from '../utils/erros'
-
-const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
-const LABEL = 'text-xs font-semibold text-slate-700 mb-1'
 
 function EditarCliente() {
   const { id } = useParams()
   const navigate = useNavigate()
   const toast = useToast()
-  const [form, setForm] = useState({ nome: '', tipo_pessoa: 'fisica', cpf: '', cnpj: '', telefone: '', email: '', observacoes: '' })
+  const [form, setForm] = useState(FORM_CLIENTE_VAZIO)
   const [salvando, setSalvando] = useState(false)
   const [carregando, setCarregando] = useState(true)
 
@@ -31,32 +28,20 @@ function EditarCliente() {
           email:       c.email       || '',
           observacoes: c.observacoes || '',
         })
+        setCarregando(false)
       })
-      .finally(() => setCarregando(false))
+      .catch(e => {
+        toast.erro(mensagemErro(e, 'Erro ao carregar cliente.'))
+        navigate('/clientes')
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
-  const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value })
-  const handleTelefoneChange = e => setForm({ ...form, telefone: mascararTelefone(e.target.value) })
-  const handleCpfChange = e => setForm({ ...form, cpf: mascararCpf(e.target.value) })
-  const handleCnpjChange = e => setForm({ ...form, cnpj: mascararCnpj(e.target.value) })
-
   const salvar = async () => {
-    if (!form.nome) { toast.erro('O nome do cliente é obrigatório.'); return }
-    if (form.tipo_pessoa === 'fisica' && apenasDigitos(form.cpf).length !== 11) {
-      toast.erro('Informe um CPF válido.'); return
-    }
-    if (form.tipo_pessoa === 'juridica' && apenasDigitos(form.cnpj).length !== 14) {
-      toast.erro('Informe um CNPJ válido.'); return
-    }
-
     setSalvando(true)
     try {
-      await api.put(`/clientes/${id}`, {
-        ...form,
-        cpf: form.tipo_pessoa === 'fisica' ? form.cpf : null,
-        cnpj: form.tipo_pessoa === 'juridica' ? form.cnpj : null,
-      })
-      toast.sucesso('Alterações salvas!')
+      await api.put(`/clientes/${id}`, payloadCliente(form))
+      toast.sucesso('Cliente atualizado')
       navigate('/clientes')
     } catch (e) {
       toast.erro(mensagemErro(e, 'Erro ao salvar cliente.'))
@@ -65,88 +50,18 @@ function EditarCliente() {
     }
   }
 
-  if (carregando) {
-    return <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-400 text-sm">Carregando...</div>
-  }
+  if (carregando) return <Carregando />
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-
-      <div className="page-header bg-[#1e3a5f] px-6 pb-5">
-        <button onClick={() => navigate('/clientes')} className="text-xs text-slate-300 mb-3 hover:text-white active:scale-95 transition-all">← Voltar</button>
-        <h1 className="text-lg font-bold text-white">Editar Cliente</h1>
-      </div>
-
-      <div className="px-6 pt-5 flex flex-col gap-4 mb-24">
-        <div className="flex flex-col gap-1">
-          <label className={LABEL}>Nome *</label>
-          <input name="nome" value={form.nome} onChange={handleChange} className={INPUT} />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className={LABEL}>Tipo de cadastro *</label>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setForm({ ...form, tipo_pessoa: 'fisica' })}
-              className={`flex-1 text-sm font-semibold py-3 rounded-xl border transition-all active:scale-[0.97] ${form.tipo_pessoa === 'fisica' ? 'bg-[#2563eb] text-white border-[#2563eb] hover:bg-[#1e3a5f]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-            >
-              Pessoa Física
-            </button>
-            <button
-              type="button"
-              onClick={() => setForm({ ...form, tipo_pessoa: 'juridica' })}
-              className={`flex-1 text-sm font-semibold py-3 rounded-xl border transition-all active:scale-[0.97] ${form.tipo_pessoa === 'juridica' ? 'bg-[#2563eb] text-white border-[#2563eb] hover:bg-[#1e3a5f]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-            >
-              Pessoa Jurídica
-            </button>
-          </div>
-        </div>
-
-        {form.tipo_pessoa === 'fisica' ? (
-          <div className="flex flex-col gap-1">
-            <label className={LABEL}>CPF *</label>
-            <input name="cpf" value={form.cpf} onChange={handleCpfChange}
-              inputMode="numeric" placeholder="000.000.000-00" maxLength={14}
-              className={INPUT} />
-          </div>
-        ) : (
-          <div className="flex flex-col gap-1">
-            <label className={LABEL}>CNPJ *</label>
-            <input name="cnpj" value={form.cnpj} onChange={handleCnpjChange}
-              inputMode="numeric" placeholder="00.000.000/0000-00" maxLength={18}
-              className={INPUT} />
-          </div>
-        )}
-
-        <div className="flex flex-col gap-1">
-          <label className={LABEL}>Telefone</label>
-          <input name="telefone" value={form.telefone} onChange={handleTelefoneChange}
-            type="tel" inputMode="numeric" placeholder="(11) 99999-0000" maxLength={15}
-            className={INPUT} />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className={LABEL}>E-mail</label>
-          <input name="email" type="email" value={form.email} onChange={handleChange}
-            placeholder="Ex: joao@email.com"
-            className={INPUT} />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className={LABEL}>Observações</label>
-          <textarea name="observacoes" value={form.observacoes} onChange={handleChange}
-            rows={3}
-            className={`${INPUT} resize-none`} />
-        </div>
-
-        <Button onClick={salvar} disabled={salvando} className="text-sm font-semibold py-3 rounded-xl">
-          {salvando ? 'Salvando...' : 'Salvar Alterações'}
-        </Button>
-      </div>
-
-      <Navbar />
-    </div>
+    <ClienteForm
+      titulo="Editar cliente"
+      form={form}
+      setForm={setForm}
+      salvando={salvando}
+      onSalvar={salvar}
+      botaoLabel="Salvar alterações"
+      onVoltar={() => navigate('/clientes')}
+    />
   )
 }
 

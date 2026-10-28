@@ -1,26 +1,20 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { X, Check, XCircle } from 'lucide-react'
+import { Check, XCircle } from 'lucide-react'
 import api from '../services/api'
-import Navbar from '../components/Navbar'
 import Button from '../components/Button'
-import ComboboxAsync from '../components/ComboboxAsync'
+import OrcamentoForm from '../components/OrcamentoForm'
+import { Carregando } from '../components/Pagina'
 import { useToast } from '../hooks/useToast'
-import { buscarMateriaisPagina } from '../hooks/useMateriais'
-import { materiaisComEstoqueInsuficiente } from '../utils/materiais'
 import { mensagemErro } from '../utils/erros'
-import { sanitizarNumero } from '../utils/numeros'
-
-const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
-const LABEL = 'text-xs font-semibold text-slate-700 mb-1'
 
 function EditarOrcamento() {
   const { servicoId, id } = useParams()
   const navigate = useNavigate()
   const toast = useToast()
-  const [form, setForm] = useState({ titulo: '', descricao: '', margem_lucro: '0' })
+  const [servico, setServico] = useState(null)
+  const [form, setForm] = useState({ titulo: '', descricao: '', margem_lucro: '0', tipo_margem: 'percentual' })
   const [itens, setItens] = useState([])
-  const [buscaMaterial, setBuscaMaterial] = useState('')
   const [statusAtual, setStatusAtual] = useState('pendente')
   const [salvando, setSalvando] = useState(false)
   const [carregando, setCarregando] = useState(true)
@@ -29,9 +23,16 @@ function EditarOrcamento() {
     Promise.all([
       api.get('/materiais'),
       api.get(`/orcamentos/${id}`),
-    ]).then(([resMat, resOrc]) => {
+      api.get(`/servicos/${servicoId}`),
+    ]).then(([resMat, resOrc, resSrv]) => {
       const o = resOrc.data
-      setForm({ titulo: o.titulo, descricao: o.descricao || '', margem_lucro: o.margem_lucro })
+      setServico(resSrv.data)
+      setForm({
+        titulo: o.titulo,
+        descricao: o.descricao || '',
+        margem_lucro: String(parseFloat(o.margem_lucro)),
+        tipo_margem: o.tipo_margem || 'percentual',
+      })
       setStatusAtual(o.status)
       setItens((o.materiais || []).map(m => ({
         id: m.id,
@@ -39,25 +40,14 @@ function EditarOrcamento() {
         unidade_medida: m.unidade_medida,
         preco_unitario: m.pivot.preco_unitario_snapshot,
         quantidade_estoque: resMat.data.find(mat => mat.id === m.id)?.quantidade_estoque,
-        quantidade: String(m.pivot.quantidade),
+        quantidade: String(parseFloat(m.pivot.quantidade)),
       })))
+    }).catch(e => {
+      toast.erro(mensagemErro(e, 'Erro ao carregar orçamento.'))
+      navigate(`/orcamentos/${servicoId}`)
     }).finally(() => setCarregando(false))
-  }, [id])
-
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
-
-  const adicionarMaterial = (material) => {
-    if (itens.find(i => i.id === material.id)) return
-    setItens([...itens, { id: material.id, nome: material.nome, unidade_medida: material.unidade_medida, preco_unitario: material.preco_unitario, quantidade_estoque: material.quantidade_estoque, quantidade: '1' }])
-  }
-
-  const atualizarQuantidade = (id, quantidade) =>
-    setItens(itens.map(i => i.id === id ? { ...i, quantidade } : i))
-
-  const removerItem = (id) => setItens(itens.filter(i => i.id !== id))
-
-  const valorMateriais = itens.reduce((acc, i) => acc + parseFloat(i.preco_unitario) * parseFloat(i.quantidade || 0), 0)
-  const valorFinal = valorMateriais * (1 + parseFloat(form.margem_lucro || 0) / 100)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, servicoId])
 
   const atualizarOrcamento = async () => {
     setSalvando(true)
@@ -65,10 +55,11 @@ function EditarOrcamento() {
       await api.put(`/orcamentos/${id}`, {
         titulo: form.titulo,
         descricao: form.descricao,
-        margem_lucro: parseFloat(form.margem_lucro),
+        margem_lucro: parseFloat(form.margem_lucro || 0),
+        tipo_margem: form.tipo_margem,
         materiais: itens.map(i => ({ id: i.id, quantidade: parseFloat(i.quantidade) })),
       })
-      toast.sucesso('Orçamento atualizado!')
+      toast.sucesso('Orçamento atualizado')
       navigate(`/orcamentos/${servicoId}`)
     } catch (e) {
       toast.erro(mensagemErro(e, 'Erro ao salvar orçamento.'))
@@ -77,34 +68,11 @@ function EditarOrcamento() {
     }
   }
 
-  const salvar = () => {
-    if (!form.titulo) { toast.erro('Informe o título do orçamento.'); return }
-
-    const insuficientes = materiaisComEstoqueInsuficiente(itens)
-    if (insuficientes.length > 0) {
-      toast.confirmar(
-        <>
-          A quantidade informada é maior que o estoque disponível para:
-          <ul className="list-disc list-inside mt-1">
-            {insuficientes.map(i => (
-              <li key={i.id}>{i.nome}: informado {i.quantidade}, estoque {parseFloat(i.quantidade_estoque)} {i.unidade_medida}</li>
-            ))}
-          </ul>
-          Deseja salvar o orçamento mesmo assim?
-        </>,
-        atualizarOrcamento
-      )
-      return
-    }
-
-    atualizarOrcamento()
-  }
-
   const aprovar = () => {
-    toast.confirmar('Deseja aprovar este orçamento? O estoque será deduzido.', async () => {
+    toast.confirmar('Aprovar? O estoque será debitado.', async () => {
       try {
         await api.patch(`/orcamentos/${id}/aprovar`)
-        toast.sucesso('Orçamento aprovado!')
+        toast.sucesso('Orçamento aprovado')
         navigate(`/orcamentos/${servicoId}`)
       } catch (e) {
         toast.erro(mensagemErro(e, 'Erro ao aprovar orçamento.'))
@@ -113,10 +81,10 @@ function EditarOrcamento() {
   }
 
   const reprovar = () => {
-    toast.confirmar('Deseja reprovar este orçamento?', async () => {
+    toast.confirmar('Reprovar este orçamento?', async () => {
       try {
         await api.patch(`/orcamentos/${id}/reprovar`)
-        toast.sucesso('Orçamento reprovado.')
+        toast.sucesso('Orçamento reprovado')
         navigate(`/orcamentos/${servicoId}`)
       } catch (e) {
         toast.erro(mensagemErro(e, 'Erro ao reprovar orçamento.'))
@@ -124,122 +92,43 @@ function EditarOrcamento() {
     })
   }
 
-  if (carregando) {
-    return <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-400 text-sm">Carregando...</div>
-  }
+  if (carregando || !servico) return <Carregando />
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-
-      <div className="page-header bg-[#1e3a5f] px-6 pb-5">
-        <button onClick={() => navigate(`/orcamentos/${servicoId}`)} className="text-xs text-slate-300 mb-3 hover:text-white active:scale-95 transition-all">← Voltar</button>
-        <h1 className="text-lg font-bold text-white">Editar Orçamento</h1>
-      </div>
-
-      <div className="px-6 pt-5 flex flex-col gap-4 mb-24">
-        <div className="flex flex-col gap-1">
-          <label className={LABEL}>Título *</label>
-          <input name="titulo" value={form.titulo} onChange={handleChange} className={INPUT} />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className={LABEL}>Descrição</label>
-          <textarea
-            name="descricao"
-            value={form.descricao}
-            onChange={handleChange}
-            rows={2}
-            className={`${INPUT} resize-none`}
-          />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <label className={LABEL}>Materiais</label>
-          <ComboboxAsync
-            valor={buscaMaterial}
-            onChangeTexto={setBuscaMaterial}
-            onSelecionar={m => { adicionarMaterial(m); setBuscaMaterial('') }}
-            buscarPagina={buscarMateriaisPagina}
-            renderItem={m => (
-              <>
-                <span>{m.nome}</span>
-                <span className="text-xs text-slate-400">estoque: {parseFloat(m.quantidade_estoque)} {m.unidade_medida}</span>
-              </>
-            )}
-            placeholder="Buscar material..."
-            className={INPUT + ' text-slate-500'}
-          />
-
-          {itens.length > 0 && (
-            <div className="flex flex-col gap-2 mt-1">
-              {itens.map(item => (
-                <div key={item.id} className="bg-white border border-slate-100 rounded-xl px-3 py-2 flex items-center gap-2">
-                  <div className="flex-1">
-                    <p className="text-xs font-semibold text-slate-700">{item.nome}</p>
-                    <p className="text-xs text-slate-400">R$ {parseFloat(item.preco_unitario).toFixed(2)} / {item.unidade_medida}</p>
-                  </div>
-                  <input
-                    type="text" inputMode="decimal"
-                    value={item.quantidade}
-                    onChange={(e) => atualizarQuantidade(item.id, sanitizarNumero(e.target.value, 4))}
-                    className="w-16 border border-slate-200 rounded-lg px-2 py-1 text-xs text-center outline-none focus:border-blue-600"
-                  />
-                  <span className="text-xs text-slate-400">{item.unidade_medida}</span>
-                  <button onClick={() => removerItem(item.id)} className="text-red-400 ml-1 hover:text-red-600 active:scale-90 transition-all"><X size={14} /></button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className={LABEL}>Margem de Lucro (%)</label>
-          <input
-            name="margem_lucro"
-            type="text"
-            inputMode="decimal"
-            value={form.margem_lucro}
-            onChange={e => setForm({ ...form, margem_lucro: sanitizarNumero(e.target.value, 2) })}
-            className={INPUT}
-          />
-        </div>
-
-        <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">
-          <p className="text-xs text-slate-600">Custo materiais: <span className="font-semibold text-slate-800">R$ {valorMateriais.toFixed(2)}</span></p>
-          <p className="text-xs text-slate-600 mt-1">Margem ({form.margem_lucro}%): <span className="font-semibold text-slate-800">R$ {(valorFinal - valorMateriais).toFixed(2)}</span></p>
-          <p className="text-sm font-bold text-[#2563eb] mt-2">Total: R$ {valorFinal.toFixed(2)}</p>
-        </div>
-
-        <Button onClick={salvar} disabled={salvando} className="text-sm font-semibold py-3 rounded-xl">
-          {salvando ? 'Salvando...' : 'Salvar Alterações'}
-        </Button>
-
+    <OrcamentoForm
+      titulo="Editar orçamento"
+      servico={servico}
+      form={form}
+      setForm={setForm}
+      itens={itens}
+      setItens={setItens}
+      salvando={salvando}
+      onSalvar={atualizarOrcamento}
+      botaoLabel="Salvar alterações"
+      onVoltar={() => navigate(`/orcamentos/${servicoId}`)}
+      acoesExtras={statusAtual !== 'reprovado' && (
         <div className="flex gap-3">
-          {statusAtual !== 'aprovado' && (
+          {statusAtual === 'pendente' && (
             <Button
               variant="success"
               onClick={aprovar}
-              className="flex-1 text-sm font-semibold py-3 rounded-xl inline-flex items-center justify-center gap-1.5"
+              className="flex-1 text-sm font-semibold py-2.5 rounded-xl inline-flex items-center justify-center gap-1.5"
             >
               <Check size={16} />
               Aprovar
             </Button>
           )}
-          {statusAtual !== 'reprovado' && (
-            <Button
-              variant="danger"
-              onClick={reprovar}
-              className="flex-1 text-sm font-semibold py-3 rounded-xl inline-flex items-center justify-center gap-1.5"
-            >
-              <XCircle size={16} />
-              Reprovar
-            </Button>
-          )}
+          <Button
+            variant="danger"
+            onClick={reprovar}
+            className="flex-1 text-sm font-semibold py-2.5 rounded-xl inline-flex items-center justify-center gap-1.5"
+          >
+            <XCircle size={16} />
+            Reprovar
+          </Button>
         </div>
-      </div>
-
-      <Navbar />
-    </div>
+      )}
+    />
   )
 }
 

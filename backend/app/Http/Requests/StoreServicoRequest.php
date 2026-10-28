@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\LimitesBanco;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -17,9 +18,9 @@ class StoreServicoRequest extends FormRequest
             'prioridade' => 'required|in:alta,media,baixa',
             'status'     => 'required|in:pendente,em_andamento,finalizado',
             'pago'       => 'nullable|boolean',
-            'prazo'      => 'nullable|date_format:Y-m-d',
-            'descricao'  => 'nullable|string',
-            'tag'        => 'nullable|in:informatica,pintura,outros',
+            'prazo'      => 'nullable|date_format:Y-m-d|after_or_equal:' . LimitesBanco::DATA_MIN . '|before_or_equal:' . LimitesBanco::DATA_MAX,
+            'descricao'  => 'nullable|string|max:' . LimitesBanco::TEXTO_MAX,
+            'tag'        => ['nullable', Rule::in(LimitesBanco::TAGS)],
         ];
     }
 }

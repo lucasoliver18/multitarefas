@@ -14,17 +14,21 @@ class ClienteController extends Controller
 {
     public function index(Request $request)
     {
+        $filtros = $request->validate([
+            'busca'      => 'nullable|string|max:255',
+            'por_pagina' => 'nullable|integer|min:1|max:100',
+        ]);
+
         $query = Cliente::withCount('servicos');
 
-        if ($request->filled('busca')) {
-            $query->where('nome', 'like', '%' . $request->busca . '%');
+        if (! empty($filtros['busca'])) {
+            $query->where('nome', 'like', '%' . $filtros['busca'] . '%');
         }
 
         $query->orderBy('nome');
 
-        if ($request->filled('por_pagina')) {
-            $porPagina = min((int) $request->por_pagina, 100);
-            return ClienteResource::collection($query->paginate($porPagina));
+        if (! empty($filtros['por_pagina'])) {
+            return ClienteResource::collection($query->paginate($filtros['por_pagina']));
         }
 
         return ClienteResource::collection($query->get());
@@ -52,13 +56,13 @@ class ClienteController extends Controller
         $vinculados = $cliente->servicos()->count();
         if ($vinculados > 0) {
             return response()->json([
-                'message' => "Não é possível excluir: {$vinculados} serviço(s) vinculado(s) a este cliente.",
+                'message' => 'Cliente com ' . ($vinculados === 1 ? '1 serviço vinculado.' : "{$vinculados} serviços vinculados."),
                 'servicos_count' => $vinculados,
             ], 422);
         }
 
         $cliente->delete();
-        return response()->json(['message' => 'Cliente removido com sucesso!']);
+        return response()->json(['message' => 'Cliente removido.']);
     }
 
     public function transferirServicos(Request $request, Cliente $cliente)
@@ -76,7 +80,7 @@ class ClienteController extends Controller
         Servico::where('cliente_id', $cliente->id)->update(['cliente_id' => $data['novo_cliente_id']]);
 
         return response()->json([
-            'message' => "{$total} serviço(s) transferido(s) com sucesso.",
+            'message' => $total === 1 ? '1 serviço transferido.' : "{$total} serviços transferidos.",
             'transferidos' => $total,
         ]);
     }

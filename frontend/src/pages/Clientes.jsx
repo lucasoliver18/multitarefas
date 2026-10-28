@@ -1,12 +1,14 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, X, ChevronUp, ChevronDown, Phone, Mail, List, LayoutGrid } from 'lucide-react'
+import { ChevronUp, ChevronDown, Phone, Mail, List, LayoutGrid, Plus, Pencil, Trash2, ListFilter } from 'lucide-react'
 import api from '../services/api'
-import Navbar from '../components/Navbar'
 import StatusBadge from '../components/StatusBadge'
 import ComboboxAsync from '../components/ComboboxAsync'
 import Select from '../components/Select'
+import Button from '../components/Button'
 import PainelFiltros from '../components/PainelFiltros'
+import ModalServicosCliente from '../components/ModalServicosCliente'
+import { Pagina, CabecalhoPagina, CampoBusca, AlternadorVisualizacao, Carregando, Vazio } from '../components/Pagina'
 import { useToast } from '../hooks/useToast'
 import { useClientes, buscarClientesPagina } from '../hooks/useClientes'
 import { usePaginacao } from '../hooks/usePaginacao'
@@ -15,22 +17,31 @@ import BarraSelecao from '../components/BarraSelecao'
 import { useSelecaoMultipla } from '../hooks/useSelecaoMultipla'
 import { useEstadoPersistido } from '../hooks/useEstadoPersistido'
 import { excluirEmMassa } from '../utils/exclusaoEmMassa'
+import { mensagemErro } from '../utils/erros'
 import { TAG_LABEL } from '../utils/status'
+import { plural } from '../utils/texto'
 
-const SELECT = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-600'
+const SELECT = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-600'
 const LABEL = 'text-xs font-semibold text-slate-600 mb-1 block'
+// Ao expandir um cliente, mostra só os mais recentes; o resto fica no modal.
+const LIMITE_SERVICOS = 4
+
+const VISUALIZACOES = [
+  { val: 'lista', label: 'Lista', icone: List },
+  { val: 'grade', label: 'Grade', icone: LayoutGrid },
+]
+
+const totalLabel = (n) => n === 0 ? 'Nenhum serviço' : n === 1 ? '1 serviço' : `${n} serviços`
 
 function Clientes() {
   const navigate = useNavigate()
   const toast = useToast()
   const { clientes, carregando, buscar, deletar, transferirServicos } = useClientes()
-  // Visualização e filtros ficam salvos entre visitas à tela.
   const [busca, setBusca] = useEstadoPersistido('clientes:busca', '')
   const [visualizacao, setVisualizacao] = useEstadoPersistido('clientes:visualizacao', 'lista')
   const [expandido, setExpandido] = useState(null)
   const [servicosCliente, setServicosCliente] = useState({})
-  const [mostrarTodosServicos, setMostrarTodosServicos] = useState({})
-  const LIMITE_SERVICOS = 10
+  const [clienteModal, setClienteModal] = useState(null)
   const [confirmandoId, setConfirmandoId] = useState(null)
   const [transferindoCliente, setTransferindoCliente] = useState(null)
   const [novoClienteId, setNovoClienteId] = useState('')
@@ -46,20 +57,31 @@ function Clientes() {
     setFiltroServicos('')
   }
 
+  const carregarServicosCliente = useCallback(async (id) => {
+    const res = await api.get('/servicos', { params: { cliente_id: id } })
+    setServicosCliente(prev => ({ ...prev, [id]: Array.isArray(res.data) ? res.data : [] }))
+  }, [])
+
   const handleDeletar = async (id) => {
     setConfirmandoId(null)
     if (expandido === id) setExpandido(null)
     try {
       await deletar(id)
-      toast.sucesso('Cliente removido!')
+      toast.sucesso('Cliente removido')
     } catch (err) {
       const count = err.response?.status === 422 ? err.response?.data?.servicos_count : null
       if (count) {
         setTransferindoCliente({ id, count })
       } else {
-        toast.erro('Erro ao remover cliente.')
+        toast.erro(mensagemErro(err, 'Erro ao remover cliente.'))
       }
     }
+  }
+
+  const cancelarTransferencia = () => {
+    setTransferindoCliente(null)
+    setNovoClienteId('')
+    setNovoClienteTexto('')
   }
 
   const handleTransferirEExcluir = async (id) => {
@@ -67,13 +89,13 @@ function Clientes() {
       await transferirServicos(id, novoClienteId)
       await deletar(id)
       await buscar()
-      toast.sucesso('Serviços transferidos e cliente removido!')
-    } catch {
-      toast.erro('Erro ao transferir/excluir cliente.')
+      setServicosCliente({})
+      toast.sucesso('Serviços transferidos e cliente removido')
+    } catch (e) {
+      await buscar()
+      toast.erro(mensagemErro(e, 'Erro ao transferir serviços.'))
     } finally {
-      setTransferindoCliente(null)
-      setNovoClienteId('')
-      setNovoClienteTexto('')
+      cancelarTransferencia()
     }
   }
 
@@ -81,19 +103,34 @@ function Clientes() {
     if (expandido === id) { setExpandido(null); return }
     setExpandido(id)
     if (!servicosCliente[id]) {
-      const res = await api.get(`/clientes/${id}`)
-      setServicosCliente(prev => ({ ...prev, [id]: res.data.servicos || [] }))
+      try {
+        await carregarServicosCliente(id)
+      } catch (e) {
+        setExpandido(null)
+        toast.erro(mensagemErro(e, 'Erro ao carregar serviços.'))
+      }
     }
   }
 
+  // Ao fechar o modal, atualiza em silêncio a prévia do cliente (status,
+  // pagamento ou exclusões feitos no modal) e a contagem da listagem.
+  const fecharModal = useCallback(() => {
+    const id = clienteModal?.id
+    setClienteModal(null)
+    if (id) {
+      carregarServicosCliente(id).catch(() => {})
+      buscar()
+    }
+  }, [clienteModal, carregarServicosCliente, buscar])
+
   const handleExcluirSelecionados = () => {
-    toast.confirmar(`Excluir ${quantidade} cliente(s) selecionado(s)?`, async () => {
+    toast.confirmar(`Excluir ${plural(quantidade, 'cliente', 'clientes')}?`, async () => {
       const { sucesso, falhas } = await excluirEmMassa([...selecionados], deletar)
       cancelar()
       await buscar()
-      if (falhas.length === 0) toast.sucesso(`${sucesso} cliente(s) excluído(s) com sucesso!`)
-      else if (sucesso === 0) toast.erro(`Nenhum cliente excluído: todos os ${falhas.length} possuem serviços vinculados.`)
-      else toast.alerta(`${sucesso} excluído(s), ${falhas.length} não puderam ser excluídos por terem serviços vinculados.`)
+      if (falhas.length === 0) toast.sucesso(plural(sucesso, 'cliente excluído', 'clientes excluídos'))
+      else if (sucesso === 0) toast.erro('Nenhum excluído: todos têm serviços vinculados.')
+      else toast.alerta(`${plural(sucesso, 'excluído', 'excluídos')}; ${falhas.length} com serviços vinculados.`)
     })
   }
 
@@ -110,84 +147,187 @@ function Clientes() {
 
   const { pagina, setPagina, tamanhoPagina, mudarTamanhoPagina, totalPaginas, itensPagina } = usePaginacao(clientesFiltrados)
 
-  const totalLabel = (n) => n === 0 ? 'nenhum serviço' : n === 1 ? '1 serviço' : `${n} serviços`
+  const subtitulo = carregando ? 'Carregando...'
+    : clientes.length === 0 ? 'Nenhum cliente'
+    : clientes.length === 1 ? '1 cliente'
+    : `${clientes.length} clientes`
 
-  return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+  // Os blocos abaixo são funções de renderização (e não componentes criados
+  // dentro da tela), para o React não remontá-los a cada atualização.
 
-      <div className="page-header bg-[#1e3a5f] px-6 pb-5">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-lg font-bold text-white">Clientes</h1>
-            <p className="text-xs text-slate-300 mt-0.5">
-              {carregando ? 'Carregando...' : clientes.length === 0 ? 'Nenhum cliente' : clientes.length === 1 ? '1 cliente' : `${clientes.length} clientes`}
-            </p>
+  const renderTransferencia = (c) => {
+    const outros = clientes.filter(o => o.id !== c.id)
+    return (
+      <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col gap-3" onClick={e => e.stopPropagation()}>
+        <p className="text-sm text-slate-600">
+          Este cliente tem {transferindoCliente.count} serviço{transferindoCliente.count !== 1 ? 's' : ''} vinculado{transferindoCliente.count !== 1 ? 's' : ''}.
+          Escolha outro cliente para transferir os serviços antes de excluir:
+        </p>
+        {outros.length === 0 ? (
+          <p className="text-sm text-amber-600">Cadastre outro cliente antes de excluir este.</p>
+        ) : (
+          <div className="max-w-md">
+            <ComboboxAsync
+              valor={novoClienteTexto}
+              onChangeTexto={texto => { setNovoClienteTexto(texto); setNovoClienteId('') }}
+              onSelecionar={o => { setNovoClienteTexto(o.nome); setNovoClienteId(o.id) }}
+              buscarPagina={(termo, pag) => buscarClientesPagina(termo, pag)
+                .then(r => ({ ...r, itens: r.itens.filter(o => o.id !== c.id) }))}
+              renderItem={o => <span>{o.nome}</span>}
+              placeholder="Buscar cliente..."
+              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-600"
+            />
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={alternarModo}
-              className="bg-white/10 text-white text-xs px-3 py-2 rounded-full font-semibold transition-all hover:bg-white/20 active:scale-[0.96]"
-            >
-              {selecaoAtiva ? 'Cancelar' : 'Selecionar'}
-            </button>
-            <button
-              onClick={() => navigate('/clientes/novo')}
-              className="bg-[#2563eb] text-white text-xs px-4 py-2 rounded-full font-semibold transition-all hover:bg-[#1e3a5f] active:scale-[0.96]"
-            >
-              + Novo
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-4 flex items-center gap-2 bg-white/10 border border-white/20 rounded-xl px-4 py-3">
-          <Search size={16} className="text-slate-300" />
-          <input
-            value={busca}
-            onChange={e => setBusca(e.target.value)}
-            className="flex-1 text-xs text-white placeholder-slate-400 outline-none bg-transparent"
-            placeholder="Buscar cliente pelo nome..."
-          />
-          {busca && (
-            <button onClick={() => setBusca('')} className="text-slate-400 hover:text-white active:scale-90 transition-all">
-              <X size={14} />
-            </button>
-          )}
+        )}
+        <div className="flex gap-2">
+          <Button variant="danger" onClick={() => handleTransferirEExcluir(c.id)} disabled={!novoClienteId}
+            className="text-sm px-4 py-2 rounded-lg font-semibold">
+            Transferir e excluir
+          </Button>
+          <Button variant="ghost" onClick={cancelarTransferencia} className="text-sm px-4 py-2 rounded-lg font-semibold">
+            Cancelar
+          </Button>
         </div>
       </div>
+    )
+  }
 
-      <div className="px-6 pt-4 flex flex-col gap-3 mb-24">
-        {carregando && (
-          <div className="text-center text-slate-400 text-sm mt-10">Carregando clientes...</div>
-        )}
+  const renderAcoes = (c) => {
+    if (confirmandoId === c.id) {
+      return (
+        <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+          <span className="text-sm text-slate-600">Remover?</span>
+          <Button variant="danger" onClick={() => handleDeletar(c.id)} className="text-sm px-3 py-1.5 rounded-lg font-semibold">
+            Sim
+          </Button>
+          <Button variant="ghost" onClick={() => setConfirmandoId(null)} className="text-sm px-3 py-1.5 rounded-lg font-semibold">
+            Cancelar
+          </Button>
+        </div>
+      )
+    }
 
-        {!carregando && clientes.length > 0 && (
-          <div className="flex justify-end">
-            <div className="inline-flex bg-slate-200/70 rounded-full p-1 gap-1">
-              <button
-                onClick={() => setVisualizacao('lista')}
-                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-all active:scale-95 ${
-                  visualizacao === 'lista' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:bg-white/60 hover:text-slate-700'
-                }`}
-              >
-                <List size={13} />
-                Lista
-              </button>
-              <button
-                onClick={() => setVisualizacao('grade')}
-                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-all active:scale-95 ${
-                  visualizacao === 'grade' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:bg-white/60 hover:text-slate-700'
-                }`}
-              >
-                <LayoutGrid size={13} />
-                Grade
-              </button>
+    return (
+      <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+        <button
+          onClick={() => navigate(`/clientes/editar/${c.id}`)}
+          aria-label="Editar" title="Editar"
+          className="p-2 rounded-lg text-[#2563eb] hover:bg-blue-50 active:scale-90 transition-all"
+        >
+          <Pencil size={16} />
+        </button>
+        <button
+          onClick={() => setConfirmandoId(c.id)}
+          aria-label="Excluir" title="Excluir"
+          className="p-2 rounded-lg text-red-500 hover:bg-red-50 active:scale-90 transition-all"
+        >
+          <Trash2 size={16} />
+        </button>
+      </div>
+    )
+  }
+
+  const renderServicosDoCliente = (c, colunas = 'grid-cols-2') => {
+    const lista = servicosCliente[c.id]
+    return (
+      <div className="entrada-suave border-t border-slate-100 bg-slate-50 px-5 py-4 flex flex-col gap-2">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+            Serviços prestados{lista?.length > LIMITE_SERVICOS ? ` · ${LIMITE_SERVICOS} mais recentes de ${lista.length}` : ''}
+          </p>
+        </div>
+        {!lista ? (
+          <p className="aparecer-com-atraso text-sm text-slate-400">Carregando...</p>
+        ) : lista.length === 0 ? (
+          <p className="text-sm text-slate-400">Nenhum serviço registrado para este cliente.</p>
+        ) : (
+          <>
+            <div className={`grid ${colunas} gap-2`}>
+              {lista.slice(0, LIMITE_SERVICOS).map(s => (
+                <button
+                  key={s.id}
+                  onClick={() => navigate(`/editar/${s.id}`)}
+                  className="bg-white rounded-xl px-4 py-3 border border-slate-200 text-left transition-colors hover:border-slate-300 hover:shadow-sm"
+                >
+                  <div className="flex justify-between items-start gap-2">
+                    <p className="text-sm font-semibold text-slate-700 flex-1 truncate">{s.titulo}</p>
+                    <StatusBadge status={s.status} className="px-2 py-0.5" />
+                  </div>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    {s.prazo && (
+                      <span className="text-xs text-slate-500">
+                        Prazo: {new Date(s.prazo + 'T00:00:00').toLocaleDateString('pt-BR')}
+                      </span>
+                    )}
+                    {s.tag && (
+                      <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">
+                        {TAG_LABEL[s.tag] || s.tag}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              ))}
             </div>
-          </div>
+            {lista.length > LIMITE_SERVICOS && (
+              <button
+                onClick={() => setClienteModal({ id: c.id, nome: c.nome })}
+                className="self-center mt-1 inline-flex items-center gap-2 text-sm font-semibold text-[#2563eb] bg-white border border-blue-200 px-4 py-2 rounded-xl hover:bg-blue-50 active:scale-[0.97] transition-all"
+              >
+                <ListFilter size={16} />
+                Ver todos os {lista.length} serviços
+              </button>
+            )}
+          </>
         )}
+      </div>
+    )
+  }
 
-        {!carregando && clientes.length > 0 && (
+  const renderCheckbox = (c) => (
+    <input
+      type="checkbox"
+      checked={selecionados.has(c.id)}
+      onChange={() => alternarItem(c.id)}
+      onClick={e => e.stopPropagation()}
+      className="w-4 h-4 accent-blue-600 shrink-0"
+    />
+  )
+
+  const renderDocumento = (c) => (
+    <span className="text-sm text-slate-600">
+      {c.cpf ? `CPF: ${c.cpf}` : c.cnpj ? `CNPJ: ${c.cnpj}` : '—'}
+    </span>
+  )
+
+  return (
+    <Pagina>
+      <CabecalhoPagina
+        titulo="Clientes"
+        subtitulo={subtitulo}
+        acoes={
+          <>
+            <Button variant="secondary" onClick={alternarModo} className="text-sm font-semibold px-4 py-2.5 rounded-xl">
+              {selecaoAtiva ? 'Cancelar seleção' : 'Selecionar'}
+            </Button>
+            <Button onClick={() => navigate('/clientes/novo')} className="text-sm font-semibold px-5 py-2.5 rounded-xl inline-flex items-center gap-2">
+              <Plus size={16} />
+              Novo cliente
+            </Button>
+          </>
+        }
+      />
+
+      {carregando && <Carregando texto="Carregando clientes..." />}
+
+      {!carregando && clientes.length > 0 && (
+        <>
+          <div className="flex items-center justify-between gap-4">
+            <CampoBusca valor={busca} onChange={setBusca} placeholder="Buscar cliente pelo nome..." />
+            <AlternadorVisualizacao opcoes={VISUALIZACOES} valor={visualizacao} onChange={setVisualizacao} />
+          </div>
+
           <PainelFiltros quantidadeAtiva={quantidadeFiltrosAtivos} onLimpar={limparFiltros}>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-4 gap-4">
               <div>
                 <label className={LABEL}>Tipo de pessoa</label>
                 <Select value={filtroTipoPessoa} onChange={e => setFiltroTipoPessoa(e.target.value)} className={SELECT}>
@@ -206,187 +346,100 @@ function Clientes() {
               </div>
             </div>
           </PainelFiltros>
-        )}
+        </>
+      )}
 
-        {!carregando && clientesFiltrados.length === 0 && (
-          <div className="text-center text-slate-400 text-sm mt-10">
-            {busca || quantidadeFiltrosAtivos > 0 ? 'Nenhum cliente encontrado para estes critérios.' : 'Nenhum cliente cadastrado ainda!'}
-          </div>
-        )}
+      {!carregando && clientesFiltrados.length === 0 && (
+        <Vazio>
+          {busca || quantidadeFiltrosAtivos > 0 ? 'Nenhum cliente encontrado para estes critérios.' : 'Nenhum cliente cadastrado ainda!'}
+        </Vazio>
+      )}
 
-        {clientesFiltrados.length > 0 && (
-          <Paginacao pagina={pagina} setPagina={setPagina} tamanhoPagina={tamanhoPagina}
-            mudarTamanhoPagina={mudarTamanhoPagina} totalPaginas={totalPaginas} />
-        )}
+      {clientesFiltrados.length > 0 && (
+        <Paginacao pagina={pagina} setPagina={setPagina} tamanhoPagina={tamanhoPagina}
+          mudarTamanhoPagina={mudarTamanhoPagina} totalPaginas={totalPaginas} total={clientesFiltrados.length} />
+      )}
 
-        <div className={visualizacao === 'grade' ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-3'}>
-          {itensPagina.map(c => {
-            const grade = visualizacao === 'grade'
-            return (
-            <div key={c.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden min-w-0">
+      {clientesFiltrados.length > 0 && visualizacao === 'lista' && (
+        <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+          {itensPagina.map(c => (
+            <div key={c.id}>
               <div
-                className={`cursor-pointer transition-colors hover:bg-slate-50 ${grade ? 'p-3' : 'p-4'}`}
                 onClick={() => selecaoAtiva ? alternarItem(c.id) : expandirCliente(c.id)}
+                className="grid grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1.6fr)_8rem_auto] items-center gap-4 px-5 py-3.5 cursor-pointer transition-colors hover:bg-slate-50"
               >
-                <div className="flex justify-between items-start">
-                  {selecaoAtiva && (
-                    <input
-                      type="checkbox"
-                      checked={selecionados.has(c.id)}
-                      onChange={() => alternarItem(c.id)}
-                      onClick={e => e.stopPropagation()}
-                      className="w-5 h-5 accent-blue-600 shrink-0 mr-3 mt-0.5"
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className={`font-semibold text-slate-800 truncate ${grade ? 'text-xs' : 'text-sm'}`}>{c.nome}</p>
-                      <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full shrink-0">
-                        {c.tipo_pessoa === 'juridica' ? 'PJ' : 'PF'}
-                      </span>
-                    </div>
-                    {c.cpf && <p className="text-xs text-slate-500 mt-0.5 truncate">CPF: {c.cpf}</p>}
-                    {c.cnpj && <p className="text-xs text-slate-500 mt-0.5 truncate">CNPJ: {c.cnpj}</p>}
-                    {!grade && c.telefone && <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1"><Phone size={11} />{c.telefone}</p>}
-                    {!grade && c.email && <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1"><Mail size={11} />{c.email}</p>}
-                    <p className="text-xs text-slate-400 mt-1">{totalLabel(c.servicos_count)}</p>
-                  </div>
-                  {!selecaoAtiva && (
-                    <span className="text-slate-300 ml-2 shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  {selecaoAtiva ? renderCheckbox(c) : (
+                    <span className="text-slate-400 shrink-0">
                       {expandido === c.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                     </span>
                   )}
+                  <p className="text-sm font-semibold text-slate-800 truncate">{c.nome}</p>
+                  <span className="text-xs font-medium bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full shrink-0">
+                    {c.tipo_pessoa === 'juridica' ? 'PJ' : 'PF'}
+                  </span>
                 </div>
-
-                {!selecaoAtiva && (transferindoCliente?.id === c.id ? (
-                  <div className="mt-3 pt-3 border-t border-slate-100" onClick={e => e.stopPropagation()}>
-                    <p className="text-xs text-slate-500 mb-2">
-                      Este cliente tem {transferindoCliente.count} serviço{transferindoCliente.count !== 1 ? 's' : ''} vinculado{transferindoCliente.count !== 1 ? 's' : ''}.
-                      Escolha outro cliente para transferir os serviços antes de excluir:
-                    </p>
-                    {clientes.filter(o => o.id !== c.id).length === 0 ? (
-                      <p className="text-xs text-amber-600 mb-2">Cadastre outro cliente antes de excluir este.</p>
-                    ) : (
-                      <div className="mb-2">
-                        <ComboboxAsync
-                          valor={novoClienteTexto}
-                          onChangeTexto={texto => { setNovoClienteTexto(texto); setNovoClienteId('') }}
-                          onSelecionar={o => { setNovoClienteTexto(o.nome); setNovoClienteId(o.id) }}
-                          buscarPagina={(busca, pagina) => buscarClientesPagina(busca, pagina)
-                            .then(r => ({ ...r, itens: r.itens.filter(o => o.id !== c.id) }))}
-                          renderItem={o => <span>{o.nome}</span>}
-                          placeholder="Buscar cliente..."
-                          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-600"
-                        />
-                      </div>
-                    )}
-                    <div className={grade ? 'flex flex-col gap-2' : 'flex gap-2'}>
-                      <button
-                        onClick={() => handleTransferirEExcluir(c.id)}
-                        disabled={!novoClienteId}
-                        className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold disabled:opacity-40 transition-all hover:bg-red-700 active:scale-[0.96]"
-                      >
-                        Transferir e excluir
-                      </button>
-                      <button
-                        onClick={() => { setTransferindoCliente(null); setNovoClienteId(''); setNovoClienteTexto('') }}
-                        className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold transition-all hover:bg-slate-200 active:scale-[0.96]"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  </div>
-                ) : confirmandoId === c.id ? (
-                  <div className="mt-3 pt-3 border-t border-slate-100">
-                    <p className="text-xs text-slate-500 mb-2 text-center">Remover este cliente?</p>
-                    <div className={grade ? 'flex flex-col gap-2' : 'flex gap-2'}>
-                      <button
-                        onClick={e => { e.stopPropagation(); handleDeletar(c.id) }}
-                        className="flex-1 text-xs bg-[#dc2626] text-white py-2 rounded-xl font-semibold transition-all hover:bg-red-700 active:scale-[0.96]"
-                      >
-                        Sim, remover
-                      </button>
-                      <button
-                        onClick={e => { e.stopPropagation(); setConfirmandoId(null) }}
-                        className="flex-1 text-xs bg-slate-100 text-slate-600 py-2 rounded-xl font-semibold transition-all hover:bg-slate-200 active:scale-[0.96]"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className={`mt-3 ${grade ? 'flex flex-col gap-2' : 'flex justify-end gap-2'}`}>
-                    <button
-                      onClick={e => { e.stopPropagation(); navigate(`/clientes/editar/${c.id}`) }}
-                      className={`text-xs bg-[#2563eb] text-white px-3 py-1.5 rounded-full font-semibold transition-all hover:bg-[#1e3a5f] active:scale-[0.96] ${grade ? 'w-full' : ''}`}
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={e => { e.stopPropagation(); setConfirmandoId(c.id) }}
-                      className={`text-xs bg-[#dc2626] text-white px-3 py-1.5 rounded-full font-semibold transition-all hover:bg-red-700 active:scale-[0.96] ${grade ? 'w-full' : ''}`}
-                    >
-                      Excluir
-                    </button>
-                  </div>
-                ))}
+                {renderDocumento(c)}
+                <div className="flex flex-col min-w-0">
+                  {c.telefone && <span className="text-sm text-slate-600 inline-flex items-center gap-1.5"><Phone size={13} />{c.telefone}</span>}
+                  {c.email && <span className="text-sm text-slate-600 inline-flex items-center gap-1.5 truncate"><Mail size={13} className="shrink-0" /><span className="truncate">{c.email}</span></span>}
+                  {!c.telefone && !c.email && <span className="text-sm text-slate-400">Sem contato</span>}
+                </div>
+                <span className="text-sm text-slate-500">{totalLabel(c.servicos_count)}</span>
+                <div className="justify-self-end">{!selecaoAtiva && transferindoCliente?.id !== c.id && renderAcoes(c)}</div>
               </div>
-
-              {!selecaoAtiva && expandido === c.id && (
-                <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 flex flex-col gap-2">
-                  <p className="text-xs font-semibold text-slate-500 mb-1">Serviços prestados</p>
-                  {!servicosCliente[c.id] ? (
-                    <p className="text-xs text-slate-400">Carregando...</p>
-                  ) : servicosCliente[c.id].length === 0 ? (
-                    <p className="text-xs text-slate-400">Nenhum serviço registrado para este cliente.</p>
-                  ) : (
-                    <>
-                      {(mostrarTodosServicos[c.id] ? servicosCliente[c.id] : servicosCliente[c.id].slice(0, LIMITE_SERVICOS)).map(s => (
-                        <div key={s.id} className="bg-white rounded-xl p-3 border border-slate-100">
-                          <div className="flex justify-between items-start gap-2">
-                            <p className="text-xs font-semibold text-slate-700 flex-1 truncate">{s.titulo}</p>
-                            <StatusBadge status={s.status} className="px-2 py-0.5" />
-                          </div>
-                          {s.prazo && (
-                            <p className="text-xs text-slate-400 mt-1">
-                              Prazo: {new Date(s.prazo + 'T00:00:00').toLocaleDateString('pt-BR')}
-                            </p>
-                          )}
-                          {s.tag && (
-                            <span className="inline-block bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full mt-1">
-                              {TAG_LABEL[s.tag] || s.tag}
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                      {servicosCliente[c.id].length > LIMITE_SERVICOS && (
-                        <button
-                          onClick={e => {
-                            e.stopPropagation()
-                            setMostrarTodosServicos(prev => ({ ...prev, [c.id]: !prev[c.id] }))
-                          }}
-                          className="text-xs text-[#2563eb] font-semibold self-center py-1 hover:text-[#1e3a5f] active:scale-95 transition-all"
-                        >
-                          {mostrarTodosServicos[c.id]
-                            ? 'Mostrar menos'
-                            : `Mostrar todos (${servicosCliente[c.id].length})`}
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
+              {!selecaoAtiva && transferindoCliente?.id === c.id && (
+                <div className="px-5 pb-4">{renderTransferencia(c)}</div>
               )}
+              {!selecaoAtiva && expandido === c.id && renderServicosDoCliente(c)}
             </div>
-          )})}
+          ))}
         </div>
-      </div>
-
-      {selecaoAtiva ? (
-        <BarraSelecao quantidade={quantidade} onExcluir={handleExcluirSelecionados} onCancelar={cancelar} />
-      ) : (
-        <Navbar />
       )}
-    </div>
+
+      {clientesFiltrados.length > 0 && visualizacao === 'grade' && (
+        <div className="grid grid-cols-3 2xl:grid-cols-4 gap-5 items-start">
+          {itensPagina.map(c => (
+            <div key={c.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-w-0">
+              <div
+                className="p-5 cursor-pointer transition-colors hover:bg-slate-50"
+                onClick={() => selecaoAtiva ? alternarItem(c.id) : expandirCliente(c.id)}
+              >
+                <div className="flex items-start gap-3">
+                  {selecaoAtiva && renderCheckbox(c)}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-base font-semibold text-slate-800 truncate">{c.nome}</p>
+                      <span className="text-xs font-medium bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full shrink-0">
+                        {c.tipo_pessoa === 'juridica' ? 'PJ' : 'PF'}
+                      </span>
+                    </div>
+                    <div className="mt-1">{renderDocumento(c)}</div>
+                    {c.telefone && <p className="text-sm text-slate-600 mt-1 flex items-center gap-1.5"><Phone size={13} />{c.telefone}</p>}
+                    {c.email && <p className="text-sm text-slate-600 mt-0.5 flex items-center gap-1.5 truncate"><Mail size={13} className="shrink-0" /><span className="truncate">{c.email}</span></p>}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100">
+                  <span className="text-sm text-slate-500">{totalLabel(c.servicos_count)}</span>
+                  {!selecaoAtiva && transferindoCliente?.id !== c.id && renderAcoes(c)}
+                </div>
+                {!selecaoAtiva && transferindoCliente?.id === c.id && renderTransferencia(c)}
+              </div>
+              {!selecaoAtiva && expandido === c.id && renderServicosDoCliente(c, 'grid-cols-1')}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {selecaoAtiva && (
+        <>
+          <div className="h-16" />
+          <BarraSelecao quantidade={quantidade} onExcluir={handleExcluirSelecionados} onCancelar={cancelar} />
+        </>
+      )}
+
+      <ModalServicosCliente cliente={clienteModal} onFechar={fecharModal} />
+    </Pagina>
   )
 }
 
