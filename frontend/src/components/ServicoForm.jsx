@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import Button from './Button'
 import Select from './Select'
+import CampoData from './CampoData'
 import ComboboxAsync from './ComboboxAsync'
 import MiniCadastroCliente from './MiniCadastroCliente'
 import { Pagina, CabecalhoPagina } from './Pagina'
 import { useToast } from '../hooks/useToast'
 import { buscarClientesPagina } from '../hooks/useClientes'
-import { PRIORIDADE_OPCOES, STATUS_OPCOES, TAG_OPCOES, statusSeguintes } from '../utils/status'
 import { dataValida } from '../utils/prazos'
+import { PRIORIDADE_OPCOES, STATUS_OPCOES, TAG_OPCOES, statusSeguintes } from '../utils/status'
 
 const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
 const LABEL = 'text-sm font-semibold text-slate-700 mb-1.5'
@@ -20,17 +21,6 @@ function ServicoForm({ titulo, subtitulo, form, setForm, statusOriginal, salvand
   const [mostrarCadastroCliente, setMostrarCadastroCliente] = useState(false)
 
   const handleChange = (e) => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
-
-  // Campo não-controlado: com value/onChange o re-render a cada tecla reseta
-  // os segmentos dia/mês/ano do seletor nativo e embaralha a data digitada.
-  const handlePrazoBlur = (e) => {
-    if (e.target.validity.badInput) {
-      toast.erro('Data inválida.')
-      e.target.value = form.prazo
-      return
-    }
-    setForm(prev => ({ ...prev, prazo: e.target.value }))
-  }
 
   const handleClienteTexto = (val) => {
     setForm(prev => ({ ...prev, cliente: val, cliente_id: null }))
@@ -141,14 +131,11 @@ function ServicoForm({ titulo, subtitulo, form, setForm, statusOriginal, salvand
 
         <div className="flex flex-col">
           <label className={LABEL}>Prazo</label>
-          <input
-            key={form.prazo}
-            type="date"
+          <CampoData
             name="prazo"
-            defaultValue={form.prazo}
-            onBlur={handlePrazoBlur}
-            min="1900-01-01"
-            max="2999-12-31"
+            value={form.prazo}
+            onChange={handleChange}
+            onInvalida={() => toast.erro('Data inválida.')}
             className={INPUT}
           />
         </div>

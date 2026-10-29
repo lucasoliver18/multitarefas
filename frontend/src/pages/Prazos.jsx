@@ -1,21 +1,23 @@
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { NotebookPen, AlertTriangle, ChevronLeft, ChevronRight, Plus, Pencil } from 'lucide-react'
-import StatusBadge from '../components/StatusBadge'
+import { AlertTriangle, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import Button from '../components/Button'
+import CampoData from '../components/CampoData'
+import ModalServicosDia from '../components/servicos/ModalServicosDia'
+import {
+  StatusAcao, TagBadge, PagoBadge, OrcamentoBadge, AtalhosServico, ConfirmacaoServico, FecharMenuStatus,
+} from '../components/servicos/ItensServico'
 import { Pagina, CabecalhoPagina } from '../components/Pagina'
 import { useToast } from '../hooks/useToast'
 import { useServicos } from '../hooks/useServicos'
+import { useAcoesServico } from '../hooks/useAcoesServico'
 import { useEstadoPersistido } from '../hooks/useEstadoPersistido'
-import { mensagemErro } from '../utils/erros'
 import {
   TAG_LABEL,
   STATUS_OPCOES,
   PRIORIDADE_OPCOES,
   PESO_PRIORIDADE,
   borderPrioridade,
-  labelStatus,
-  statusSeguintes,
   corFundoPrioridade,
 } from '../utils/status'
 import { hojeISO, estaVencido, dataValida } from '../utils/prazos'
@@ -26,6 +28,8 @@ const DIAS_SEMANA = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
 
 const TAGS_FIXAS = ['informatica', 'pintura', 'outros']
 const LIMITE_VENCIDOS = 4
+// A lista do dia mostra no máximo 4 serviços; o restante fica no modal "Ver mais".
+const LIMITE_POR_DIA = 4
 // Cada dia mostra bolinhas coloridas com a quantidade de serviços: uma por
 // prioridade (serviços em aberto) e uma cinza para os finalizados. Os nomes
 // ficam no painel ao lado, ao selecionar o dia.
@@ -60,7 +64,7 @@ function Prazos() {
   const [anoLink, mesLink, diaLink] = dataLink ? dataLink.split('-').map(Number) : []
   const opcoes = { ignorarSalvo: !!dataLink }
 
-  const { servicos, mudarStatus: mudarStatusHook } = useServicos()
+  const { servicos, mudarStatus: mudarStatusHook, deletar, mudarPago, buscar } = useServicos()
   const [ano, setAno] = useState(anoLink ?? hoje.getFullYear())
   const [mes, setMes] = useState(dataLink ? mesLink - 1 : hoje.getMonth())
   const [diaSelecionado, setDiaSelecionado] = useState(diaLink ?? hoje.getDate())
@@ -69,25 +73,12 @@ function Prazos() {
   // (Chaves novas: as antigas guardavam um valor só.)
   const [filtroPrioridades, setFiltroPrioridades] = useEstadoPersistido('prazos:filtroPrioridades', [], undefined, opcoes)
   const [filtroStatus, setFiltroStatus] = useEstadoPersistido('prazos:filtroStatusLista', [], undefined, opcoes)
-  const [menuStatus, setMenuStatus] = useState(null)
+  const [modalDiaAberto, setModalDiaAberto] = useState(false)
+  const fecharModalDia = useCallback(() => setModalDiaAberto(false), [])
 
-  const mudarStatus = async (id, novoStatus) => {
-    try {
-      await mudarStatusHook(id, novoStatus)
-      toast.sucesso('Status atualizado')
-    } catch (e) {
-      toast.erro(mensagemErro(e, 'Erro ao atualizar status.'))
-    }
-  }
-
-  const confirmarMudarStatus = (s, novoStatus) => {
-    setMenuStatus(null)
-    const exigeOrcamento = (novoStatus === 'em_andamento' || novoStatus === 'finalizado') && !s.tem_orcamento_aprovado
-    const mensagem = exigeOrcamento
-      ? `Serviço sem orçamento aprovado. Mudar para "${labelStatus(novoStatus)}" mesmo assim?`
-      : `Mudar status para "${labelStatus(novoStatus)}"?`
-    toast.confirmar(mensagem, () => mudarStatus(s.id, novoStatus))
-  }
+  // Mesmas ações (status, pago, excluir) e peças das visualizações de Serviços.
+  const acoes = useAcoesServico({ deletar, mudarStatus: mudarStatusHook, mudarPago, buscar })
+  const ctx = { navigate, hojeStr, selecaoAtiva: false, ...acoes }
 
   const servicosFiltrados = useMemo(() => {
     return servicos.filter(s => {
@@ -169,29 +160,21 @@ function Prazos() {
     setAno(hoje.getFullYear())
     setMes(hoje.getMonth())
     setDiaSelecionado(hoje.getDate())
-    if (campoDataRef.current) campoDataRef.current.value = ''
+    setDataEspecifica('')
   }
 
   // "Data específica": leva o calendário direto ao mês da data e seleciona o
-  // dia, sem precisar passar mês a mês.
-  const campoDataRef = useRef(null)
+  // dia, sem precisar passar mês a mês. O campo só emite datas completas e válidas.
+  const [dataEspecifica, setDataEspecifica] = useState('')
 
-  const irParaData = (valor, avisarSeInvalida) => {
-    const [a, m, d] = (valor || '').split('-').map(Number)
-    if (!dataValida(valor) || a < 1900 || a > 2999) {
-      if (avisarSeInvalida) toast.erro('Data inválida.')
-      return
-    }
+  const irParaData = (e) => {
+    const valor = e.target.value
+    setDataEspecifica(valor)
+    if (!valor) return
+    const [a, m, d] = valor.split('-').map(Number)
     setAno(a)
     setMes(m - 1)
     setDiaSelecionado(d)
-  }
-
-  // Enquanto o ano é digitado, o campo nativo já emite datas como 0002-05-10;
-  // só navega quando o ano estiver completo (>= 1900), sem pular para o ano 2.
-  const handleDataEspecifica = (e) => {
-    const ano = Number((e.target.value || '').slice(0, 4))
-    if (ano >= 1900) irParaData(e.target.value, false)
   }
 
   const toggleTag = (tag) =>
@@ -208,65 +191,35 @@ function Prazos() {
 
   // Função de renderização (e não componente criado dentro da tela), para o
   // React não remontar os cartões a cada atualização.
-  const renderCardServico = (s) => {
-    const proximos = statusSeguintes(s.status)
-    return (
-      <div key={s.id} className={`bg-white rounded-xl p-4 border border-slate-200 border-l-4 ${borderPrioridade(s.prioridade)}`}>
-        <div className="flex justify-between items-start gap-2">
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-slate-800 truncate">{s.titulo}</p>
-            <p className="text-sm text-slate-500 truncate">{s.cliente}</p>
-          </div>
-          <div className="relative shrink-0">
-            <StatusBadge
-              status={s.status}
-              className="px-2 py-0.5"
-              {...(proximos.length > 0
-                ? { as: 'button', title: 'Alterar status', onClick: () => setMenuStatus(prev => prev === s.id ? null : s.id) }
-                : {})}
-            />
-            {menuStatus === s.id && proximos.length > 0 && (
-              <div className="absolute right-0 top-full mt-1 bg-white rounded-xl border border-slate-200 shadow-lg z-20 min-w-[160px] overflow-hidden">
-                {proximos.map(o => (
-                  <button
-                    key={o.val}
-                    onClick={() => confirmarMudarStatus(s, o.val)}
-                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition-colors border-b border-slate-100 last:border-0 block"
-                  >
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+  const renderCardServico = (s) => (
+    <div
+      key={s.id}
+      onClick={() => navigate(`/editar/${s.id}`)}
+      className={`bg-white rounded-xl p-4 border border-slate-200 border-l-4 ${borderPrioridade(s.prioridade)} cursor-pointer transition-shadow hover:shadow-md`}
+    >
+      <div className="flex justify-between items-start gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-slate-800 truncate">{s.titulo}</p>
+          <p className="text-sm text-slate-500 truncate">{s.cliente}</p>
         </div>
-
-        <div className="flex items-center justify-between gap-2 mt-3">
-          {s.tag ? (
-            <span className="bg-blue-100 text-blue-700 text-xs font-medium px-2 py-0.5 rounded-full">
-              {TAG_LABEL[s.tag] || s.tag}
-            </span>
-          ) : <span />}
-          <div className="flex items-center gap-0.5">
-            <button
-              onClick={() => navigate(`/servicos/${s.id}/anotacoes`)}
-              aria-label="Anotações" title="Anotações"
-              className="p-1.5 text-amber-700 rounded-lg hover:bg-amber-50 active:scale-90 transition-all"
-            >
-              <NotebookPen size={15} />
-            </button>
-            <button
-              onClick={() => navigate(`/editar/${s.id}`)}
-              aria-label="Editar serviço" title="Editar serviço"
-              className="p-1.5 text-[#2563eb] rounded-lg hover:bg-blue-50 active:scale-90 transition-all"
-            >
-              <Pencil size={15} />
-            </button>
-          </div>
+        <div className="relative shrink-0" onClick={e => e.stopPropagation()}>
+          <StatusAcao s={s} ctx={ctx} className="px-2 py-0.5" />
         </div>
       </div>
-    )
-  }
+
+      <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
+        <TagBadge s={s} />
+        <PagoBadge s={s} ctx={ctx} />
+        <OrcamentoBadge s={s} />
+      </div>
+
+      <div className="flex items-center justify-end mt-2.5 pt-2.5 border-t border-slate-100 min-h-[2.75rem]" onClick={e => e.stopPropagation()}>
+        {acoes.confirmandoId === s.id
+          ? <ConfirmacaoServico s={s} ctx={ctx} />
+          : <AtalhosServico s={s} ctx={ctx} />}
+      </div>
+    </div>
+  )
 
   return (
     <Pagina largura="max-w-[1600px]">
@@ -281,9 +234,7 @@ function Prazos() {
         }
       />
 
-      {menuStatus && (
-        <div className="fixed inset-0 z-10" onClick={() => setMenuStatus(null)} />
-      )}
+      <FecharMenuStatus ctx={ctx} />
 
       <div className="flex items-center gap-6 flex-wrap bg-white border border-slate-200 rounded-2xl px-5 py-3">
         <div className="flex gap-1.5 items-center">
@@ -329,27 +280,18 @@ function Prazos() {
               {MESES[mes]} {ano}
             </p>
             <div className="flex items-center gap-1">
-              <label className="flex items-center gap-2 mr-3">
+              <div className="flex items-center gap-2 mr-3">
                 <span className="text-sm text-slate-500 whitespace-nowrap">Data específica:</span>
-                {/* Não-controlado: com value/onChange o re-render reseta os segmentos dia/mês/ano enquanto se digita. */}
-                <input
-                  ref={campoDataRef}
-                  type="date"
-                  min="1900-01-01"
-                  max="2999-12-31"
-                  onChange={handleDataEspecifica}
-                  onKeyDown={e => { if (e.key === 'Enter') irParaData(e.currentTarget.value, true) }}
-                  aria-label="Ir para uma data específica"
-                  className="text-sm bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
-                />
-                <button
-                  type="button"
-                  onClick={() => irParaData(campoDataRef.current?.value, true)}
-                  className="text-sm font-semibold text-white bg-[#2563eb] px-3 py-1.5 rounded-lg hover:bg-[#1e3a5f] active:scale-95 transition-all"
-                >
-                  Ir
-                </button>
-              </label>
+                <div className="w-40">
+                  <CampoData
+                    value={dataEspecifica}
+                    onChange={irParaData}
+                    onInvalida={() => toast.erro('Data inválida.')}
+                    aria-label="Ir para uma data específica"
+                    className="w-full text-sm bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                  />
+                </div>
+              </div>
               <button onClick={irParaHoje} className="text-sm font-semibold text-slate-600 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 active:scale-95 transition-all mr-2">
                 Hoje
               </button>
@@ -484,7 +426,15 @@ function Prazos() {
             )}
             {servicosDiaSelecionado.length > 0 && (
               <div className="flex flex-col gap-2">
-                {servicosDiaSelecionado.map(s => renderCardServico(s))}
+                {servicosDiaSelecionado.slice(0, LIMITE_POR_DIA).map(s => renderCardServico(s))}
+                {servicosDiaSelecionado.length > LIMITE_POR_DIA && (
+                  <button
+                    onClick={() => setModalDiaAberto(true)}
+                    className="text-sm text-blue-600 font-semibold text-center py-2 bg-white/70 border border-dashed border-blue-200 rounded-xl hover:bg-white active:scale-[0.98] transition-all"
+                  >
+                    Ver mais ({servicosDiaSelecionado.length - LIMITE_POR_DIA})
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -517,6 +467,17 @@ function Prazos() {
           )}
         </div>
       </div>
+
+      <ModalServicosDia
+        aberto={modalDiaAberto && !!diaSelecionado}
+        titulo={diaSelecionado ? `Serviços de ${diaSelecionado} de ${MESES[mes]} de ${ano}` : ''}
+        servicos={servicosDiaSelecionado}
+        deletar={deletar}
+        mudarStatus={mudarStatusHook}
+        mudarPago={mudarPago}
+        buscar={buscar}
+        onFechar={fecharModalDia}
+      />
     </Pagina>
   )
 }

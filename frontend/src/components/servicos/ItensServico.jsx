@@ -1,10 +1,13 @@
+import { createPortal } from 'react-dom'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { User, Calendar, NotebookPen, Receipt, Pencil, Trash2 } from 'lucide-react'
 import StatusBadge from '../StatusBadge'
-import Button from '../Button'
+import ConfirmacaoCartao from '../ConfirmacaoCartao'
+import { useFlutuante } from '../../hooks/useFlutuante'
 import { estaVencido } from '../../utils/prazos'
 import {
   borderPrioridade,
+  fundoPrioridade,
   STATUS_ICONE,
   TAG_LABEL,
   ICONE_PAGO,
@@ -25,7 +28,9 @@ import {
 
 const formatarData = (iso) => new Date(iso + 'T00:00:00').toLocaleDateString('pt-BR')
 
-const COLUNAS_LISTA = 'grid grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_7rem_8rem_8.5rem_7.5rem_9.5rem] items-center gap-4'
+const COLUNAS_LISTA = 'grid grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_7rem_8rem_8.5rem_8.5rem_9.5rem] items-center gap-4'
+// Sem a coluna de prazo: usado quando todos os serviços são do mesmo dia.
+const COLUNAS_LISTA_SEM_PRAZO = 'grid grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_7rem_8.5rem_8.5rem_9.5rem] items-center gap-4'
 
 export function PagoBadge({ s, ctx }) {
   if (ctx.selecaoAtiva) {
@@ -62,14 +67,28 @@ export function TagBadge({ s }) {
 }
 
 // Selo de status que, quando o serviço ainda pode avançar, abre um menu com
-// os próximos status.
+// os próximos status. O menu abre num portal (useFlutuante) para não ser
+// cortado por contêineres com rolagem, como o corpo dos modais.
 export function StatusAcao({ s, ctx, className }) {
   const proximos = statusSeguintes(s.status)
   if (ctx.selecaoAtiva || proximos.length === 0) {
     return <StatusBadge status={s.status} className={className} />
   }
+  return <StatusComMenu s={s} ctx={ctx} proximos={proximos} className={className} />
+}
+
+function StatusComMenu({ s, ctx, proximos, className }) {
+  const aberto = ctx.menuStatus === s.id
+  // Sem onFechar: o clique fora é tratado por FecharMenuStatus, que também
+  // impede que esse clique chegue à linha de baixo (e abra a edição).
+  const { ancoraRef, flutuanteRef, estilo } = useFlutuante({
+    aberto,
+    altura: proximos.length * 44 + 8,
+    largura: 190,
+    alinhamento: 'direita',
+  })
   return (
-    <>
+    <span ref={ancoraRef} className="inline-flex">
       <StatusBadge
         status={s.status}
         as="button"
@@ -77,8 +96,16 @@ export function StatusAcao({ s, ctx, className }) {
         className={className}
         onClick={() => ctx.setMenuStatus(prev => prev === s.id ? null : s.id)}
       />
-      {ctx.menuStatus === s.id && (
-        <div className="absolute right-0 top-full mt-1 bg-white rounded-xl border border-slate-200 shadow-lg z-20 min-w-[170px] overflow-hidden">
+      {aberto && createPortal(
+        <div
+          ref={flutuanteRef}
+          style={estilo}
+          // O portal continua dentro da árvore do React: sem isso, o clique
+          // chegaria à linha/cartão (que abre a edição ou inicia o arraste).
+          onClick={e => e.stopPropagation()}
+          onPointerDown={e => e.stopPropagation()}
+          className="fixed z-[110] bg-white rounded-xl border border-slate-200 shadow-lg overflow-hidden"
+        >
           {proximos.map(o => {
             const Icone = STATUS_ICONE[o.val]
             return (
@@ -92,9 +119,10 @@ export function StatusAcao({ s, ctx, className }) {
               </button>
             )
           })}
-        </div>
+        </div>,
+        document.body
       )}
-    </>
+    </span>
   )
 }
 
@@ -129,18 +157,45 @@ function BotaoIcone({ onClick, label, cor, children }) {
   )
 }
 
-function AtalhosServico({ s, ctx, tamanho = 15 }) {
+// Mesmas ações em todas as visualizações (quadro, lista, detalhado e modais):
+// editar, anotações, orçamentos e excluir. A exclusão pede confirmação
+// (ConfirmacaoServico), aberta por quem desenha o serviço.
+export function AtalhosServico({ s, ctx, tamanho = 15 }) {
   return (
     <>
+      <BotaoIcone onClick={() => ctx.navigate(`/editar/${s.id}`)} label="Editar" cor="text-[#2563eb] hover:bg-blue-50">
+        <Pencil size={tamanho} />
+      </BotaoIcone>
       <BotaoIcone onClick={() => ctx.navigate(`/servicos/${s.id}/anotacoes`)} label="Anotações" cor="text-amber-700 hover:bg-amber-50">
         <NotebookPen size={tamanho} />
       </BotaoIcone>
       <BotaoIcone onClick={() => ctx.navigate(`/orcamentos/${s.id}`)} label="Orçamentos" cor="text-indigo-600 hover:bg-indigo-50">
         <Receipt size={tamanho} />
       </BotaoIcone>
+      <BotaoIcone
+        onClick={() => ctx.setConfirmandoId(s.id)}
+        label="Excluir"
+        cor={`text-red-500 hover:bg-red-50 ${ctx.confirmandoId === s.id ? 'bg-red-50' : ''}`}
+      >
+        <Trash2 size={tamanho} />
+      </BotaoIcone>
     </>
   )
 }
+
+export function ConfirmacaoServico({ s, ctx }) {
+  return (
+    <ConfirmacaoCartao
+      mensagem="Excluir este serviço?"
+      onConfirmar={() => ctx.handleDeletar(s.id)}
+      onCancelar={() => ctx.setConfirmandoId(null)}
+    />
+  )
+}
+
+// Prazo com o mesmo aviso de atraso no quadro e no detalhado.
+const textoPrazo = (s, vencido) =>
+  !s.prazo ? 'Sem prazo' : vencido ? `Atrasado · ${formatarData(s.prazo)}` : formatarData(s.prazo)
 
 export function ServicoCardKanban({ s, ctx }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -176,17 +231,26 @@ export function ServicoCardKanban({ s, ctx }) {
         {!ctx.selecaoAtiva && <PagoBadge s={s} ctx={ctx} />}
         {!ctx.selecaoAtiva && <OrcamentoBadge s={s} />}
       </div>
-      <div className="flex items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-slate-100">
-        {s.prazo ? (
-          <span className={`text-xs inline-flex items-center gap-1 ${vencido ? 'text-red-600 font-semibold' : 'text-slate-500'}`}>
-            <Calendar size={13} />
-            {vencido ? `Atrasado · ${formatarData(s.prazo)}` : formatarData(s.prazo)}
-          </span>
-        ) : <span className="text-xs text-slate-400">Sem prazo</span>}
-        {!ctx.selecaoAtiva && (
-          <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
-            <AtalhosServico s={s} ctx={ctx} />
+      <div className="flex items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-slate-100 min-h-[2.75rem]">
+        {!ctx.selecaoAtiva && ctx.confirmandoId === s.id ? (
+          // onPointerDown: clicar nos botões não deve iniciar o arraste do cartão.
+          <div className="w-full" onPointerDown={e => e.stopPropagation()}>
+            <ConfirmacaoServico s={s} ctx={ctx} />
           </div>
+        ) : (
+          <>
+            {s.prazo ? (
+              <span className={`text-xs inline-flex items-center gap-1 ${vencido ? 'text-red-600 font-semibold' : 'text-slate-500'}`}>
+                <Calendar size={13} />
+                {textoPrazo(s, vencido)}
+              </span>
+            ) : <span className="text-xs text-slate-400">Sem prazo</span>}
+            {!ctx.selecaoAtiva && (
+              <div className="flex items-center" onClick={e => e.stopPropagation()}>
+                <AtalhosServico s={s} ctx={ctx} />
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -202,28 +266,33 @@ export function ColunaKanban({ id, children }) {
   )
 }
 
-export function CabecalhoListaServicos() {
+// `semPrazo` esconde a coluna de prazo (ex.: lista de um dia só, em Prazos).
+export function CabecalhoListaServicos({ semPrazo = false }) {
   return (
-    <div className={`${COLUNAS_LISTA} px-5 py-3 border-l-4 border-l-transparent text-xs font-semibold text-slate-500 uppercase tracking-wide bg-slate-50 rounded-t-2xl`}>
+    <div className={`${semPrazo ? COLUNAS_LISTA_SEM_PRAZO : COLUNAS_LISTA} px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide bg-slate-50 rounded-t-2xl`}>
       <span>Serviço</span>
       <span>Tag</span>
       <span>Prioridade</span>
-      <span>Prazo</span>
+      {!semPrazo && <span>Prazo</span>}
       <span>Pagamento</span>
       <span>Ações</span>
-      <span className="justify-self-end">Status</span>
+      <span>Status</span>
     </div>
   )
 }
 
 // Lista em formato de tabela: uma linha por serviço, colunas alinhadas.
-export function ServicoLinha({ s, ctx }) {
+export function ServicoLinha({ s, ctx, semPrazo = false }) {
   const vencido = s.prazo && estaVencido(s, ctx.hojeStr)
   return (
+    <div>
     <div
       onClick={() => ctx.selecaoAtiva ? ctx.alternarItem(s.id) : ctx.navigate(`/editar/${s.id}`)}
-      className={`${COLUNAS_LISTA} px-5 py-3 border-l-4 ${borderPrioridade(s.prioridade)} bg-white cursor-pointer transition-colors hover:bg-slate-50`}
+      className={`${semPrazo ? COLUNAS_LISTA_SEM_PRAZO : COLUNAS_LISTA} relative px-5 py-3 bg-white cursor-pointer transition-colors hover:bg-slate-50`}
     >
+      {/* Barra de prioridade com respiro em cima e embaixo: uma borda lateral
+          contínua emendava com as linhas vizinhas de mesma prioridade. */}
+      <span aria-hidden="true" className={`absolute left-1.5 top-3 bottom-3 w-1 rounded-full ${fundoPrioridade(s.prioridade)}`} />
       <div className="flex items-center gap-3 min-w-0">
         {ctx.selecaoAtiva && <Checkbox s={s} ctx={ctx} />}
         <div className="min-w-0">
@@ -233,19 +302,30 @@ export function ServicoLinha({ s, ctx }) {
       </div>
       <div><TagBadge s={s} /></div>
       <span className={`text-sm font-medium ${corTextoPrioridade(s.prioridade)}`}>{labelPrioridade(s.prioridade)}</span>
-      <span className={`text-sm ${vencido ? 'text-red-600 font-semibold' : 'text-slate-600'}`}>
-        {s.prazo ? formatarData(s.prazo) : '—'}
-      </span>
+      {!semPrazo && (
+        <span className={`text-sm ${vencido ? 'text-red-600 font-semibold' : 'text-slate-600'}`}>
+          {s.prazo ? formatarData(s.prazo) : '—'}
+          {vencido && <span className="block text-xs">Atrasado</span>}
+        </span>
+      )}
       <div className="flex flex-col items-start gap-1">
         <PagoBadge s={s} ctx={ctx} />
         {!ctx.selecaoAtiva && <OrcamentoBadge s={s} />}
       </div>
-      <div className="flex items-center gap-0.5">
+      <div className="flex items-center">
         {!ctx.selecaoAtiva && <AtalhosServico s={s} ctx={ctx} tamanho={16} />}
       </div>
-      <div className="relative justify-self-end" onClick={e => e.stopPropagation()}>
+      <div className="relative" onClick={e => e.stopPropagation()}>
         <StatusAcao s={s} ctx={ctx} />
       </div>
+    </div>
+    {!ctx.selecaoAtiva && ctx.confirmandoId === s.id && (
+      <div className="px-5 pb-3 bg-white">
+        <div className="pt-3 border-t border-slate-100">
+          <ConfirmacaoServico s={s} ctx={ctx} />
+        </div>
+      </div>
+    )}
     </div>
   )
 }
@@ -254,14 +334,14 @@ export function ServicoCardDetalhado({ s, ctx }) {
   const vencido = s.prazo && estaVencido(s, ctx.hojeStr)
   return (
     <div
-      onClick={() => ctx.selecaoAtiva && ctx.alternarItem(s.id)}
-      className={`bg-white rounded-2xl p-5 border border-slate-200 border-l-4 ${borderPrioridade(s.prioridade)} shadow-sm flex flex-col ${ctx.selecaoAtiva ? 'cursor-pointer' : ''}`}
+      onClick={() => ctx.selecaoAtiva ? ctx.alternarItem(s.id) : ctx.navigate(`/editar/${s.id}`)}
+      className={`bg-white rounded-2xl p-5 border border-slate-200 border-l-4 ${borderPrioridade(s.prioridade)} shadow-sm flex flex-col cursor-pointer transition-shadow hover:shadow-md`}
     >
       <div className="flex justify-between items-start gap-3">
         {ctx.selecaoAtiva && <Checkbox s={s} ctx={ctx} className="w-5 h-5 mt-0.5" />}
         <p className="text-base font-semibold text-slate-800 flex-1 leading-snug">{s.titulo}</p>
         {!ctx.selecaoAtiva && (
-          <div className="relative shrink-0">
+          <div className="relative shrink-0" onClick={e => e.stopPropagation()}>
             <StatusAcao s={s} ctx={ctx} />
           </div>
         )}
@@ -271,8 +351,7 @@ export function ServicoCardDetalhado({ s, ctx }) {
         <p className="text-sm text-slate-600 inline-flex items-center gap-1.5"><User size={14} />{s.cliente}</p>
         <p className={`text-sm inline-flex items-center gap-1.5 ${vencido ? 'text-red-600 font-semibold' : 'text-slate-600'}`}>
           <Calendar size={14} />
-          {s.prazo ? formatarData(s.prazo) : 'Sem prazo'}
-          {vencido && ' · Prazo vencido'}
+          {textoPrazo(s, vencido)}
         </p>
         {s.descricao && <p className="text-sm text-slate-500 mt-1 line-clamp-2">{s.descricao}</p>}
         <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -283,45 +362,14 @@ export function ServicoCardDetalhado({ s, ctx }) {
       </div>
 
       {!ctx.selecaoAtiva && (
-        <div className="mt-auto pt-4">
+        <div className="mt-auto pt-4" onClick={e => e.stopPropagation()}>
           {ctx.confirmandoId === s.id ? (
-            <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
-              <p className="text-sm text-slate-600 flex-1">Excluir este serviço?</p>
-              <Button variant="danger" onClick={() => ctx.handleDeletar(s.id)} className="text-sm px-3 py-1.5 rounded-lg font-semibold">
-                Sim, excluir
-              </Button>
-              <Button variant="ghost" onClick={() => ctx.setConfirmandoId(null)} className="text-sm px-3 py-1.5 rounded-lg font-semibold">
-                Cancelar
-              </Button>
+            <div className="pt-3 border-t border-slate-100">
+              <ConfirmacaoServico s={s} ctx={ctx} />
             </div>
           ) : (
-            <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
-              <Button onClick={() => ctx.navigate(`/editar/${s.id}`)} className="text-sm px-3 py-1.5 rounded-lg font-semibold inline-flex items-center gap-1.5">
-                <Pencil size={14} />
-                Editar
-              </Button>
-              <button
-                onClick={() => ctx.navigate(`/servicos/${s.id}/anotacoes`)}
-                className="text-sm bg-amber-50 text-amber-700 border border-amber-100 px-3 py-1.5 rounded-lg font-semibold inline-flex items-center gap-1.5 transition-all hover:bg-amber-100 active:scale-[0.96]"
-              >
-                <NotebookPen size={14} />
-                Anotações
-              </button>
-              <button
-                onClick={() => ctx.navigate(`/orcamentos/${s.id}`)}
-                className="text-sm bg-indigo-50 text-indigo-700 border border-indigo-100 px-3 py-1.5 rounded-lg font-semibold inline-flex items-center gap-1.5 transition-all hover:bg-indigo-100 active:scale-[0.96]"
-              >
-                <Receipt size={14} />
-                Orçamentos
-              </button>
-              <button
-                onClick={() => ctx.setConfirmandoId(s.id)}
-                aria-label="Excluir"
-                title="Excluir"
-                className="ml-auto p-2 text-red-400 rounded-lg transition-all hover:text-red-600 hover:bg-red-50 active:scale-90"
-              >
-                <Trash2 size={16} />
-              </button>
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-end min-h-[2.75rem]">
+              <AtalhosServico s={s} ctx={ctx} tamanho={16} />
             </div>
           )}
         </div>

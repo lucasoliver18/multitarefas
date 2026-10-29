@@ -1,7 +1,7 @@
 // Barra flutuante na base da área de conteúdo (à direita do menu lateral).
 function BarraSelecao({ quantidade, onExcluir, onCancelar }) {
   return (
-    <div className="fixed bottom-6 left-[calc(16rem+2.5rem)] right-10 z-50 flex justify-center pointer-events-none">
+    <div className="fixed bottom-6 left-[calc(var(--largura-menu,16rem)+2.5rem)] right-10 z-50 transition-[left] duration-200 ease-out flex justify-center pointer-events-none">
       <div className="pointer-events-auto bg-[#1e3a5f] rounded-2xl shadow-2xl flex items-center gap-6 py-3 pl-6 pr-3">
         <span className="text-white text-sm font-semibold">
           {quantidade} selecionado{quantidade !== 1 ? 's' : ''}

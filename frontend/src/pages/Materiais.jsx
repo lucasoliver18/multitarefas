@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AlertTriangle, List, LayoutGrid, Plus, Pencil, Trash2 } from 'lucide-react'
 import Select from '../components/Select'
 import Button from '../components/Button'
+import ConfirmacaoCartao from '../components/ConfirmacaoCartao'
 import EstoqueEditor from '../components/EstoqueEditor'
 import { Pagina, CabecalhoPagina, CampoBusca, AlternadorVisualizacao, Carregando, Vazio } from '../components/Pagina'
 import { useToast } from '../hooks/useToast'
@@ -78,8 +79,8 @@ function Materiais() {
 
   const [busca, setBusca] = useEstadoPersistido('materiais:busca', '', undefined, opcoes)
   const [visualizacao, setVisualizacao] = useEstadoPersistido('materiais:visualizacao', 'lista')
-  const [filtroUnidade, setFiltroUnidade] = useEstadoPersistido('materiais:filtroUnidade', '', undefined, opcoes)
-  const [filtroTag, setFiltroTag] = useEstadoPersistido('materiais:filtroTag', '', undefined, opcoes)
+  const [filtroUnidades, setFiltroUnidades] = useEstadoPersistido('materiais:filtroUnidades', [], undefined, opcoes)
+  const [filtroTags, setFiltroTags] = useEstadoPersistido('materiais:filtroTags', [], undefined, opcoes)
   const [filtroPrecoMin, setFiltroPrecoMin] = useEstadoPersistido('materiais:filtroPrecoMin', '', undefined, opcoes)
   const [filtroPrecoMax, setFiltroPrecoMax] = useEstadoPersistido('materiais:filtroPrecoMax', '', undefined, opcoes)
   const [filtroQtdMin, setFiltroQtdMin] = useEstadoPersistido('materiais:filtroQtdMin', '', undefined, opcoes)
@@ -91,12 +92,12 @@ function Materiais() {
     'materiais:filtroEstoqueBaixo', false, searchParams.get('estoqueBaixo') === '1' ? true : undefined, opcoes
   )
 
-  const quantidadeFiltrosAtivos = [filtroUnidade, filtroTag, filtroPrecoMin, filtroPrecoMax, filtroQtdMin, filtroQtdMax]
+  const quantidadeFiltrosAtivos = [filtroUnidades.length > 0, filtroTags.length > 0, filtroPrecoMin, filtroPrecoMax, filtroQtdMin, filtroQtdMax]
     .filter(Boolean).length
 
   const limparFiltros = () => {
-    setFiltroUnidade('')
-    setFiltroTag('')
+    setFiltroUnidades([])
+    setFiltroTags([])
     setFiltroPrecoMin('')
     setFiltroPrecoMax('')
     setFiltroQtdMin('')
@@ -147,9 +148,13 @@ function Materiais() {
   const materiaisFiltrados = useMemo(() => {
     return materiais.filter(m => {
       if (busca.trim() && !m.nome.toLowerCase().includes(busca.toLowerCase()) && !(m.marca || '').toLowerCase().includes(busca.toLowerCase())) return false
-      if (filtroUnidade && m.unidade_medida !== filtroUnidade) return false
-      if (filtroTag === 'sem' && (m.tags || []).length > 0) return false
-      if (filtroTag && filtroTag !== 'sem' && !(m.tags || []).includes(filtroTag)) return false
+      if (filtroUnidades.length > 0 && !filtroUnidades.includes(m.unidade_medida)) return false
+      // Várias tags: o material entra se tiver alguma delas ("sem" = sem nenhuma tag).
+      if (filtroTags.length > 0) {
+        const tags = m.tags || []
+        const combina = (filtroTags.includes('sem') && tags.length === 0) || tags.some(t => filtroTags.includes(t))
+        if (!combina) return false
+      }
       const preco = parseFloat(m.preco_unitario)
       if (filtroPrecoMin && preco < parseFloat(filtroPrecoMin)) return false
       if (filtroPrecoMax && preco > parseFloat(filtroPrecoMax)) return false
@@ -160,7 +165,7 @@ function Materiais() {
       if (filtroQtdMax && qtd > parseFloat(filtroQtdMax)) return false
       return true
     })
-  }, [materiais, busca, filtroUnidade, filtroTag, filtroPrecoMin, filtroPrecoMax, filtroQtdMin, filtroQtdMax, filtroForaEstoque, filtroEstoqueBaixo])
+  }, [materiais, busca, filtroUnidades, filtroTags, filtroPrecoMin, filtroPrecoMax, filtroQtdMin, filtroQtdMax, filtroForaEstoque, filtroEstoqueBaixo])
 
   const { pagina, setPagina, tamanhoPagina, mudarTamanhoPagina, totalPaginas, itensPagina } = usePaginacao(materiaisFiltrados)
 
@@ -194,18 +199,10 @@ function Materiais() {
     />
   )
 
+  // A confirmação de exclusão não fica aqui: na lista ela abre numa faixa
+  // abaixo da linha e na grade, no rodapé do cartão (ConfirmacaoCartao).
   const renderAcoes = (m) => (
-    confirmandoId === m.id ? (
-      <div className="flex items-center gap-2 justify-end">
-        <Button variant="danger" onClick={() => handleDeletar(m.id)} className="text-sm px-3 py-1.5 rounded-lg font-semibold">
-          Remover
-        </Button>
-        <Button variant="ghost" onClick={() => setConfirmandoId(null)} className="text-sm px-3 py-1.5 rounded-lg font-semibold">
-          Cancelar
-        </Button>
-      </div>
-    ) : (
-      <div className="flex items-center gap-1 justify-end">
+      <div className="flex items-center gap-1">
         <button
           onClick={() => navigate(`/materiais/editar/${m.id}`)}
           aria-label="Editar"
@@ -216,14 +213,13 @@ function Materiais() {
         </button>
         <button
           onClick={() => setConfirmandoId(m.id)}
-          aria-label="Remover"
-          title="Remover"
-          className="p-2 rounded-lg text-red-500 hover:bg-red-50 active:scale-90 transition-all"
+          aria-label="Excluir"
+          title="Excluir"
+          className={`p-2 rounded-lg text-red-500 hover:bg-red-50 active:scale-90 transition-all ${confirmandoId === m.id ? 'bg-red-50' : ''}`}
         >
           <Trash2 size={16} />
         </button>
       </div>
-    )
   )
 
   return (
@@ -276,7 +272,7 @@ function Materiais() {
             <div className="grid grid-cols-6 gap-4">
               <div>
                 <label className={LABEL}>Tag</label>
-                <Select value={filtroTag} onChange={e => setFiltroTag(e.target.value)} className={SELECT}>
+                <Select multiple value={filtroTags} onChange={e => setFiltroTags(e.target.value)} className={SELECT}>
                   <option value="">Todas</option>
                   {TAG_OPCOES.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
                   <option value="sem">Sem tag</option>
@@ -284,7 +280,7 @@ function Materiais() {
               </div>
               <div>
                 <label className={LABEL}>Unidade</label>
-                <Select value={filtroUnidade} onChange={e => setFiltroUnidade(e.target.value)} className={SELECT}>
+                <Select multiple value={filtroUnidades} onChange={e => setFiltroUnidades(e.target.value)} className={SELECT}>
                   <option value="">Todas</option>
                   {UNIDADES.map(u => <option key={u} value={u}>{u}</option>)}
                 </Select>
@@ -327,11 +323,11 @@ function Materiais() {
                 <span>Situação</span>
                 <span>Estoque</span>
                 <span>Preço</span>
-                <span className="justify-self-end">Ações</span>
+                <span>Ações</span>
               </div>
               {itensPagina.map(m => (
+                <div key={m.id}>
                 <div
-                  key={m.id}
                   onClick={() => selecaoAtiva && alternarItem(m.id)}
                   className={`${COLUNAS_LISTA} px-5 py-3 transition-colors hover:bg-slate-50 ${selecaoAtiva ? 'cursor-pointer' : ''}`}
                 >
@@ -355,6 +351,18 @@ function Materiais() {
                   <div onClick={e => e.stopPropagation()}>
                     {!selecaoAtiva && renderAcoes(m)}
                   </div>
+                </div>
+                {!selecaoAtiva && confirmandoId === m.id && (
+                  <div className="px-5 pb-3">
+                    <div className="pt-3 border-t border-slate-100">
+                      <ConfirmacaoCartao
+                        mensagem="Excluir este material?"
+                        onConfirmar={() => handleDeletar(m.id)}
+                        onCancelar={() => setConfirmandoId(null)}
+                      />
+                    </div>
+                  </div>
+                )}
                 </div>
               ))}
             </div>
@@ -383,7 +391,14 @@ function Materiais() {
                     <TagsMaterial tags={m.tags} />
                     <div className="shrink-0"><AvisoEstoque m={m} /></div>
                   </div>
-                  <div className="flex items-center justify-between gap-2 mt-auto pt-3 border-t border-slate-100 h-14">
+                  <div className="flex items-center justify-between gap-2 mt-auto pt-3 border-t border-slate-100 min-h-14">
+                    {!selecaoAtiva && confirmandoId === m.id ? (
+                      <ConfirmacaoCartao
+                        mensagem="Excluir este material?"
+                        onConfirmar={() => handleDeletar(m.id)}
+                        onCancelar={() => setConfirmandoId(null)}
+                      />
+                    ) : (<>
                     <div onClick={e => e.stopPropagation()}>
                       <EstoqueEditor
                         quantidade={parseFloat(m.quantidade_estoque)}
@@ -394,6 +409,7 @@ function Materiais() {
                     <div onClick={e => e.stopPropagation()}>
                       {!selecaoAtiva && renderAcoes(m)}
                     </div>
+                    </>)}
                   </div>
                 </div>
               ))}

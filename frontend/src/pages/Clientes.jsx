@@ -1,11 +1,12 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronUp, ChevronDown, Phone, Mail, List, LayoutGrid, Plus, Pencil, Trash2, ListFilter } from 'lucide-react'
+import { ChevronUp, ChevronDown, Phone, Mail, List, LayoutGrid, Plus, Pencil, Trash2 } from 'lucide-react'
 import api from '../services/api'
 import StatusBadge from '../components/StatusBadge'
 import ComboboxAsync from '../components/ComboboxAsync'
 import Select from '../components/Select'
 import Button from '../components/Button'
+import ConfirmacaoCartao from '../components/ConfirmacaoCartao'
 import PainelFiltros from '../components/PainelFiltros'
 import ModalServicosCliente from '../components/ModalServicosCliente'
 import { Pagina, CabecalhoPagina, CampoBusca, AlternadorVisualizacao, Carregando, Vazio } from '../components/Pagina'
@@ -25,6 +26,10 @@ const SELECT = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 tex
 const LABEL = 'text-xs font-semibold text-slate-600 mb-1 block'
 // Ao expandir um cliente, mostra só os mais recentes; o resto fica no modal.
 const LIMITE_SERVICOS = 4
+
+// Colunas da visualização em lista. Larguras fixas (sem "auto"): cada linha é
+// uma grade própria, e uma coluna automática desalinharia as linhas entre si.
+const COLUNAS_LISTA = 'grid grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1.6fr)_8rem_6rem] items-center gap-4'
 
 const VISUALIZACOES = [
   { val: 'lista', label: 'Lista', icone: List },
@@ -192,21 +197,9 @@ function Clientes() {
     )
   }
 
+  // A confirmação de exclusão não fica aqui: na lista ela abre numa faixa
+  // abaixo da linha e na grade, no rodapé do cartão (ConfirmacaoCartao).
   const renderAcoes = (c) => {
-    if (confirmandoId === c.id) {
-      return (
-        <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-          <span className="text-sm text-slate-600">Remover?</span>
-          <Button variant="danger" onClick={() => handleDeletar(c.id)} className="text-sm px-3 py-1.5 rounded-lg font-semibold">
-            Sim
-          </Button>
-          <Button variant="ghost" onClick={() => setConfirmandoId(null)} className="text-sm px-3 py-1.5 rounded-lg font-semibold">
-            Cancelar
-          </Button>
-        </div>
-      )
-    }
-
     return (
       <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
         <button
@@ -219,7 +212,7 @@ function Clientes() {
         <button
           onClick={() => setConfirmandoId(c.id)}
           aria-label="Excluir" title="Excluir"
-          className="p-2 rounded-lg text-red-500 hover:bg-red-50 active:scale-90 transition-all"
+          className={`p-2 rounded-lg text-red-500 hover:bg-red-50 active:scale-90 transition-all ${confirmandoId === c.id ? 'bg-red-50' : ''}`}
         >
           <Trash2 size={16} />
         </button>
@@ -273,7 +266,6 @@ function Clientes() {
                 onClick={() => setClienteModal({ id: c.id, nome: c.nome })}
                 className="self-center mt-1 inline-flex items-center gap-2 text-sm font-semibold text-[#2563eb] bg-white border border-blue-200 px-4 py-2 rounded-xl hover:bg-blue-50 active:scale-[0.97] transition-all"
               >
-                <ListFilter size={16} />
                 Ver todos os {lista.length} serviços
               </button>
             )}
@@ -362,18 +354,21 @@ function Clientes() {
 
       {clientesFiltrados.length > 0 && visualizacao === 'lista' && (
         <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+          <div className={`${COLUNAS_LISTA} px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide bg-slate-50`}>
+            <span>Cliente</span>
+            <span>Documento</span>
+            <span>Contato</span>
+            <span>Serviços</span>
+            <span>Ações</span>
+          </div>
           {itensPagina.map(c => (
             <div key={c.id}>
               <div
                 onClick={() => selecaoAtiva ? alternarItem(c.id) : expandirCliente(c.id)}
-                className="grid grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1.6fr)_8rem_auto] items-center gap-4 px-5 py-3.5 cursor-pointer transition-colors hover:bg-slate-50"
+                className={`${COLUNAS_LISTA} px-5 py-3 cursor-pointer transition-colors hover:bg-slate-50`}
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  {selecaoAtiva ? renderCheckbox(c) : (
-                    <span className="text-slate-400 shrink-0">
-                      {expandido === c.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    </span>
-                  )}
+                  {selecaoAtiva && renderCheckbox(c)}
                   <p className="text-sm font-semibold text-slate-800 truncate">{c.nome}</p>
                   <span className="text-xs font-medium bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full shrink-0">
                     {c.tipo_pessoa === 'juridica' ? 'PJ' : 'PF'}
@@ -385,9 +380,28 @@ function Clientes() {
                   {c.email && <span className="text-sm text-slate-600 inline-flex items-center gap-1.5 truncate"><Mail size={13} className="shrink-0" /><span className="truncate">{c.email}</span></span>}
                   {!c.telefone && !c.email && <span className="text-sm text-slate-400">Sem contato</span>}
                 </div>
-                <span className="text-sm text-slate-500">{totalLabel(c.servicos_count)}</span>
-                <div className="justify-self-end">{!selecaoAtiva && transferindoCliente?.id !== c.id && renderAcoes(c)}</div>
+                {/* A seta indica que a linha abre os serviços do cliente (o clique é na linha toda). */}
+                <span className="text-sm text-slate-500 inline-flex items-center gap-1.5">
+                  {totalLabel(c.servicos_count)}
+                  {!selecaoAtiva && (
+                    <span className="text-slate-400 shrink-0" aria-hidden="true">
+                      {expandido === c.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    </span>
+                  )}
+                </span>
+                <div>{!selecaoAtiva && transferindoCliente?.id !== c.id && renderAcoes(c)}</div>
               </div>
+              {!selecaoAtiva && confirmandoId === c.id && (
+                <div className="px-5 pb-3">
+                  <div className="pt-3 border-t border-slate-100">
+                    <ConfirmacaoCartao
+                      mensagem="Excluir este cliente?"
+                      onConfirmar={() => handleDeletar(c.id)}
+                      onCancelar={() => setConfirmandoId(null)}
+                    />
+                  </div>
+                </div>
+              )}
               {!selecaoAtiva && transferindoCliente?.id === c.id && (
                 <div className="px-5 pb-4">{renderTransferencia(c)}</div>
               )}
@@ -419,9 +433,19 @@ function Clientes() {
                     {c.email && <p className="text-sm text-slate-600 mt-0.5 flex items-center gap-1.5 truncate"><Mail size={13} className="shrink-0" /><span className="truncate">{c.email}</span></p>}
                   </div>
                 </div>
-                <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100">
-                  <span className="text-sm text-slate-500">{totalLabel(c.servicos_count)}</span>
-                  {!selecaoAtiva && transferindoCliente?.id !== c.id && renderAcoes(c)}
+                <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100 min-h-[3.25rem]">
+                  {!selecaoAtiva && confirmandoId === c.id ? (
+                    <ConfirmacaoCartao
+                      mensagem="Excluir este cliente?"
+                      onConfirmar={() => handleDeletar(c.id)}
+                      onCancelar={() => setConfirmandoId(null)}
+                    />
+                  ) : (
+                    <>
+                      <span className="text-sm text-slate-500">{totalLabel(c.servicos_count)}</span>
+                      {!selecaoAtiva && transferindoCliente?.id !== c.id && renderAcoes(c)}
+                    </>
+                  )}
                 </div>
                 {!selecaoAtiva && transferindoCliente?.id === c.id && renderTransferencia(c)}
               </div>

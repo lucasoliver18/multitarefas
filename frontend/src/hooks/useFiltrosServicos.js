@@ -6,6 +6,10 @@ import { hojeISO, estaVencido } from '../utils/prazos'
 // modais de serviços. Com `prefixo`, os filtros são lembrados entre
 // navegações (localStorage); sem ele, valem só enquanto a tela/modal estiver
 // aberto. `valoresIniciais` vem de links ou de padrões do modal.
+// Status, prioridade, tag e orçamento aceitam várias opções ao mesmo tempo
+// (array; vazio = todos). Valores vindos de links chegam como texto único.
+const comoLista = (v) => (v ? [v] : undefined)
+
 export function useFiltrosServicos({ prefixo = null, valoresIniciais = {} } = {}) {
   const chave = (nome) => (prefixo ? `${prefixo}:${nome}` : null)
   // Chegou por um link com filtros (ex.: da tela inicial): os demais filtros
@@ -13,14 +17,15 @@ export function useFiltrosServicos({ prefixo = null, valoresIniciais = {} } = {}
   const opcoes = { ignorarSalvo: Object.values(valoresIniciais).some(Boolean) }
 
   const [busca, setBusca] = useEstadoPersistido(chave('busca'), '', valoresIniciais.busca, opcoes)
-  const [status, setStatus] = useEstadoPersistido(chave('filtroStatus'), '', valoresIniciais.status, opcoes)
-  const [prioridade, setPrioridade] = useEstadoPersistido(chave('filtroPrioridade'), '', undefined, opcoes)
-  const [tag, setTag] = useEstadoPersistido(chave('filtroTag'), '', undefined, opcoes)
+  // Chaves novas (plural) para os filtros múltiplos: as antigas guardavam um valor só.
+  const [status, setStatus] = useEstadoPersistido(chave('filtroStatusLista'), [], comoLista(valoresIniciais.status), opcoes)
+  const [prioridade, setPrioridade] = useEstadoPersistido(chave('filtroPrioridades'), [], undefined, opcoes)
+  const [tag, setTag] = useEstadoPersistido(chave('filtroTags'), [], undefined, opcoes)
   const [prazoDe, setPrazoDe] = useEstadoPersistido(chave('filtroPrazoDe'), '', valoresIniciais.prazoDe, opcoes)
   const [prazoAte, setPrazoAte] = useEstadoPersistido(chave('filtroPrazoAte'), '', valoresIniciais.prazoAte, opcoes)
   const [situacaoPrazo, setSituacaoPrazo] = useEstadoPersistido(chave('filtroSituacaoPrazo'), '', valoresIniciais.situacaoPrazo, opcoes)
   const [pago, setPago] = useEstadoPersistido(chave('filtroPago'), '', valoresIniciais.pago, opcoes)
-  const [orcamento, setOrcamento] = useEstadoPersistido(chave('filtroOrcamento'), '', valoresIniciais.orcamento, opcoes)
+  const [orcamento, setOrcamento] = useEstadoPersistido(chave('filtroOrcamentos'), [], comoLista(valoresIniciais.orcamento), opcoes)
 
   const valores = { status, prioridade, tag, prazoDe, prazoAte, situacaoPrazo, pago, orcamento }
   const setters = {
@@ -28,13 +33,21 @@ export function useFiltrosServicos({ prefixo = null, valoresIniciais = {} } = {}
     prazoAte: setPrazoAte, situacaoPrazo: setSituacaoPrazo, pago: setPago, orcamento: setOrcamento,
   }
 
-  const quantidadeAtiva = Object.values(valores).filter(Boolean).length
+  const ativo = v => (Array.isArray(v) ? v.length > 0 : Boolean(v))
+  const quantidadeAtiva = Object.values(valores).filter(ativo).length
   // Muda sempre que um filtro (não a busca) muda; usado para resetar paginação/"carregar mais".
   const chaveFiltros = JSON.stringify(valores)
 
-  const limpar = () => Object.values(setters).forEach(set => set(''))
+  const limpar = () => Object.entries(setters).forEach(([nome, set]) => set(Array.isArray(valores[nome]) ? [] : ''))
 
   return { busca, setBusca, valores, setters, quantidadeAtiva, chaveFiltros, limpar }
+}
+
+const SITUACAO_ORCAMENTO = {
+  com: s => s.tem_orcamento,
+  sem: s => !s.tem_orcamento,
+  sem_aprovado: s => !s.tem_orcamento_aprovado,
+  pendente: s => s.tem_orcamento_pendente,
 }
 
 // Aplica os filtros (estado de useFiltrosServicos) a uma lista de serviços.
@@ -49,14 +62,12 @@ export function useServicosFiltrados(servicos, filtros) {
       if (termo && !s.titulo.toLowerCase().includes(termo) && !(s.cliente || '').toLowerCase().includes(termo)) return false
       if (situacaoPrazo === 'atrasado' && !estaVencido(s, hojeStr)) return false
       if (situacaoPrazo === 'no_prazo' && estaVencido(s, hojeStr)) return false
-      if (status && s.status !== status) return false
-      if (prioridade && s.prioridade !== prioridade) return false
-      if (tag && s.tag !== tag) return false
+      if (status.length > 0 && !status.includes(s.status)) return false
+      if (prioridade.length > 0 && !prioridade.includes(s.prioridade)) return false
+      if (tag.length > 0 && !tag.includes(s.tag)) return false
       if (pago && String(Number(!!s.pago)) !== pago) return false
-      if (orcamento === 'com' && !s.tem_orcamento) return false
-      if (orcamento === 'sem' && s.tem_orcamento) return false
-      if (orcamento === 'sem_aprovado' && s.tem_orcamento_aprovado) return false
-      if (orcamento === 'pendente' && !s.tem_orcamento_pendente) return false
+      // Várias situações de orçamento: o serviço entra se atender a qualquer uma.
+      if (orcamento.length > 0 && !orcamento.some(o => SITUACAO_ORCAMENTO[o]?.(s))) return false
       if (prazoDe || prazoAte) {
         if (!s.prazo) return false
         if (prazoDe && s.prazo < prazoDe) return false

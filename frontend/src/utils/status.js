@@ -52,6 +52,14 @@ export const borderPrioridade = (p) => {
   return 'border-l-[#16a34a]'
 }
 
+// Mesmas cores de borderPrioridade, para marcadores com fundo (ex.: a barra
+// de prioridade das linhas da lista de serviços).
+export const fundoPrioridade = (p) => {
+  if (p === 'alta')  return 'bg-[#dc2626]'
+  if (p === 'media') return 'bg-[#ca8a04]'
+  return 'bg-[#16a34a]'
+}
+
 export const labelPrioridade = (p) =>
   p === 'alta' ? 'Alta' : p === 'media' ? 'Média' : 'Baixa'
 

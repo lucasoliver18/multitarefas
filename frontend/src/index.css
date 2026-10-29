@@ -9,6 +9,20 @@
   --text-sm--line-height: 1.375rem;
 }
 
+/* Elementos de interface (botões, rótulos, menus, opções) não são texto para
+   selecionar: clicar ou arrastar neles não deve marcar texto nem posicionar o
+   cursor. Os dados (nomes, CPF, e-mails, descrições) continuam selecionáveis. */
+button,
+label,
+nav,
+[role="button"],
+[role="option"],
+[role="listbox"],
+[role="dialog"][aria-label="Calendário"] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 .nav-label::before {
   content: attr(data-titulo);
 }

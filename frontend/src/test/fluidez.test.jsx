@@ -92,7 +92,8 @@ describe('modal de serviços do cliente', () => {
     await screen.findByText('Serviço 1')
 
     fireEvent.click(screen.getByText('Filtros'))
-    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'finalizado' } })
+    fireEvent.click(screen.getAllByRole('combobox')[0])
+    fireEvent.click(screen.getByRole('option', { name: 'Finalizado' }))
 
     await waitFor(() => expect(screen.getByText('1 registro')).toBeInTheDocument())
     expect(screen.getByText('Pintura finalizada')).toBeInTheDocument()
