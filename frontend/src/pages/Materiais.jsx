@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { AlertTriangle, List, LayoutGrid, Plus, Pencil, Trash2 } from 'lucide-react'
+import { AlertTriangle, List, LayoutGrid, Plus, Pencil, Trash2, Tag } from 'lucide-react'
 import Select from '../components/Select'
 import Button from '../components/Button'
 import ConfirmacaoCartao from '../components/ConfirmacaoCartao'
@@ -379,16 +379,24 @@ function Materiais() {
                   <div className="flex items-start gap-3">
                     {selecaoAtiva && renderCheckbox(m)}
                     <div className="flex-1 min-w-0">
-                      <p className="text-base font-semibold text-slate-800 truncate">{m.nome}</p>
-                      <p className="text-sm text-slate-500 truncate">{m.marca || 'Sem marca'}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-base font-semibold text-slate-800 truncate">{m.nome}</p>
+                        <span className="text-xs font-medium bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full shrink-0">{m.unidade_medida}</span>
+                      </div>
+                      <p className={`text-sm mt-1 truncate ${m.marca ? 'text-slate-600' : 'text-slate-300'}`}>{m.marca ? `Marca: ${m.marca}` : 'Sem marca'}</p>
                     </div>
                     <span className="text-base font-bold text-slate-800 shrink-0">{formatarPreco(m.preco_unitario)}</span>
                   </div>
                   {/* Áreas com altura fixa (mesmo vazias), para o campo de estoque
                       ficar sempre na mesma posição em todos os cartões. */}
-                  <p className="text-sm text-slate-500 line-clamp-2 h-[2.75rem]">{m.descricao}</p>
+                  <p className={`text-sm line-clamp-2 h-[2.75rem] ${m.descricao ? 'text-slate-600' : 'text-slate-300'}`}>
+                    {m.descricao || 'Sem descrição'}
+                  </p>
                   <div className="flex items-start justify-between gap-2 min-h-6">
-                    <TagsMaterial tags={m.tags} />
+                    <div className="flex items-start gap-1.5 min-w-0">
+                      <Tag size={13} className={`shrink-0 mt-[0.2rem] ${m.tags?.length ? 'text-slate-600' : 'text-slate-300'}`} />
+                      <TagsMaterial tags={m.tags} />
+                    </div>
                     <div className="shrink-0"><AvisoEstoque m={m} /></div>
                   </div>
                   <div className="flex items-center justify-between gap-2 mt-auto pt-3 border-t border-slate-100 min-h-14">

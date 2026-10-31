@@ -80,6 +80,29 @@ class ClienteTest extends TestCase
              ->assertJsonFragment(['nome' => 'Nome Novo']);
     }
 
+    public function test_nao_altera_tipo_pessoa_apos_cadastro(): void
+    {
+        $cliente = Cliente::factory()->create(['tipo_pessoa' => 'fisica']);
+
+        $this->putJson("/api/clientes/{$cliente->id}", [
+            'tipo_pessoa' => 'juridica',
+            'cnpj'        => '11.222.333/0001-81',
+        ])->assertUnprocessable()
+          ->assertJsonValidationErrors(['tipo_pessoa']);
+
+        $this->assertSame('fisica', $cliente->fresh()->tipo_pessoa);
+    }
+
+    public function test_pode_remover_telefone_do_cliente(): void
+    {
+        $cliente = Cliente::factory()->create(['telefone' => '(43) 99610-5977']);
+
+        $this->putJson("/api/clientes/{$cliente->id}", ['telefone' => ''])
+             ->assertOk();
+
+        $this->assertNull($cliente->fresh()->telefone);
+    }
+
     public function test_deletar_cliente_usa_soft_delete(): void
     {
         $cliente = Cliente::factory()->create();

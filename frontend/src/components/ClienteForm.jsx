@@ -6,19 +6,24 @@ import { apenasDigitos, mascararTelefone, mascararCpf, mascararCnpj, cnpjValido 
 const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
 const LABEL = 'text-sm font-semibold text-slate-700 mb-1.5'
 
-function BotaoTipo({ ativo, label, onClick }) {
+function BotaoTipo({ ativo, label, onClick, bloqueado }) {
+  const estilo = bloqueado
+    ? (ativo ? 'bg-[#2563eb] text-white border-[#2563eb] cursor-default' : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed')
+    : `active:scale-[0.97] ${ativo ? 'bg-[#2563eb] text-white border-[#2563eb] hover:bg-[#1e3a5f]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex-1 text-sm font-semibold py-2.5 rounded-xl border transition-all active:scale-[0.97] ${ativo ? 'bg-[#2563eb] text-white border-[#2563eb] hover:bg-[#1e3a5f]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+      disabled={bloqueado}
+      className={`flex-1 text-sm font-semibold py-2.5 rounded-xl border transition-all ${estilo}`}
     >
       {label}
     </button>
   )
 }
 
-function ClienteForm({ titulo, form, setForm, salvando, onSalvar, botaoLabel, onVoltar }) {
+// `tipoBloqueado`: na edição o tipo de pessoa fica fixo (PF continua PF).
+function ClienteForm({ titulo, form, setForm, salvando, onSalvar, botaoLabel, onVoltar, tipoBloqueado = false }) {
   const toast = useToast()
 
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value })
@@ -56,9 +61,10 @@ function ClienteForm({ titulo, form, setForm, salvando, onSalvar, botaoLabel, on
         <div className="flex flex-col">
           <label className={LABEL}>Tipo de cadastro *</label>
           <div className="flex gap-2">
-            <BotaoTipo ativo={form.tipo_pessoa === 'fisica'} label="Pessoa Física" onClick={() => setForm({ ...form, tipo_pessoa: 'fisica' })} />
-            <BotaoTipo ativo={form.tipo_pessoa === 'juridica'} label="Pessoa Jurídica" onClick={() => setForm({ ...form, tipo_pessoa: 'juridica' })} />
+            <BotaoTipo ativo={form.tipo_pessoa === 'fisica'} label="Pessoa Física" bloqueado={tipoBloqueado} onClick={() => setForm({ ...form, tipo_pessoa: 'fisica' })} />
+            <BotaoTipo ativo={form.tipo_pessoa === 'juridica'} label="Pessoa Jurídica" bloqueado={tipoBloqueado} onClick={() => setForm({ ...form, tipo_pessoa: 'juridica' })} />
           </div>
+          {tipoBloqueado && <p className="text-xs text-slate-400 mt-1.5">O tipo de cadastro não pode ser alterado.</p>}
         </div>
 
         {form.tipo_pessoa === 'fisica' ? (

@@ -61,6 +61,7 @@ function EditarCliente() {
       onSalvar={salvar}
       botaoLabel="Salvar alterações"
       onVoltar={() => navigate('/clientes')}
+      tipoBloqueado
     />
   )
 }

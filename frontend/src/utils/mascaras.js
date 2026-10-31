@@ -5,6 +5,8 @@ export function apenasDigitos(valor) {
 export function mascararTelefone(valor) {
   const digitos = apenasDigitos(valor).slice(0, 11)
 
+  // Sem dígitos o campo fica vazio, para dar para apagar o telefone inteiro.
+  if (digitos.length === 0) return ''
   if (digitos.length <= 2) return digitos.replace(/^(\d*)/, '($1')
   if (digitos.length <= 6) return digitos.replace(/^(\d{2})(\d*)/, '($1) $2')
   if (digitos.length <= 10) return digitos.replace(/^(\d{2})(\d{4})(\d*)/, '($1) $2-$3')

@@ -429,8 +429,13 @@ function Clientes() {
                       </span>
                     </div>
                     <div className="mt-1">{renderDocumento(c)}</div>
-                    {c.telefone && <p className="text-sm text-slate-600 mt-1 flex items-center gap-1.5"><Phone size={13} />{c.telefone}</p>}
-                    {c.email && <p className="text-sm text-slate-600 mt-0.5 flex items-center gap-1.5 truncate"><Mail size={13} className="shrink-0" /><span className="truncate">{c.email}</span></p>}
+                    {/* Linhas sempre presentes para todos os cartões terem a mesma altura. */}
+                    <p className={`text-sm mt-1 flex items-center gap-1.5 ${c.telefone ? 'text-slate-600' : 'text-slate-300'}`}>
+                      <Phone size={13} className="shrink-0" />{c.telefone || 'Sem telefone'}
+                    </p>
+                    <p className={`text-sm mt-0.5 flex items-center gap-1.5 truncate ${c.email ? 'text-slate-600' : 'text-slate-300'}`}>
+                      <Mail size={13} className="shrink-0" /><span className="truncate">{c.email || 'Sem e-mail'}</span>
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100 min-h-[3.25rem]">

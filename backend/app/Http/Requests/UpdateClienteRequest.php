@@ -17,11 +17,21 @@ class UpdateClienteRequest extends FormRequest
 
     public function rules(): array
     {
-        $clienteId = $this->route('cliente')?->id;
+        $cliente = $this->route('cliente');
+        $clienteId = $cliente?->id;
 
         return [
             'nome'        => 'sometimes|required|string|max:255',
-            'tipo_pessoa' => 'sometimes|required|in:fisica,juridica',
+            // O tipo de pessoa é definido no cadastro e não muda depois:
+            // um cliente PF continua PF (só o CPF pode ser corrigido).
+            'tipo_pessoa' => [
+                'sometimes', 'required', 'in:fisica,juridica',
+                function (string $attribute, mixed $value, \Closure $fail) use ($cliente) {
+                    if ($cliente && $value !== $cliente->tipo_pessoa) {
+                        $fail('O tipo de pessoa não pode ser alterado após o cadastro.');
+                    }
+                },
+            ],
             'telefone'    => ['nullable', 'string', 'regex:/^\(\d{2}\)\s\d{4,5}-\d{4}$/'],
             'email'       => 'nullable|email|max:255',
             'cpf'         => [
