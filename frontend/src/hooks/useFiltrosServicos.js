@@ -7,8 +7,9 @@ import { hojeISO, estaVencido } from '../utils/prazos'
 // navegações (localStorage); sem ele, valem só enquanto a tela/modal estiver
 // aberto. `valoresIniciais` vem de links ou de padrões do modal.
 // Status, prioridade, tag e orçamento aceitam várias opções ao mesmo tempo
-// (array; vazio = todos). Valores vindos de links chegam como texto único.
-const comoLista = (v) => (v ? [v] : undefined)
+// (array; vazio = todos). Valores vindos de links chegam como texto único
+// (ou já como lista, quando o link pede mais de uma opção).
+const comoLista = (v) => (Array.isArray(v) ? v : v ? [v] : undefined)
 
 export function useFiltrosServicos({ prefixo = null, valoresIniciais = {} } = {}) {
   const chave = (nome) => (prefixo ? `${prefixo}:${nome}` : null)
@@ -23,7 +24,7 @@ export function useFiltrosServicos({ prefixo = null, valoresIniciais = {} } = {}
   const [tag, setTag] = useEstadoPersistido(chave('filtroTags'), [], undefined, opcoes)
   const [prazoDe, setPrazoDe] = useEstadoPersistido(chave('filtroPrazoDe'), '', valoresIniciais.prazoDe, opcoes)
   const [prazoAte, setPrazoAte] = useEstadoPersistido(chave('filtroPrazoAte'), '', valoresIniciais.prazoAte, opcoes)
-  const [situacaoPrazo, setSituacaoPrazo] = useEstadoPersistido(chave('filtroSituacaoPrazo'), '', valoresIniciais.situacaoPrazo, opcoes)
+  const [situacaoPrazo, setSituacaoPrazo] = useEstadoPersistido(chave('filtroSituacoesPrazo'), [], comoLista(valoresIniciais.situacaoPrazo), opcoes)
   const [pago, setPago] = useEstadoPersistido(chave('filtroPago'), '', valoresIniciais.pago, opcoes)
   const [orcamento, setOrcamento] = useEstadoPersistido(chave('filtroOrcamentos'), [], comoLista(valoresIniciais.orcamento), opcoes)
 
@@ -43,6 +44,12 @@ export function useFiltrosServicos({ prefixo = null, valoresIniciais = {} } = {}
   return { busca, setBusca, valores, setters, quantidadeAtiva, chaveFiltros, limpar }
 }
 
+const SITUACAO_PRAZO = {
+  no_prazo: (s, hojeStr) => !estaVencido(s, hojeStr),
+  atrasado: (s, hojeStr) => estaVencido(s, hojeStr),
+  sem_prazo: s => !s.prazo,
+}
+
 const SITUACAO_ORCAMENTO = {
   com: s => s.tem_orcamento,
   sem: s => !s.tem_orcamento,
@@ -60,8 +67,8 @@ export function useServicosFiltrados(servicos, filtros) {
     const termo = busca.trim().toLowerCase()
     return servicos.filter(s => {
       if (termo && !s.titulo.toLowerCase().includes(termo) && !(s.cliente || '').toLowerCase().includes(termo)) return false
-      if (situacaoPrazo === 'atrasado' && !estaVencido(s, hojeStr)) return false
-      if (situacaoPrazo === 'no_prazo' && estaVencido(s, hojeStr)) return false
+      // Várias situações de prazo: o serviço entra se atender a qualquer uma.
+      if (situacaoPrazo.length > 0 && !situacaoPrazo.some(o => SITUACAO_PRAZO[o]?.(s, hojeStr))) return false
       if (status.length > 0 && !status.includes(s.status)) return false
       if (prioridade.length > 0 && !prioridade.includes(s.prioridade)) return false
       if (tag.length > 0 && !tag.includes(s.tag)) return false

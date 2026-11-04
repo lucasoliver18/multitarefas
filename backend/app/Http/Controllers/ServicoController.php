@@ -8,6 +8,7 @@ use App\Http\Resources\ServicoResource;
 use App\Models\Cliente;
 use App\Models\Servico;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ServicoController extends Controller
 {
@@ -58,10 +59,25 @@ class ServicoController extends Controller
         return new ServicoResource($this->comOrcamentoAprovado($servico->load('clienteRelacao')));
     }
 
-    public function destroy(Servico $servico)
+    // Com `devolver_estoque`, o que os orçamentos aprovados do serviço tinham
+    // debitado volta ao estoque; sem ele, o estoque fica como está (o material
+    // pode já ter sido usado). A tela pergunta antes de excluir.
+    public function destroy(Request $request, Servico $servico)
     {
-        $servico->delete();
-        return response()->json(['message' => 'Serviço excluído.']);
+        $request->validate(['devolver_estoque' => 'nullable|boolean']);
+        $devolver = $request->boolean('devolver_estoque');
+
+        DB::transaction(function () use ($servico, $devolver) {
+            if ($devolver) {
+                $servico->orcamentos()->where('status', 'aprovado')->with('materiais')->get()
+                    ->each(fn ($orcamento) => $orcamento->materiais->each(
+                        fn ($material) => $material->increment('quantidade_estoque', $material->pivot->quantidade)
+                    ));
+            }
+            $servico->delete();
+        });
+
+        return response()->json(['message' => $devolver ? 'Serviço excluído e estoque devolvido.' : 'Serviço excluído.']);
     }
 
     private function comOrcamentoAprovado(Servico $servico): Servico

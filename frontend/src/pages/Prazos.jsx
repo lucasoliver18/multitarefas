@@ -28,6 +28,7 @@ const DIAS_SEMANA = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
 
 const TAGS_FIXAS = ['informatica', 'pintura', 'outros']
 const LIMITE_VENCIDOS = 4
+const LIMITE_SEM_PRAZO = 4
 // A lista do dia mostra no máximo 4 serviços; o restante fica no modal "Ver mais".
 const LIMITE_POR_DIA = 4
 // Cada dia mostra bolinhas coloridas com a quantidade de serviços: uma por
@@ -275,8 +276,10 @@ function Prazos() {
 
       <div className="grid grid-cols-[minmax(0,1fr)_24rem] gap-6 items-start">
         <div className="bg-white rounded-2xl border border-slate-200 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <p translate="no" className="text-lg font-bold text-slate-800">
+          {/* Mês sempre numa linha própria e os controles abaixo: o layout não
+              muda conforme o tamanho do nome do mês. */}
+          <div className="flex flex-col items-start gap-3 mb-4">
+            <p translate="no" className="text-lg font-bold text-slate-800 whitespace-nowrap shrink-0">
               {MESES[mes]} {ano}
             </p>
             <div className="flex items-center gap-1">
@@ -286,7 +289,7 @@ function Prazos() {
                   <CampoData
                     value={dataEspecifica}
                     onChange={irParaData}
-                    onInvalida={() => toast.erro('Data inválida.')}
+                    onInvalida={() => toast.erro('Data inválida')}
                     aria-label="Ir para uma data específica"
                     className="w-full text-sm bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                   />
@@ -448,7 +451,7 @@ function Prazos() {
                 </span>
               </h2>
               <div className="flex flex-col gap-2">
-                {semPrazo.map(s => (
+                {semPrazo.slice(0, LIMITE_SEM_PRAZO).map(s => (
                   <div key={s.id} className={`bg-white rounded-xl p-4 border border-slate-200 border-l-4 ${borderPrioridade(s.prioridade)} flex items-center gap-3`}>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-slate-800 truncate">{s.titulo}</p>
@@ -462,6 +465,14 @@ function Prazos() {
                     </button>
                   </div>
                 ))}
+                {semPrazo.length > LIMITE_SEM_PRAZO && (
+                  <button
+                    onClick={() => navigate('/servicos?semprazo=1')}
+                    className="text-sm text-blue-600 font-semibold text-center py-2 bg-white/70 border border-dashed border-blue-200 rounded-xl hover:bg-white active:scale-[0.98] transition-all"
+                  >
+                    Ver mais ({semPrazo.length - LIMITE_SEM_PRAZO})
+                  </button>
+                )}
               </div>
             </div>
           )}

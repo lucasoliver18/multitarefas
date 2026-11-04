@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { SlidersHorizontal, ChevronUp, ChevronDown } from 'lucide-react'
 
-function PainelFiltros({ quantidadeAtiva, onLimpar, children }) {
-  const [aberto, setAberto] = useState(false)
+// `abertoInicial`: começa aberto (ex.: chegando por um link que aplica um filtro).
+function PainelFiltros({ quantidadeAtiva, onLimpar, abertoInicial = false, children }) {
+  const [aberto, setAberto] = useState(abertoInicial)
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">

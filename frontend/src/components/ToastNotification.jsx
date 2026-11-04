@@ -5,6 +5,7 @@ import { ToastContext } from '../contexts/ToastContext'
 // sozinhos: esperam o usuário escolher.
 const DURACAO_AVISO_MS = 4000
 import { Check, X, AlertTriangle, HelpCircle } from 'lucide-react'
+import { semPontoFinal } from '../utils/texto'
 
 
 const STYLES = {
@@ -75,7 +76,7 @@ export function ToastProvider({ children }) {
 
   const add = useCallback((type, message, extras = {}) => {
     const id = ++nextId.current
-    setToasts(prev => [...prev, { id, type, message, leaving: false, ...extras }])
+    setToasts(prev => [...prev, { id, type, message: semPontoFinal(message), leaving: false, ...extras }])
     if (type !== 'confirmar') {
       setTimeout(() => remove(id), DURACAO_AVISO_MS)
     }

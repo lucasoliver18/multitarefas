@@ -31,7 +31,7 @@ function EditarCliente() {
         setCarregando(false)
       })
       .catch(e => {
-        toast.erro(mensagemErro(e, 'Erro ao carregar cliente.'))
+        toast.erro(mensagemErro(e, 'Erro ao carregar cliente'))
         navigate('/clientes')
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -44,7 +44,7 @@ function EditarCliente() {
       toast.sucesso('Cliente atualizado')
       navigate('/clientes')
     } catch (e) {
-      toast.erro(mensagemErro(e, 'Erro ao salvar cliente.'))
+      toast.erro(mensagemErro(e, 'Erro ao salvar cliente'))
     } finally {
       setSalvando(false)
     }

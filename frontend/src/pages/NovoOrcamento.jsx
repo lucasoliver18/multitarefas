@@ -19,7 +19,7 @@ function NovoOrcamento() {
     api.get(`/servicos/${servicoId}`)
       .then(res => setServico(res.data))
       .catch(e => {
-        toast.erro(mensagemErro(e, 'Erro ao carregar serviço.'))
+        toast.erro(mensagemErro(e, 'Erro ao carregar serviço'))
         navigate('/servicos')
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -39,7 +39,7 @@ function NovoOrcamento() {
       toast.sucesso('Orçamento criado')
       navigate(`/orcamentos/${servicoId}`)
     } catch (e) {
-      toast.erro(mensagemErro(e, 'Erro ao salvar orçamento.'))
+      toast.erro(mensagemErro(e, 'Erro ao salvar orçamento'))
     } finally {
       setSalvando(false)
     }

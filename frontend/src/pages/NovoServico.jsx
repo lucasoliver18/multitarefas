@@ -24,7 +24,7 @@ function NovoServico() {
       toast.sucesso('Serviço criado')
       navigate(prazoLink && form.prazo ? `/prazos?data=${form.prazo}` : voltarPara)
     } catch (e) {
-      toast.erro(mensagemErro(e, 'Erro ao salvar serviço.'))
+      toast.erro(mensagemErro(e, 'Erro ao salvar serviço'))
     } finally {
       setSalvando(false)
     }

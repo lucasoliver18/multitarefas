@@ -72,9 +72,14 @@ function Materiais() {
   const { ativo: selecaoAtiva, selecionados, alternarModo, alternarItem, cancelar, quantidade } = useSelecaoMultipla()
   const [searchParams, setSearchParams] = useSearchParams()
 
-  // Links da tela inicial (?foraEstoque=1 / ?estoqueBaixo=1) ligam o filtro e
-  // ignoram os demais filtros salvos, para não esconderem o que o link mostra.
-  const viaLink = searchParams.get('foraEstoque') === '1' || searchParams.get('estoqueBaixo') === '1'
+  // Links da tela inicial (?foraEstoque=1 / ?estoqueBaixo=1) ligam o filtro de
+  // situação do estoque e ignoram os demais filtros salvos, para não
+  // esconderem o que o link mostra.
+  const situacaoLink = [
+    searchParams.get('foraEstoque') === '1' && 'fora',
+    searchParams.get('estoqueBaixo') === '1' && 'baixo',
+  ].filter(Boolean)
+  const viaLink = situacaoLink.length > 0
   const opcoes = { ignorarSalvo: viaLink }
 
   const [busca, setBusca] = useEstadoPersistido('materiais:busca', '', undefined, opcoes)
@@ -85,14 +90,17 @@ function Materiais() {
   const [filtroPrecoMax, setFiltroPrecoMax] = useEstadoPersistido('materiais:filtroPrecoMax', '', undefined, opcoes)
   const [filtroQtdMin, setFiltroQtdMin] = useEstadoPersistido('materiais:filtroQtdMin', '', undefined, opcoes)
   const [filtroQtdMax, setFiltroQtdMax] = useEstadoPersistido('materiais:filtroQtdMax', '', undefined, opcoes)
-  const [filtroForaEstoque, setFiltroForaEstoque] = useEstadoPersistido(
-    'materiais:filtroForaEstoque', false, searchParams.get('foraEstoque') === '1' ? true : undefined, opcoes
+  // Situação do estoque: 'fora' (zerado) e/ou 'baixo' (no mínimo ou abaixo).
+  const [filtroSituacaoEstoque, setFiltroSituacaoEstoqueSalvo] = useEstadoPersistido(
+    'materiais:filtroSituacaoEstoque', [], viaLink ? situacaoLink : undefined, opcoes
   )
-  const [filtroEstoqueBaixo, setFiltroEstoqueBaixo] = useEstadoPersistido(
-    'materiais:filtroEstoqueBaixo', false, searchParams.get('estoqueBaixo') === '1' ? true : undefined, opcoes
-  )
+  // Mexer no filtro tira o ?foraEstoque/?estoqueBaixo da URL (o link já foi aplicado).
+  const setFiltroSituacaoEstoque = (valor) => {
+    setFiltroSituacaoEstoqueSalvo(valor)
+    if (viaLink) setSearchParams({})
+  }
 
-  const quantidadeFiltrosAtivos = [filtroUnidades.length > 0, filtroTags.length > 0, filtroPrecoMin, filtroPrecoMax, filtroQtdMin, filtroQtdMax]
+  const quantidadeFiltrosAtivos = [filtroSituacaoEstoque.length > 0, filtroUnidades.length > 0, filtroTags.length > 0, filtroPrecoMin, filtroPrecoMax, filtroQtdMin, filtroQtdMax]
     .filter(Boolean).length
 
   const limparFiltros = () => {
@@ -102,8 +110,7 @@ function Materiais() {
     setFiltroPrecoMax('')
     setFiltroQtdMin('')
     setFiltroQtdMax('')
-    setFiltroForaEstoque(false)
-    setFiltroEstoqueBaixo(false)
+    setFiltroSituacaoEstoque([])
   }
 
   const handleDeletar = async (id) => {
@@ -112,7 +119,7 @@ function Materiais() {
       await deletar(id)
       toast.sucesso('Material removido')
     } catch (e) {
-      toast.erro(mensagemErro(e, 'Erro ao remover material.'))
+      toast.erro(mensagemErro(e, 'Erro ao remover material'))
     }
   }
 
@@ -121,7 +128,7 @@ function Materiais() {
       await atualizarEstoque(id, novaQuantidade)
       toast.sucesso('Estoque atualizado')
     } catch (e) {
-      toast.erro(mensagemErro(e, 'Erro ao atualizar estoque.'))
+      toast.erro(mensagemErro(e, 'Erro ao atualizar estoque'))
     }
   }
 
@@ -130,8 +137,8 @@ function Materiais() {
       const { sucesso, falhas } = await excluirEmMassa([...selecionados], deletar)
       cancelar()
       if (falhas.length === 0) toast.sucesso(plural(sucesso, 'material removido', 'materiais removidos'))
-      else if (sucesso === 0) toast.erro('Nenhum material removido.')
-      else toast.alerta(`${plural(sucesso, 'removido', 'removidos')}; ${falhas.length} com erro.`)
+      else if (sucesso === 0) toast.erro('Nenhum material removido')
+      else toast.alerta(`${plural(sucesso, 'removido', 'removidos')}; ${falhas.length} com erro`)
     })
   }
 
@@ -146,8 +153,9 @@ function Materiais() {
   )
 
   const materiaisFiltrados = useMemo(() => {
+    const termo = busca.trim().toLowerCase()
     return materiais.filter(m => {
-      if (busca.trim() && !m.nome.toLowerCase().includes(busca.toLowerCase()) && !(m.marca || '').toLowerCase().includes(busca.toLowerCase())) return false
+      if (termo && !m.nome.toLowerCase().includes(termo) && !(m.marca || '').toLowerCase().includes(termo)) return false
       if (filtroUnidades.length > 0 && !filtroUnidades.includes(m.unidade_medida)) return false
       // Várias tags: o material entra se tiver alguma delas ("sem" = sem nenhuma tag).
       if (filtroTags.length > 0) {
@@ -159,13 +167,17 @@ function Materiais() {
       if (filtroPrecoMin && preco < parseFloat(filtroPrecoMin)) return false
       if (filtroPrecoMax && preco > parseFloat(filtroPrecoMax)) return false
       const qtd = parseFloat(m.quantidade_estoque)
-      if (filtroForaEstoque && qtd > 0) return false
-      if (filtroEstoqueBaixo && !estaComEstoqueBaixo(m)) return false
+      // Várias situações: o material entra se estiver em qualquer uma.
+      if (filtroSituacaoEstoque.length > 0) {
+        const combina = (filtroSituacaoEstoque.includes('fora') && qtd <= 0)
+          || (filtroSituacaoEstoque.includes('baixo') && estaComEstoqueBaixo(m))
+        if (!combina) return false
+      }
       if (filtroQtdMin && qtd < parseFloat(filtroQtdMin)) return false
       if (filtroQtdMax && qtd > parseFloat(filtroQtdMax)) return false
       return true
     })
-  }, [materiais, busca, filtroUnidades, filtroTags, filtroPrecoMin, filtroPrecoMax, filtroQtdMin, filtroQtdMax, filtroForaEstoque, filtroEstoqueBaixo])
+  }, [materiais, busca, filtroUnidades, filtroTags, filtroPrecoMin, filtroPrecoMax, filtroQtdMin, filtroQtdMax, filtroSituacaoEstoque])
 
   const { pagina, setPagina, tamanhoPagina, mudarTamanhoPagina, totalPaginas, itensPagina } = usePaginacao(materiaisFiltrados)
 
@@ -246,30 +258,21 @@ function Materiais() {
       {!carregando && materiais.length > 0 && (
         <>
           <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 flex-1">
-              <CampoBusca valor={busca} onChange={setBusca} placeholder="Buscar material pelo nome ou marca..." />
-              <button
-                onClick={() => { setFiltroForaEstoque(v => !v); setSearchParams({}) }}
-                className={`text-sm px-3.5 py-2 rounded-xl font-semibold transition-all active:scale-95 shrink-0 ${
-                  filtroForaEstoque ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                Fora de estoque
-              </button>
-              <button
-                onClick={() => { setFiltroEstoqueBaixo(v => !v); setSearchParams({}) }}
-                className={`text-sm px-3.5 py-2 rounded-xl font-semibold transition-all active:scale-95 shrink-0 ${
-                  filtroEstoqueBaixo ? 'bg-orange-500 text-white hover:bg-orange-600' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                Estoque baixo
-              </button>
-            </div>
+            <CampoBusca valor={busca} onChange={setBusca} placeholder="Buscar material pelo nome ou marca..." />
             <AlternadorVisualizacao opcoes={VISUALIZACOES} valor={visualizacao} onChange={setVisualizacao} />
           </div>
 
-          <PainelFiltros quantidadeAtiva={quantidadeFiltrosAtivos} onLimpar={limparFiltros}>
-            <div className="grid grid-cols-6 gap-4">
+          {/* Chegando por um link da tela inicial, o painel já abre mostrando o filtro aplicado. */}
+          <PainelFiltros quantidadeAtiva={quantidadeFiltrosAtivos} onLimpar={limparFiltros} abertoInicial={viaLink}>
+            <div className="grid grid-cols-4 gap-4">
+              <div>
+                <label className={LABEL}>Situação do estoque</label>
+                <Select multiple value={filtroSituacaoEstoque} onChange={e => setFiltroSituacaoEstoque(e.target.value)} className={SELECT}>
+                  <option value="">Todas</option>
+                  <option value="fora">Fora de estoque</option>
+                  <option value="baixo">Estoque baixo</option>
+                </Select>
+              </div>
               <div>
                 <label className={LABEL}>Tag</label>
                 <Select multiple value={filtroTags} onChange={e => setFiltroTags(e.target.value)} className={SELECT}>
@@ -285,7 +288,7 @@ function Materiais() {
                   {UNIDADES.map(u => <option key={u} value={u}>{u}</option>)}
                 </Select>
               </div>
-              <div>
+              <div className="col-start-1">
                 <label className={LABEL}>Preço mín. (R$)</label>
                 <input type="text" inputMode="decimal" value={filtroPrecoMin}
                   onChange={e => setFiltroPrecoMin(sanitizarNumero(e.target.value, 2))} className={SELECT} />

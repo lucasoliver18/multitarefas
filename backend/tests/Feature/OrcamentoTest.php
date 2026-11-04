@@ -24,6 +24,19 @@ class OrcamentoTest extends TestCase
           ->assertJsonFragment(['titulo' => 'Proposta A']);
     }
 
+    public function test_descricao_do_orcamento_limitada_a_500_caracteres(): void
+    {
+        $servico = Servico::factory()->create();
+        $dados = ['servico_id' => $servico->id, 'titulo' => 'Proposta', 'margem_lucro' => 0];
+
+        $this->postJson('/api/orcamentos', $dados + ['descricao' => str_repeat('a', 501)])
+             ->assertUnprocessable()->assertJsonValidationErrors(['descricao']);
+        $id = $this->postJson('/api/orcamentos', $dados + ['descricao' => str_repeat('a', 500)])->assertCreated()->json('id');
+
+        $this->putJson("/api/orcamentos/{$id}", ['descricao' => str_repeat('b', 501)])
+             ->assertUnprocessable()->assertJsonValidationErrors(['descricao']);
+    }
+
     public function test_pode_criar_orcamento_com_materiais(): void
     {
         $servico  = Servico::factory()->create();
@@ -54,6 +67,68 @@ class OrcamentoTest extends TestCase
 
         $this->assertEquals(7, $material->fresh()->quantidade_estoque);
         $this->assertEquals('aprovado', $orcamento->fresh()->status);
+    }
+
+    // Editar materiais de um orçamento já aprovado ajusta o estoque pela
+    // diferença; senão reprovar/excluir depois devolveria a quantidade errada.
+    public function test_editar_orcamento_aprovado_ajusta_estoque_pela_diferenca(): void
+    {
+        $tinta  = Material::factory()->create(['quantidade_estoque' => 10]);
+        $rolo   = Material::factory()->create(['quantidade_estoque' => 5]);
+        $orcamento = Orcamento::factory()->create();
+        $orcamento->materiais()->attach($tinta->id, ['quantidade' => 3, 'preco_unitario_snapshot' => 10]);
+        $this->patchJson("/api/orcamentos/{$orcamento->id}/aprovar")->assertOk();
+        $this->assertEquals(7, $tinta->fresh()->quantidade_estoque);
+
+        // Tinta de 3 para 5 (debita mais 2) e entra 1 rolo.
+        $this->putJson("/api/orcamentos/{$orcamento->id}", [
+            'materiais' => [['id' => $tinta->id, 'quantidade' => 5], ['id' => $rolo->id, 'quantidade' => 1]],
+        ])->assertOk();
+        $this->assertEquals(5, $tinta->fresh()->quantidade_estoque);
+        $this->assertEquals(4, $rolo->fresh()->quantidade_estoque);
+
+        // Tira a tinta: devolve as 5.
+        $this->putJson("/api/orcamentos/{$orcamento->id}", [
+            'materiais' => [['id' => $rolo->id, 'quantidade' => 1]],
+        ])->assertOk();
+        $this->assertEquals(10, $tinta->fresh()->quantidade_estoque);
+
+        // Reprovar devolve exatamente o que está debitado agora.
+        $this->patchJson("/api/orcamentos/{$orcamento->id}/reprovar")->assertOk();
+        $this->assertEquals(10, $tinta->fresh()->quantidade_estoque);
+        $this->assertEquals(5, $rolo->fresh()->quantidade_estoque);
+    }
+
+    public function test_editar_orcamento_aprovado_recusa_aumento_sem_estoque(): void
+    {
+        $tinta = Material::factory()->create(['quantidade_estoque' => 4]);
+        $orcamento = Orcamento::factory()->create();
+        $orcamento->materiais()->attach($tinta->id, ['quantidade' => 3, 'preco_unitario_snapshot' => 10]);
+        $this->patchJson("/api/orcamentos/{$orcamento->id}/aprovar")->assertOk();
+
+        // Sobrou 1 em estoque: ir de 3 para 5 exige mais 2.
+        $this->putJson("/api/orcamentos/{$orcamento->id}", [
+            'materiais' => [['id' => $tinta->id, 'quantidade' => 5]],
+        ])->assertUnprocessable()->assertJsonFragment(['message' => "Estoque insuficiente para: {$tinta->nome}."]);
+
+        $this->assertEquals(1, $tinta->fresh()->quantidade_estoque);
+        $this->assertEquals(3, $orcamento->fresh()->materiais->first()->pivot->quantidade);
+    }
+
+    // O orçamento guarda o preço do material no momento (snapshot): excluir o
+    // material depois não pode mudar o total nem sumir com o item.
+    public function test_excluir_material_nao_altera_orcamentos_existentes(): void
+    {
+        $material = Material::factory()->create(['preco_unitario' => 50, 'quantidade_estoque' => 10]);
+        $orcamento = Orcamento::factory()->create(['margem_lucro' => 0, 'tipo_margem' => 'percentual']);
+        $orcamento->materiais()->attach($material->id, ['quantidade' => 2, 'preco_unitario_snapshot' => 50]);
+
+        $this->deleteJson("/api/materiais/{$material->id}")->assertOk();
+
+        $res = $this->getJson("/api/orcamentos/{$orcamento->id}")->assertOk()->json();
+        $this->assertEquals(100, $res['valor_final']);
+        $this->assertCount(1, $res['materiais']);
+        $this->assertCount(1, $this->getJson("/api/servicos/{$orcamento->servico_id}/orcamentos")->json('0.materiais'));
     }
 
     public function test_nao_aprova_com_estoque_insuficiente(): void

@@ -28,10 +28,12 @@ export function useServicos({ params } = {}) {
 
   useEffect(() => { buscar() }, [buscar])
 
-  const deletar = useCallback(async (id) => {
+  // `devolverEstoque`: o estoque descontado pelo orçamento aprovado volta.
+  const deletar = useCallback(async (id, { devolverEstoque = false } = {}) => {
     setServicos(prev => prev.filter(s => s.id !== id))
     try {
-      await api.delete(`/servicos/${id}`)
+      if (devolverEstoque) await api.delete(`/servicos/${id}`, { params: { devolver_estoque: 1 } })
+      else await api.delete(`/servicos/${id}`)
     } catch (err) {
       await buscar()
       throw err
@@ -48,5 +50,12 @@ export function useServicos({ params } = {}) {
     setServicos(prev => prev.map(s => s.id === id ? { ...s, pago: novoPago } : s))
   }, [])
 
-  return { servicos, carregando, buscar, deletar, mudarStatus, mudarPago }
+  // `prazo` vazio remove o prazo do serviço.
+  const mudarPrazo = useCallback(async (id, novoPrazo) => {
+    const prazo = novoPrazo || null
+    await api.patch(`/servicos/${id}`, { prazo })
+    setServicos(prev => prev.map(s => s.id === id ? { ...s, prazo } : s))
+  }, [])
+
+  return { servicos, carregando, buscar, deletar, mudarStatus, mudarPago, mudarPrazo }
 }

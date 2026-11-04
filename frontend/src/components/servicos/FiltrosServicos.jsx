@@ -32,6 +32,7 @@ function FiltrosServicos({ filtros, ocultar = [] }) {
         {campo('situacaoPrazo', 'Situação do prazo', [
           { val: 'no_prazo', label: 'Dentro do prazo' },
           { val: 'atrasado', label: 'Atrasado' },
+          { val: 'sem_prazo', label: 'Sem prazo' },
         ])}
         <div>
           <label className={LABEL}>Prazo de</label>

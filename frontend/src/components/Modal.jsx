@@ -52,7 +52,10 @@ function Modal({ aberto, titulo, subtitulo, onFechar, largura = 'max-w-6xl', chi
             <X size={20} />
           </button>
         </div>
-        <div className="px-7 py-6 overflow-y-auto flex flex-col gap-5">
+        {/* Os blocos não encolhem (shrink-0): quem rola é o corpo. Sem isso, com
+            uma lista longa o painel de filtros (overflow-hidden) era espremido
+            até sumir. */}
+        <div className="px-7 py-6 overflow-y-auto flex flex-col gap-5 *:shrink-0">
           {children}
         </div>
       </div>

@@ -22,10 +22,10 @@ const labelStatus = { pendente: 'Pendente', aprovado: 'Aprovado', reprovado: 'Re
 // Texto da confirmação de cada ação. Excluir um aprovado avisa que ele está
 // aprovado e que o estoque debitado volta.
 const CONFIRMACOES = {
-  aprovar: () => 'Aprovar? O estoque será debitado.',
+  aprovar: () => 'Aprovar? O estoque será debitado',
   reprovar: () => 'Reprovar este orçamento?',
   excluir: (o) => o.status === 'aprovado'
-    ? 'Orçamento aprovado. Excluir mesmo assim? O estoque será devolvido.'
+    ? 'Orçamento aprovado. Excluir mesmo assim? O estoque será devolvido'
     : 'Excluir este orçamento?',
 }
 const iconeOrcStatus = { pendente: Clock, aprovado: CheckCircle2, reprovado: XCircle }
@@ -48,7 +48,7 @@ function Orcamentos() {
       setOrcamentos(resOrc.data)
       setServico(resSrv.data)
     }).catch(e => {
-      toast.erro(mensagemErro(e, 'Erro ao carregar orçamentos.'))
+      toast.erro(mensagemErro(e, 'Erro ao carregar orçamentos'))
       navigate('/servicos')
     }).finally(() => setCarregando(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -66,7 +66,7 @@ function Orcamentos() {
       await recarregarOrcamentos()
       toast.sucesso('Orçamento reprovado')
     } catch (e) {
-      toast.erro(mensagemErro(e, 'Erro ao reprovar orçamento.'))
+      toast.erro(mensagemErro(e, 'Erro ao reprovar orçamento'))
     }
   }
 
@@ -78,7 +78,7 @@ function Orcamentos() {
         setServico(res.data)
         toast.sucesso('Serviço em andamento')
       } catch (e) {
-        toast.erro(mensagemErro(e, 'Erro ao atualizar status.'))
+        toast.erro(mensagemErro(e, 'Erro ao atualizar status'))
       }
     })
   }
@@ -91,7 +91,7 @@ function Orcamentos() {
       toast.sucesso('Orçamento aprovado')
       perguntarEmAndamento()
     } catch (e) {
-      toast.erro(mensagemErro(e, 'Erro ao aprovar orçamento.'))
+      toast.erro(mensagemErro(e, 'Erro ao aprovar orçamento'))
     }
   }
 
@@ -102,7 +102,7 @@ function Orcamentos() {
       await recarregarOrcamentos()
       toast.sucesso('Orçamento excluído')
     } catch (e) {
-      toast.erro(mensagemErro(e, 'Erro ao excluir orçamento.'))
+      toast.erro(mensagemErro(e, 'Erro ao excluir orçamento'))
     }
   }
 

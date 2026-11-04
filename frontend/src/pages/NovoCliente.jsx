@@ -19,7 +19,7 @@ function NovoCliente() {
       toast.sucesso('Cliente cadastrado')
       navigate('/clientes')
     } catch (e) {
-      toast.erro(mensagemErro(e, 'Erro ao salvar cliente.'))
+      toast.erro(mensagemErro(e, 'Erro ao salvar cliente'))
     } finally {
       setSalvando(false)
     }

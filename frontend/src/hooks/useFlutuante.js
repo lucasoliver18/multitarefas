@@ -6,10 +6,11 @@ const MARGEM = 8
 // portal com position: fixed, para não ser cortado por contêineres com overflow
 // (painel de filtros, modais, cartões com rolagem). Abre abaixo da âncora ou,
 // sem espaço, acima; acompanha rolagem/redimensionamento e fecha ao clicar fora.
-// `largura`: fixa em px; sem ela, usa a largura da âncora. `alinhamento`:
+// `largura`: fixa em px; sem ela, usa a largura da âncora (no mínimo
+// `larguraMinima`, para opções longas não serem cortadas). `alinhamento`:
 // 'esquerda' (padrão) ou 'direita', em relação à âncora. Sem `onFechar`, não
 // fecha ao clicar fora (quem usa cuida disso, ex.: FecharMenuStatus).
-export function useFlutuante({ aberto, onFechar, altura, largura, alinhamento = 'esquerda' }) {
+export function useFlutuante({ aberto, onFechar, altura, largura, larguraMinima = 0, alinhamento = 'esquerda' }) {
   const ancoraRef = useRef(null)
   const flutuanteRef = useRef(null)
   const [posicao, setPosicao] = useState(null)
@@ -22,7 +23,7 @@ export function useFlutuante({ aberto, onFechar, altura, largura, alinhamento = 
       const abaixo = window.innerHeight - caixa.bottom - MARGEM
       const acima = caixa.top - MARGEM
       const paraCima = abaixo < altura && acima > abaixo
-      const w = largura ?? caixa.width
+      const w = largura ?? Math.max(caixa.width, larguraMinima)
       setPosicao({
         left: Math.max(MARGEM, Math.min(alinhamento === 'direita' ? caixa.right - w : caixa.left, window.innerWidth - w - MARGEM)),
         width: w,
@@ -37,7 +38,7 @@ export function useFlutuante({ aberto, onFechar, altura, largura, alinhamento = 
       window.removeEventListener('resize', posicionar)
       window.removeEventListener('scroll', posicionar, true)
     }
-  }, [aberto, altura, largura, alinhamento])
+  }, [aberto, altura, largura, larguraMinima, alinhamento])
 
   // Guardado em ref para o efeito não reinscrever o listener a cada render.
   const onFecharRef = useRef(onFechar)

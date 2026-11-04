@@ -9,6 +9,9 @@ final class LimitesBanco
 {
     public const TAGS = ['informatica', 'pintura', 'outros'];
 
+    // Unidades de medida de material (mesma lista do frontend: utils/materiais.js).
+    public const UNIDADES = ['un', 'kg', 'g', 'L', 'mL', 'm', 'm²', 'm³'];
+
     // decimal(10,2)
     public const PRECO_MAX = 99999999.99;
 
@@ -26,9 +29,10 @@ final class LimitesBanco
         return $tipo === 'valor' ? self::MARGEM_VALOR_MAX : self::MARGEM_PERCENTUAL_MAX;
     }
 
-    // Colunas TEXT aceitam ~65 mil bytes; o limite fica bem abaixo disso
-    // para caber mesmo com acentos (até 4 bytes por caractere).
-    public const TEXTO_MAX = 5000;
+    // Textos livres (anotações, descrições de serviço, material e orçamento,
+    // observações do cliente): mesmo limite em todo o sistema, igual ao
+    // contador das telas (frontend: CampoTextoLimitado).
+    public const TEXTO_MAX = 500;
 
     public const DATA_MIN = '1900-01-01';
     public const DATA_MAX = '2999-12-31';

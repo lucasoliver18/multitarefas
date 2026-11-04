@@ -21,6 +21,58 @@ class ServicoTest extends TestCase
              ->assertJsonCount(3);
     }
 
+    // Edição rápida do prazo (calendário nas listagens): muda e remove o prazo
+    // sem mexer no resto do serviço.
+    public function test_altera_e_remove_somente_o_prazo(): void
+    {
+        $servico = Servico::factory()->create(['prazo' => '2026-11-10', 'titulo' => 'Pintura', 'status' => 'em_andamento']);
+
+        $this->patchJson("/api/servicos/{$servico->id}", ['prazo' => '2026-12-01'])
+             ->assertOk()->assertJsonFragment(['prazo' => '2026-12-01', 'titulo' => 'Pintura', 'status' => 'em_andamento']);
+
+        $this->patchJson("/api/servicos/{$servico->id}", ['prazo' => null])->assertOk();
+        $this->assertNull($servico->fresh()->prazo);
+
+        $this->patchJson("/api/servicos/{$servico->id}", ['prazo' => '31/12/2026'])
+             ->assertUnprocessable()->assertJsonValidationErrors(['prazo']);
+    }
+
+    private function servicoComOrcamentoAprovado(): array
+    {
+        $servico = Servico::factory()->create();
+        $tinta = \App\Models\Material::factory()->create(['quantidade_estoque' => 10]);
+        $aprovado = Orcamento::factory()->create(['servico_id' => $servico->id]);
+        $aprovado->materiais()->attach($tinta->id, ['quantidade' => 4, 'preco_unitario_snapshot' => 10]);
+        $this->patchJson("/api/orcamentos/{$aprovado->id}/aprovar")->assertOk();
+        // Orçamento pendente não debitou nada: não pode "devolver".
+        $pendente = Orcamento::factory()->create(['servico_id' => $servico->id]);
+        $pendente->materiais()->attach($tinta->id, ['quantidade' => 2, 'preco_unitario_snapshot' => 10]);
+
+        return [$servico, $tinta];
+    }
+
+    public function test_excluir_servico_pode_devolver_o_estoque_do_orcamento_aprovado(): void
+    {
+        [$servico, $tinta] = $this->servicoComOrcamentoAprovado();
+        $this->assertEquals(6, $tinta->fresh()->quantidade_estoque);
+
+        $this->deleteJson("/api/servicos/{$servico->id}?devolver_estoque=1")
+             ->assertOk()->assertJsonFragment(['message' => 'Serviço excluído e estoque devolvido.']);
+
+        $this->assertEquals(10, $tinta->fresh()->quantidade_estoque);
+        $this->assertSoftDeleted('servicos', ['id' => $servico->id]);
+    }
+
+    public function test_excluir_servico_sem_devolver_mantem_o_estoque_descontado(): void
+    {
+        [$servico, $tinta] = $this->servicoComOrcamentoAprovado();
+
+        $this->deleteJson("/api/servicos/{$servico->id}")->assertOk();
+        $this->deleteJson("/api/servicos/{$servico->id}?devolver_estoque=1")->assertNotFound();
+
+        $this->assertEquals(6, $tinta->fresh()->quantidade_estoque);
+    }
+
     public function test_pode_criar_servico(): void
     {
         $cliente = Cliente::factory()->create(['nome' => 'João Silva']);
@@ -34,6 +86,19 @@ class ServicoTest extends TestCase
           ->assertJsonFragment(['titulo' => 'Instalação de câmera'])
           ->assertJsonFragment(['cliente' => 'João Silva'])
           ->assertJsonFragment(['cliente_id' => $cliente->id]);
+    }
+
+    public function test_descricao_do_servico_limitada_a_500_caracteres(): void
+    {
+        $cliente = Cliente::factory()->create();
+        $dados = ['titulo' => 'Pintura', 'cliente_id' => $cliente->id, 'prioridade' => 'media', 'status' => 'pendente'];
+
+        $this->postJson('/api/servicos', $dados + ['descricao' => str_repeat('a', 501)])
+             ->assertUnprocessable()
+             ->assertJsonValidationErrors(['descricao']);
+
+        $this->postJson('/api/servicos', $dados + ['descricao' => str_repeat('a', 500)])
+             ->assertCreated();
     }
 
     public function test_nao_cria_cliente_automaticamente_ao_criar_servico(): void

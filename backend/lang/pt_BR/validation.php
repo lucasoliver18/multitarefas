@@ -159,9 +159,11 @@ return [
     'custom' => [
         'cpf' => [
             'required_if' => 'Informe o CPF para pessoa física.',
+            'unique' => 'Já existe um cliente cadastrado com este CPF.',
         ],
         'cnpj' => [
             'required_if' => 'Informe o CNPJ para pessoa jurídica.',
+            'unique' => 'Já existe um cliente cadastrado com este CNPJ.',
         ],
         'prazo' => [
             'date_format' => 'Informe um prazo com data válida.',

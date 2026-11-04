@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\LimitesBanco;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreAnotacaoRequest extends FormRequest
@@ -11,7 +12,7 @@ class StoreAnotacaoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'conteudo' => 'required|string|max:500',
+            'conteudo' => 'required|string|max:' . LimitesBanco::TEXTO_MAX,
         ];
     }
 }

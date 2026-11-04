@@ -1,11 +1,12 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
-import { List, LayoutList, Kanban, AlertTriangle, Plus } from 'lucide-react'
+import { List, LayoutList, Kanban, AlertTriangle, CalendarX, Plus } from 'lucide-react'
 import Button from '../components/Button'
 import { Pagina, CabecalhoPagina, CampoBusca, AlternadorVisualizacao, Carregando, Vazio } from '../components/Pagina'
 import FiltrosServicos from '../components/servicos/FiltrosServicos'
 import ModalServicos from '../components/servicos/ModalServicos'
+import PerguntaEstoque from '../components/servicos/PerguntaEstoque'
 import {
   ServicoCardKanban, ColunaKanban, ServicoLinha, CabecalhoListaServicos, ServicoCardDetalhado, FecharMenuStatus,
 } from '../components/servicos/ItensServico'
@@ -38,6 +39,16 @@ const periodoPadraoModal = () => {
   return { prazoDe: iso(hoje), prazoAte: iso(fim) }
 }
 
+// Avisos de filtro aplicado por link (Prazos → "Ver todos"/"Ver mais").
+const AVISOS_SITUACAO = {
+  atrasado: { texto: 'Mostrando apenas serviços em atraso', cor: 'red', icone: AlertTriangle },
+  sem_prazo: { texto: 'Mostrando apenas serviços sem prazo definido', cor: 'slate', icone: CalendarX },
+}
+const CORES_AVISO = {
+  red: { caixa: 'bg-red-50 border-red-200', texto: 'text-red-700', link: 'text-red-700 hover:text-red-900' },
+  slate: { caixa: 'bg-slate-50 border-slate-200', texto: 'text-slate-700', link: 'text-slate-700 hover:text-slate-900' },
+}
+
 const VISUALIZACOES = [
   { val: 'kanban', label: 'Quadro', icone: Kanban },
   { val: 'lista', label: 'Lista', icone: List },
@@ -47,8 +58,8 @@ const VISUALIZACOES = [
 function Servicos() {
   const navigate = useNavigate()
   const toast = useToast()
-  const { servicos, carregando, buscar, deletar, mudarStatus, mudarPago } = useServicos()
-  const acoes = useAcoesServico({ deletar, mudarStatus, mudarPago, buscar })
+  const { servicos, carregando, buscar, deletar, mudarStatus, mudarPago, mudarPrazo } = useServicos()
+  const acoes = useAcoesServico({ deletar, mudarStatus, mudarPago, mudarPrazo, buscar })
   const { ativo: selecaoAtiva, selecionados, alternarModo, alternarItem, cancelar, quantidade } = useSelecaoMultipla()
   const [searchParams, setSearchParams] = useSearchParams()
   const hojeStr = hojeISO()
@@ -58,13 +69,18 @@ function Servicos() {
     prefixo: 'servicos',
     valoresIniciais: {
       busca: searchParams.get('busca'),
-      status: searchParams.get('status'),
-      situacaoPrazo: searchParams.get('vencidos') === '1' ? 'atrasado' : undefined,
+      situacaoPrazo: searchParams.get('vencidos') === '1' ? 'atrasado'
+        : searchParams.get('semprazo') === '1' ? 'sem_prazo' : undefined,
+      // Sem prazo: só os que ainda estão abertos, como na lista da tela de Prazos.
+      status: searchParams.get('semprazo') === '1' ? ['pendente', 'em_andamento'] : searchParams.get('status'),
       pago: searchParams.get('pago'),
       orcamento: searchParams.get('orcamento'),
     },
   })
   const filtrados = useServicosFiltrados(servicos, filtros)
+  // O aviso só aparece quando uma única situação está marcada (ex.: vindo de um link).
+  const situacoes = filtros.valores.situacaoPrazo
+  const aviso = situacoes.length === 1 ? AVISOS_SITUACAO[situacoes[0]] : null
   const [colunaModal, setColunaModal] = useState(null)
 
   // Ao fechar o modal, recarrega em silêncio (status/pagamento podem ter mudado nele).
@@ -96,23 +112,34 @@ function Servicos() {
       await mudarStatus(servico.id, novoStatus)
       const exigeOrcamento = (novoStatus === 'em_andamento' || novoStatus === 'finalizado') && !servico.tem_orcamento_aprovado
       if (exigeOrcamento) {
-        toast.alerta('Status atualizado. Serviço sem orçamento aprovado.')
+        toast.alerta('Status atualizado. Serviço sem orçamento aprovado')
       } else {
         toast.sucesso('Status atualizado')
       }
     } catch (e) {
       buscar()
-      toast.erro(mensagemErro(e, 'Erro ao atualizar status.'))
+      toast.erro(mensagemErro(e, 'Erro ao atualizar status'))
     }
   }
 
+  const excluirSelecionados = async (ids, devolverEstoque) => {
+    const { sucesso, falhas } = await excluirEmMassa(ids, id => deletar(id, { devolverEstoque }))
+    cancelar()
+    const devolvido = devolverEstoque ? ' e estoque devolvido' : ''
+    if (falhas.length === 0) toast.sucesso(plural(sucesso, 'serviço excluído', 'serviços excluídos') + devolvido)
+    else if (sucesso === 0) toast.erro('Nenhum serviço excluído')
+    else toast.alerta(`${plural(sucesso, 'excluído', 'excluídos')}; ${falhas.length} com erro`)
+  }
+
+  // Entre os selecionados, os com orçamento aprovado fazem perguntar se o
+  // estoque descontado volta (uma pergunta só, para todos).
+  const [perguntaEstoque, setPerguntaEstoque] = useState(null)
   const handleExcluirSelecionados = () => {
-    toast.confirmar(`Excluir ${plural(quantidade, 'serviço', 'serviços')}?`, async () => {
-      const { sucesso, falhas } = await excluirEmMassa([...selecionados], deletar)
-      cancelar()
-      if (falhas.length === 0) toast.sucesso(plural(sucesso, 'serviço excluído', 'serviços excluídos'))
-      else if (sucesso === 0) toast.erro('Nenhum serviço excluído.')
-      else toast.alerta(`${plural(sucesso, 'excluído', 'excluídos')}; ${falhas.length} com erro.`)
+    toast.confirmar(`Excluir ${plural(quantidade, 'serviço', 'serviços')}?`, () => {
+      const ids = [...selecionados]
+      const comAprovado = servicos.filter(s => selecionados.has(s.id) && s.tem_orcamento_aprovado).length
+      if (comAprovado > 0) setPerguntaEstoque({ ids, comAprovado })
+      else excluirSelecionados(ids, false)
     })
   }
 
@@ -153,15 +180,19 @@ function Servicos() {
             <AlternadorVisualizacao opcoes={VISUALIZACOES} valor={visualizacao} onChange={setVisualizacao} />
           </div>
 
-          {filtros.valores.situacaoPrazo === 'atrasado' && (
-            <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-3 flex items-center justify-between gap-2">
-              <span className="text-sm font-semibold text-red-700 inline-flex items-center gap-2">
-                <AlertTriangle size={16} />
-                Mostrando apenas serviços em atraso
+          {aviso && (
+            <div className={`${CORES_AVISO[aviso.cor].caixa} border rounded-xl px-5 py-3 flex items-center justify-between gap-2`}>
+              <span className={`text-sm font-semibold ${CORES_AVISO[aviso.cor].texto} inline-flex items-center gap-2`}>
+                <aviso.icone size={16} />
+                {aviso.texto}
               </span>
               <button
-                onClick={() => { filtros.setters.situacaoPrazo(''); setSearchParams({}) }}
-                className="text-sm text-red-700 underline font-medium shrink-0 hover:text-red-900 active:scale-95 transition-all"
+                onClick={() => {
+                  filtros.setters.situacaoPrazo([])
+                  if (situacoes[0] === 'sem_prazo') filtros.setters.status([])
+                  setSearchParams({})
+                }}
+                className={`text-sm underline font-medium shrink-0 active:scale-95 transition-all ${CORES_AVISO[aviso.cor].link}`}
               >
                 Ver todos os serviços
               </button>
@@ -238,6 +269,13 @@ function Servicos() {
         filtrosIniciais={periodoPadraoModal()}
         ocultarFiltros={['status']}
         onFechar={fecharModal}
+      />
+
+      <PerguntaEstoque
+        aberto={!!perguntaEstoque}
+        quantidade={perguntaEstoque?.comAprovado}
+        onEscolher={devolverEstoque => { const { ids } = perguntaEstoque; setPerguntaEstoque(null); excluirSelecionados(ids, devolverEstoque) }}
+        onCancelar={() => setPerguntaEstoque(null)}
       />
 
       {selecaoAtiva && (

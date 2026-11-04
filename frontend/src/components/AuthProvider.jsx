@@ -41,7 +41,7 @@ export function AuthProvider({ children }) {
       definirTokenAuth(res.data.token)
       setUser(res.data.user)
     } catch (e) {
-      toast.erro(mensagemErro(e, 'Erro ao entrar.'))
+      toast.erro(mensagemErro(e, 'Erro ao entrar'))
     }
   }
 

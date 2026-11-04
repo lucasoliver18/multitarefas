@@ -11,7 +11,7 @@ class MaterialFactory extends Factory
         return [
             'nome'               => $this->faker->unique()->words(2, true),
             'descricao'          => $this->faker->optional()->sentence(),
-            'unidade_medida'     => $this->faker->randomElement(['un', 'kg', 'L', 'm', 'cx']),
+            'unidade_medida'     => $this->faker->randomElement(['un', 'kg', 'L', 'm']),
             'preco_unitario'     => $this->faker->randomFloat(2, 1, 500),
             'quantidade_estoque' => $this->faker->randomFloat(3, 0, 100),
         ];

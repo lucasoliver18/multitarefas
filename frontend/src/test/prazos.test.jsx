@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, within } from '@testing-library/react'
-import { MemoryRouter, Routes, Route } from 'react-router-dom'
+import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { ToastProvider } from '../components/ToastNotification'
 import Prazos from '../pages/Prazos'
 
@@ -10,6 +10,11 @@ vi.mock('../services/api', () => ({
 import api from '../services/api'
 
 const DIA = '2026-10-30'
+
+function LocalAtual() {
+  const { pathname, search } = useLocation()
+  return <p data-testid="local">{pathname + search}</p>
+}
 const servico = (id) => ({
   id, titulo: `TESTE ${id}`, cliente: 'Luciano', cliente_id: 1, prioridade: 'alta',
   status: 'pendente', pago: false, prazo: DIA, tag: 'outros', tem_orcamento: false,
@@ -30,7 +35,14 @@ const abrir = (quantidade) => {
 }
 
 describe('serviços do dia na tela de Prazos', () => {
-  beforeEach(() => api.get.mockReset())
+  // Relógio fixo no dia dos serviços: depois dessa data eles também
+  // apareceriam na lista de atrasados e o teste quebraria com o tempo.
+  beforeEach(() => {
+    api.get.mockReset()
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(`${DIA}T12:00:00`))
+  })
+  afterEach(() => vi.useRealTimers())
 
   it('mostra até 4 serviços sem "Ver mais"', async () => {
     abrir(4)
@@ -71,5 +83,24 @@ describe('serviços do dia na tela de Prazos', () => {
     fireEvent.click(opcao)
     expect(screen.queryByText('Editando serviço')).not.toBeInTheDocument()
     expect(await screen.findByText(/Mudar .*para "Em andamento"/)).toBeInTheDocument()
+  })
+
+  it('mostra até 4 serviços sem prazo e o "Ver mais" leva a Serviços filtrado', async () => {
+    api.get.mockResolvedValue({ data: Array.from({ length: 6 }, (_, i) => ({ ...servico(i + 1), prazo: null })) })
+    render(
+      <MemoryRouter initialEntries={['/prazos']}>
+        <ToastProvider>
+          <Routes>
+            <Route path="/prazos" element={<Prazos />} />
+            <Route path="/servicos" element={<LocalAtual />} />
+          </Routes>
+        </ToastProvider>
+      </MemoryRouter>
+    )
+    await screen.findByText('TESTE 4')
+    expect(screen.queryByText('TESTE 5')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ver mais (2)' }))
+    expect(screen.getByTestId('local')).toHaveTextContent('/servicos?semprazo=1')
   })
 })

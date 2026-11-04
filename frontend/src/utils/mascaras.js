@@ -45,6 +45,20 @@ export function mascararCnpj(valor) {
   return mascarado
 }
 
+// Mesmo cálculo do backend (App\Rules\CpfValido): 11 dígitos, não todos
+// iguais, e os 2 dígitos verificadores pelo módulo 11.
+export function cpfValido(valor) {
+  const cpf = apenasDigitos(valor)
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false
+  for (let posicao = 9; posicao <= 10; posicao++) {
+    let soma = 0
+    for (let i = 0; i < posicao; i++) soma += Number(cpf[i]) * (posicao + 1 - i)
+    const resto = soma % 11
+    if (Number(cpf[posicao]) !== (resto < 2 ? 0 : 11 - resto)) return false
+  }
+  return true
+}
+
 // Mesmo cálculo do backend (App\Rules\CnpjValido): módulo 11 com cada
 // caractere valendo seu código ASCII menos 48 ('0'..'9' = 0..9, 'A' = 17...).
 export function cnpjValido(valor) {

@@ -33,10 +33,10 @@ function ConteudoModalServicos({ parametros, filtrosIniciais, ocultarFiltros }) 
   // reiniciaria o atraso sem parar.
   const periodo = useValorAdiado(JSON.stringify(periodoParaServidor(prazoDe, prazoAte)))
 
-  const { servicos, carregando, buscar, deletar, mudarStatus, mudarPago } = useServicos({
+  const { servicos, carregando, buscar, deletar, mudarStatus, mudarPago, mudarPrazo } = useServicos({
     params: { ...parametros, ...JSON.parse(periodo) },
   })
-  const acoes = useAcoesServico({ deletar, mudarStatus, mudarPago, buscar })
+  const acoes = useAcoesServico({ deletar, mudarStatus, mudarPago, mudarPrazo, buscar })
   const filtrados = useServicosFiltrados(servicos, filtros)
   const ordenados = useServicosOrdenados(filtrados)
   const { pagina, setPagina, tamanhoPagina, mudarTamanhoPagina, totalPaginas, itensPagina } = usePaginacao(ordenados)

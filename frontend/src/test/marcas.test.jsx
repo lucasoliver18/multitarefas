@@ -46,7 +46,7 @@ describe('campo de marca do material', () => {
     await screen.findByText('Genérica')
 
     fireEvent.mouseDown(screen.getByLabelText('Excluir marca: Genérica'))
-    expect(await screen.findByText(/"Genérica" está em 1 material\. Excluir mesmo assim\? Ele ficará sem marca\./)).toBeInTheDocument()
+    expect(await screen.findByText(/"Genérica" está em 1 material\. Excluir mesmo assim\? Ele ficará sem marca$/)).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('Confirmar'))
     await waitFor(() => expect(api.delete).toHaveBeenCalledWith('/marcas/4'))

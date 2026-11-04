@@ -13,6 +13,35 @@ const usar = (valoresIniciais) => renderHook(() => {
   return { filtros, filtrados: useServicosFiltrados(servicos, filtros) }
 })
 
+describe('situação do prazo "Sem prazo"', () => {
+  beforeEach(() => localStorage.clear())
+
+  it('mostra só os serviços sem prazo definido', () => {
+    const lista = [{ ...servicos[0], prazo: null }, { ...servicos[1], prazo: '2026-12-01' }]
+    const { result } = renderHook(() => {
+      const filtros = useFiltrosServicos({ valoresIniciais: { situacaoPrazo: 'sem_prazo' } })
+      return useServicosFiltrados(lista, filtros)
+    })
+    expect(result.current.map(s => s.id)).toEqual([1])
+  })
+
+  it('aceita várias situações ao mesmo tempo (atrasado ou sem prazo)', () => {
+    const lista = [
+      { ...servicos[0], id: 1, prazo: null },
+      { ...servicos[0], id: 2, prazo: '2000-01-01' },
+      { ...servicos[0], id: 3, prazo: '2999-01-01' },
+    ]
+    const { result } = renderHook(() => {
+      const filtros = useFiltrosServicos()
+      return { filtros, filtrados: useServicosFiltrados(lista, filtros) }
+    })
+    expect(result.current.filtros.valores.situacaoPrazo).toEqual([])
+    act(() => result.current.filtros.setters.situacaoPrazo(['atrasado', 'sem_prazo']))
+    expect(result.current.filtrados.map(s => s.id)).toEqual([1, 2])
+    expect(result.current.filtros.quantidadeAtiva).toBe(1)
+  })
+})
+
 describe('filtro de tag de serviços com várias opções', () => {
   beforeEach(() => localStorage.clear())
 

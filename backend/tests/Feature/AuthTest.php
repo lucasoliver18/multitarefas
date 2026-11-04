@@ -52,4 +52,28 @@ class AuthTest extends TestCase
             ->assertOk()
             ->assertJsonFragment(['email' => $user->email]);
     }
+
+    public function test_logout_invalida_o_token(): void
+    {
+        User::factory()->create(['email' => 'dono@empresa.com', 'password' => 'senha-certa']);
+        $token = $this->postJson('/api/auth/login', ['email' => 'dono@empresa.com', 'password' => 'senha-certa'])->json('token');
+        $cabecalho = ['Authorization' => "Bearer {$token}"];
+
+        $this->getJson('/api/auth/me', $cabecalho)->assertOk();
+        $this->postJson('/api/auth/logout', [], $cabecalho)->assertOk();
+
+        // O guard guarda o usuário entre requisições do mesmo teste.
+        $this->app['auth']->forgetGuards();
+        $this->getJson('/api/auth/me', $cabecalho)->assertUnauthorized();
+    }
+
+    public function test_resposta_do_login_nao_expoe_a_senha(): void
+    {
+        User::factory()->create(['email' => 'dono@empresa.com', 'password' => 'senha-certa']);
+
+        $usuario = $this->postJson('/api/auth/login', ['email' => 'dono@empresa.com', 'password' => 'senha-certa'])->json('user');
+
+        $this->assertArrayNotHasKey('password', $usuario);
+        $this->assertArrayNotHasKey('remember_token', $usuario);
+    }
 }

@@ -31,6 +31,30 @@ class MaterialTest extends TestCase
           ->assertJsonFragment(['unidade_medida' => 'L']);
     }
 
+    public function test_descricao_do_material_limitada_a_500_caracteres(): void
+    {
+        $dados = ['nome' => 'Pregos 18mm', 'unidade_medida' => 'un', 'preco_unitario' => 5];
+
+        $this->postJson('/api/materiais', $dados + ['descricao' => str_repeat('a', 501)])
+             ->assertUnprocessable()
+             ->assertJsonValidationErrors(['descricao']);
+
+        $this->postJson('/api/materiais', $dados + ['descricao' => str_repeat('a', 500)])
+             ->assertCreated();
+    }
+
+    public function test_so_aceita_unidades_de_medida_da_lista(): void
+    {
+        foreach (['cx', 'pç', 'rolo', 'galão'] as $unidade) {
+            $this->postJson('/api/materiais', ['nome' => "Item {$unidade}", 'unidade_medida' => $unidade, 'preco_unitario' => 5])
+                 ->assertUnprocessable()
+                 ->assertJsonValidationErrors(['unidade_medida']);
+        }
+
+        $this->postJson('/api/materiais', ['nome' => 'Massa corrida', 'unidade_medida' => 'm²', 'preco_unitario' => 5])
+             ->assertCreated();
+    }
+
     public function test_nao_cria_material_sem_nome(): void
     {
         $this->postJson('/api/materiais', [
@@ -79,7 +103,7 @@ class MaterialTest extends TestCase
 
         $this->postJson('/api/materiais', [
             'nome'           => 'Parafuso',
-            'unidade_medida' => 'cx',
+            'unidade_medida' => 'un',
             'preco_unitario' => 12.00,
         ])->assertCreated();
     }

@@ -40,11 +40,14 @@ class Orcamento extends Model
         return $this->belongsTo(Servico::class);
     }
 
+    // Inclui materiais excluídos depois: o orçamento guarda o preço do momento
+    // (snapshot), então o item e o total não podem sumir com a exclusão.
     public function materiais()
     {
         return $this->belongsToMany(Material::class, 'orcamento_material')
             ->withPivot('quantidade', 'preco_unitario_snapshot')
-            ->withTimestamps();
+            ->withTimestamps()
+            ->withTrashed();
     }
 
     public function getValorMateriaisAttribute(): float

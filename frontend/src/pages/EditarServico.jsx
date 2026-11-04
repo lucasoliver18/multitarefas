@@ -33,7 +33,7 @@ function EditarServico() {
         })
       })
       .catch(e => {
-        toast.erro(mensagemErro(e, 'Erro ao carregar serviço.'))
+        toast.erro(mensagemErro(e, 'Erro ao carregar serviço'))
         navigate('/servicos')
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -46,7 +46,7 @@ function EditarServico() {
       toast.sucesso('Serviço atualizado')
       navigate('/servicos')
     } catch (e) {
-      toast.erro(mensagemErro(e, 'Erro ao salvar serviço.'))
+      toast.erro(mensagemErro(e, 'Erro ao salvar serviço'))
     } finally {
       setSalvando(false)
     }

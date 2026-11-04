@@ -3,20 +3,21 @@ import { useToast } from './useToast'
 import { mensagemErro } from '../utils/erros'
 import { labelStatus } from '../utils/status'
 
-// Ações rápidas sobre um serviço (mudar status, pago, excluir) com as
-// confirmações e avisos padrão. Recebe as funções de useServicos().
-export function useAcoesServico({ deletar, mudarStatus, mudarPago, buscar }) {
+// Ações rápidas sobre um serviço (mudar status, pago, prazo, excluir) com as
+// confirmações e avisos padrão. Recebe as funções de useServicos(); sem
+// `mudarPrazo`, o prazo aparece só como texto (não abre o calendário).
+export function useAcoesServico({ deletar, mudarStatus, mudarPago, mudarPrazo, buscar }) {
   const toast = useToast()
   const [menuStatus, setMenuStatus] = useState(null)
   const [confirmandoId, setConfirmandoId] = useState(null)
 
-  const handleDeletar = async (id) => {
+  const handleDeletar = async (id, { devolverEstoque = false } = {}) => {
     setConfirmandoId(null)
     try {
-      await deletar(id)
-      toast.sucesso('Serviço excluído')
+      await deletar(id, { devolverEstoque })
+      toast.sucesso(devolverEstoque ? 'Serviço excluído e estoque devolvido' : 'Serviço excluído')
     } catch (e) {
-      toast.erro(mensagemErro(e, 'Erro ao excluir serviço.'))
+      toast.erro(mensagemErro(e, 'Erro ao excluir serviço'))
     }
   }
 
@@ -26,7 +27,7 @@ export function useAcoesServico({ deletar, mudarStatus, mudarPago, buscar }) {
       toast.sucesso('Status atualizado')
     } catch (e) {
       buscar()
-      toast.erro(mensagemErro(e, 'Erro ao atualizar status.'))
+      toast.erro(mensagemErro(e, 'Erro ao atualizar status'))
     }
   }
 
@@ -44,7 +45,19 @@ export function useAcoesServico({ deletar, mudarStatus, mudarPago, buscar }) {
       await mudarPago(id, novoPago)
       toast.sucesso(novoPago ? 'Marcado como pago' : 'Marcado como não pago')
     } catch (e) {
-      toast.erro(mensagemErro(e, 'Erro ao atualizar pagamento.'))
+      toast.erro(mensagemErro(e, 'Erro ao atualizar pagamento'))
+    }
+  }
+
+  // Retorna se salvou, para o calendário decidir se fecha.
+  const handleMudarPrazo = async (id, novoPrazo) => {
+    try {
+      await mudarPrazo(id, novoPrazo)
+      toast.sucesso(novoPrazo ? 'Prazo atualizado' : 'Prazo removido')
+      return true
+    } catch (e) {
+      toast.erro(mensagemErro(e, 'Erro ao atualizar prazo'))
+      return false
     }
   }
 
@@ -52,5 +65,6 @@ export function useAcoesServico({ deletar, mudarStatus, mudarPago, buscar }) {
     menuStatus, setMenuStatus,
     confirmandoId, setConfirmandoId,
     handleDeletar, confirmarMudarStatus, handleMudarPago,
+    handleMudarPrazo: mudarPrazo ? handleMudarPrazo : undefined,
   }
 }

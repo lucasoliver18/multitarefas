@@ -27,7 +27,7 @@ function Select({ name, value, onChange, className = '', children, disabled, mul
 
   const [aberto, setAberto] = useState(false)
   const [ativo, setAtivo] = useState(-1)
-  const { ancoraRef, flutuanteRef, estilo } = useFlutuante({ aberto, onFechar: () => setAberto(false), altura: 256 })
+  const { ancoraRef, flutuanteRef, estilo } = useFlutuante({ aberto, onFechar: () => setAberto(false), altura: 256, larguraMinima: 256 })
   const botaoRef = useRef(null)
   const itensRef = useRef([])
   const listaId = useId()
@@ -149,7 +149,7 @@ function Select({ name, value, onChange, className = '', children, disabled, mul
                     {marcada && <Check size={12} strokeWidth={3} />}
                   </span>
                 )}
-                <span className="truncate flex-1">{opcao.rotulo}</span>
+                <span className="flex-1 min-w-0 break-words">{opcao.rotulo}</span>
                 {!multiple && marcada && <Check size={16} className="shrink-0 text-blue-600" />}
               </li>
             )

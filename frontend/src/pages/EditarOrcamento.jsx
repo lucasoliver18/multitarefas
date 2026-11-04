@@ -34,16 +34,24 @@ function EditarOrcamento() {
         tipo_margem: o.tipo_margem || 'percentual',
       })
       setStatusAtual(o.status)
-      setItens((o.materiais || []).map(m => ({
-        id: m.id,
-        nome: m.nome,
-        unidade_medida: m.unidade_medida,
-        preco_unitario: m.pivot.preco_unitario_snapshot,
-        quantidade_estoque: resMat.data.find(mat => mat.id === m.id)?.quantidade_estoque,
-        quantidade: String(parseFloat(m.pivot.quantidade)),
-      })))
+      setItens((o.materiais || []).map(m => {
+        const estoque = resMat.data.find(mat => mat.id === m.id)?.quantidade_estoque
+        // Aprovado já debitou a própria quantidade: para o aviso de estoque,
+        // o disponível para este orçamento é o que sobrou + o que ele já usa.
+        const disponivel = estoque != null && o.status === 'aprovado'
+          ? parseFloat(estoque) + parseFloat(m.pivot.quantidade)
+          : estoque
+        return {
+          id: m.id,
+          nome: m.nome,
+          unidade_medida: m.unidade_medida,
+          preco_unitario: m.pivot.preco_unitario_snapshot,
+          quantidade_estoque: disponivel,
+          quantidade: String(parseFloat(m.pivot.quantidade)),
+        }
+      }))
     }).catch(e => {
-      toast.erro(mensagemErro(e, 'Erro ao carregar orçamento.'))
+      toast.erro(mensagemErro(e, 'Erro ao carregar orçamento'))
       navigate(`/orcamentos/${servicoId}`)
     }).finally(() => setCarregando(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -62,20 +70,20 @@ function EditarOrcamento() {
       toast.sucesso('Orçamento atualizado')
       navigate(`/orcamentos/${servicoId}`)
     } catch (e) {
-      toast.erro(mensagemErro(e, 'Erro ao salvar orçamento.'))
+      toast.erro(mensagemErro(e, 'Erro ao salvar orçamento'))
     } finally {
       setSalvando(false)
     }
   }
 
   const aprovar = () => {
-    toast.confirmar('Aprovar? O estoque será debitado.', async () => {
+    toast.confirmar('Aprovar? O estoque será debitado', async () => {
       try {
         await api.patch(`/orcamentos/${id}/aprovar`)
         toast.sucesso('Orçamento aprovado')
         navigate(`/orcamentos/${servicoId}`)
       } catch (e) {
-        toast.erro(mensagemErro(e, 'Erro ao aprovar orçamento.'))
+        toast.erro(mensagemErro(e, 'Erro ao aprovar orçamento'))
       }
     })
   }
@@ -87,7 +95,7 @@ function EditarOrcamento() {
         toast.sucesso('Orçamento reprovado')
         navigate(`/orcamentos/${servicoId}`)
       } catch (e) {
-        toast.erro(mensagemErro(e, 'Erro ao reprovar orçamento.'))
+        toast.erro(mensagemErro(e, 'Erro ao reprovar orçamento'))
       }
     })
   }

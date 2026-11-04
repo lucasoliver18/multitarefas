@@ -38,7 +38,7 @@ function NovoMaterial() {
       toast.sucesso('Material cadastrado')
       navigate('/materiais')
     } catch (e) {
-      toast.erro(mensagemErro(e, 'Erro ao salvar material.'))
+      toast.erro(mensagemErro(e, 'Erro ao salvar material'))
     } finally {
       setSalvando(false)
     }

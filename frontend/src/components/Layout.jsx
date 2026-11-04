@@ -24,6 +24,8 @@ const TRANSICAO = 'duration-200 ease-out'
 function Layout({ children }) {
   const { user, logout } = useAuth()
   const nome = user?.name || ''
+  // No menu basta o nome e o primeiro sobrenome; o completo fica no title.
+  const nomeCurto = nome.split(/\s+/).filter(Boolean).slice(0, 2).join(' ')
 
   const { pathname } = useLocation()
   const [recolhido, setRecolhido] = useEstadoPersistido('layout:menuRecolhido', false)
@@ -92,7 +94,7 @@ function Layout({ children }) {
           >
             {nome.charAt(0).toUpperCase() || '?'}
           </div>
-          {!recolhido && <p className="flex-1 min-w-0 text-sm font-semibold truncate">{nome}</p>}
+          {!recolhido && <p title={nome} className="flex-1 min-w-0 text-sm font-semibold truncate">{nomeCurto}</p>}
           <button
             onClick={logout}
             aria-label="Sair"

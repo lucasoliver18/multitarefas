@@ -9,6 +9,8 @@ import { materiaisComEstoqueInsuficiente } from '../utils/materiais'
 import { sanitizarNumero } from '../utils/numeros'
 import { TAG_LABEL } from '../utils/status'
 import { TIPOS_MARGEM, MARGEM_MAX, formatarPreco, calcularValorFinal, descreverMargem } from '../utils/orcamentos'
+import Obrigatorio from './Obrigatorio'
+import CampoTextoLimitado from './CampoTextoLimitado'
 
 const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
 const LABEL = 'text-sm font-semibold text-slate-700 mb-1.5'
@@ -24,7 +26,7 @@ function OrcamentoForm({ titulo, servico, form, setForm, itens, setItens, salvan
 
   const adicionarMaterial = (material) => {
     if (itens.find(i => i.id === material.id)) {
-      toast.alerta('Material já adicionado.')
+      toast.alerta('Material já adicionado')
       return
     }
     setItens([...itens, {
@@ -53,15 +55,15 @@ function OrcamentoForm({ titulo, servico, form, setForm, itens, setItens, salvan
   }
 
   const salvar = () => {
-    if (!form.titulo.trim()) { toast.erro('Informe o título.'); return }
+    if (!form.titulo.trim()) { toast.erro('Informe o título'); return }
     if (itens.some(i => !(parseFloat(i.quantidade) > 0))) {
-      toast.erro('Quantidade deve ser maior que zero.')
+      toast.erro('Quantidade deve ser maior que zero')
       return
     }
     if (parseFloat(form.margem_lucro || 0) > MARGEM_MAX[tipoMargem]) {
       toast.erro(tipoMargem === 'valor'
-        ? 'Margem máxima: R$ 99.999.999,99.'
-        : 'Margem máxima: 999,99%.')
+        ? 'Margem máxima: R$ 99.999.999,99'
+        : 'Margem máxima: 999,99%')
       return
     }
 
@@ -89,7 +91,7 @@ function OrcamentoForm({ titulo, servico, form, setForm, itens, setItens, salvan
         <div className="col-span-2 flex flex-col gap-6">
           <div className="bg-white rounded-2xl border border-slate-200 p-6 flex flex-col gap-5">
             <div className="flex flex-col">
-              <label className={LABEL}>Título *</label>
+              <label className={LABEL}>Título <Obrigatorio /></label>
               <input
                 name="titulo"
                 value={form.titulo}
@@ -102,14 +104,13 @@ function OrcamentoForm({ titulo, servico, form, setForm, itens, setItens, salvan
 
             <div className="flex flex-col">
               <label className={LABEL}>Descrição</label>
-              <textarea
+              <CampoTextoLimitado
                 name="descricao"
                 value={form.descricao}
                 onChange={e => setForm({ ...form, descricao: e.target.value })}
                 placeholder="Detalhes do orçamento..."
                 rows={3}
-                maxLength={5000}
-                className={`${INPUT} resize-none`}
+                className={INPUT}
               />
             </div>
           </div>

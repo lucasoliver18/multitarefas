@@ -13,7 +13,7 @@ import { useDashboard } from '../hooks/useDashboard'
 import { useEstadoPersistido } from '../hooks/useEstadoPersistido'
 import { formatarPreco } from '../utils/orcamentos'
 import { corFundoPrioridade, TAG_LABEL } from '../utils/status'
-import { plural } from '../utils/texto'
+import { plural, capitalizar } from '../utils/texto'
 
 const PERIODOS = [
   { val: '7d', label: '7 dias' },
@@ -162,7 +162,7 @@ function Home() {
   const cabecalho = (
     <CabecalhoPagina
       titulo={`Olá, ${primeiroNome}!`}
-      subtitulo={new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+      subtitulo={capitalizar(new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }))}
       acoes={
         <>
           <Button variant="secondary" onClick={() => navigate('/clientes/novo')} className="text-sm font-semibold px-4 py-2.5 rounded-xl inline-flex items-center gap-2">

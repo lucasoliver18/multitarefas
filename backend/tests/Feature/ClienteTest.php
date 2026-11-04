@@ -20,6 +20,59 @@ class ClienteTest extends TestCase
              ->assertJsonCount(3);
     }
 
+    public function test_busca_clientes_pelo_nome_com_paginacao(): void
+    {
+        Cliente::factory()->create(['nome' => 'Ana Lima']);
+        Cliente::factory()->create(['nome' => 'Bruno Ana']);
+        Cliente::factory()->create(['nome' => 'Carlos']);
+
+        $this->getJson('/api/clientes?busca=ana')->assertOk()->assertJsonCount(2);
+
+        $this->getJson('/api/clientes?por_pagina=2&page=2')
+             ->assertOk()
+             ->assertJsonCount(1, 'data')
+             ->assertJsonPath('data.0.nome', 'Carlos')
+             ->assertJsonPath('meta.last_page', 2);
+    }
+
+    public function test_detalhe_do_cliente_nao_traz_a_lista_de_servicos(): void
+    {
+        $cliente = Cliente::factory()->create(['nome' => 'Ana']);
+        \App\Models\Servico::factory()->count(3)->create(['cliente_id' => $cliente->id]);
+
+        $this->getJson("/api/clientes/{$cliente->id}")
+             ->assertOk()
+             ->assertJsonPath('nome', 'Ana')
+             ->assertJsonMissingPath('servicos');
+    }
+
+    public function test_mensagens_claras_para_cpf_e_cnpj(): void
+    {
+        Cliente::factory()->create(['tipo_pessoa' => 'fisica', 'cpf' => '123.576.159-23']);
+        Cliente::factory()->create(['tipo_pessoa' => 'juridica', 'cpf' => null, 'cnpj' => '11.222.333/0001-81']);
+
+        $casos = [
+            [['tipo_pessoa' => 'fisica', 'cpf' => '123.576.159-23'], 'cpf', 'Já existe um cliente cadastrado com este CPF.'],
+            [['tipo_pessoa' => 'fisica', 'cpf' => '123.576.159-24'], 'cpf', 'O CPF informado é inválido.'],
+            [['tipo_pessoa' => 'fisica', 'cpf' => ''], 'cpf', 'Informe o CPF para pessoa física.'],
+            [['tipo_pessoa' => 'juridica', 'cnpj' => '11222333000181'], 'cnpj', 'Já existe um cliente cadastrado com este CNPJ.'],
+            [['tipo_pessoa' => 'juridica', 'cnpj' => '11.222.333/0001-82'], 'cnpj', 'O CNPJ informado é inválido.'],
+        ];
+        foreach ($casos as [$dados, $campo, $mensagem]) {
+            $this->postJson('/api/clientes', ['nome' => 'Novo'] + $dados)
+                 ->assertUnprocessable()
+                 ->assertJsonPath("errors.{$campo}.0", $mensagem);
+        }
+    }
+
+    public function test_observacoes_limitadas_a_500_caracteres(): void
+    {
+        $dados = ['nome' => 'Ana', 'tipo_pessoa' => 'fisica', 'cpf' => '529.982.247-25'];
+        $this->postJson('/api/clientes', $dados + ['observacoes' => str_repeat('a', 501)])
+             ->assertUnprocessable()->assertJsonValidationErrors(['observacoes']);
+        $this->postJson('/api/clientes', $dados + ['observacoes' => str_repeat('a', 500)])->assertCreated();
+    }
+
     public function test_pode_criar_cliente(): void
     {
         $this->postJson('/api/clientes', [

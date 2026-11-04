@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import Layout from '../components/Layout'
 
 vi.mock('../hooks/useAuth', () => ({
-  useAuth: () => ({ user: { name: 'Lucas' }, logout: vi.fn() }),
+  useAuth: () => ({ user: { name: 'Lucas José Gomes Oliveira' }, logout: vi.fn() }),
 }))
 
 const montar = () => render(
@@ -18,11 +18,11 @@ describe('menu lateral recolhível', () => {
   it('recolhe e expande, mantendo os itens acessíveis', () => {
     montar()
     expect(largura()).toBe('16rem')
-    expect(screen.getByText('Lucas')).toBeInTheDocument()
+    expect(screen.getByText('Lucas José')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Recolher menu' }))
     expect(largura()).toBe('4.5rem')
-    expect(screen.queryByText('Lucas')).not.toBeInTheDocument()
+    expect(screen.queryByText('Lucas José')).not.toBeInTheDocument()
     // Recolhido, o nome do item aparece ao passar o mouse.
     expect(screen.getByRole('link', { name: 'Prazos' })).toHaveAttribute('title', 'Prazos')
 

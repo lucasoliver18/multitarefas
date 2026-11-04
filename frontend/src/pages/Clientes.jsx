@@ -29,7 +29,7 @@ const LIMITE_SERVICOS = 4
 
 // Colunas da visualização em lista. Larguras fixas (sem "auto"): cada linha é
 // uma grade própria, e uma coluna automática desalinharia as linhas entre si.
-const COLUNAS_LISTA = 'grid grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1.6fr)_8rem_6rem] items-center gap-4'
+const COLUNAS_LISTA = 'grid grid-cols-[minmax(0,1.6fr)_13rem_minmax(0,1.6fr)_8rem_6rem] items-center gap-4'
 
 const VISUALIZACOES = [
   { val: 'lista', label: 'Lista', icone: List },
@@ -78,7 +78,7 @@ function Clientes() {
       if (count) {
         setTransferindoCliente({ id, count })
       } else {
-        toast.erro(mensagemErro(err, 'Erro ao remover cliente.'))
+        toast.erro(mensagemErro(err, 'Erro ao remover cliente'))
       }
     }
   }
@@ -98,7 +98,7 @@ function Clientes() {
       toast.sucesso('Serviços transferidos e cliente removido')
     } catch (e) {
       await buscar()
-      toast.erro(mensagemErro(e, 'Erro ao transferir serviços.'))
+      toast.erro(mensagemErro(e, 'Erro ao transferir serviços'))
     } finally {
       cancelarTransferencia()
     }
@@ -112,7 +112,7 @@ function Clientes() {
         await carregarServicosCliente(id)
       } catch (e) {
         setExpandido(null)
-        toast.erro(mensagemErro(e, 'Erro ao carregar serviços.'))
+        toast.erro(mensagemErro(e, 'Erro ao carregar serviços'))
       }
     }
   }
@@ -134,21 +134,21 @@ function Clientes() {
       cancelar()
       await buscar()
       if (falhas.length === 0) toast.sucesso(plural(sucesso, 'cliente excluído', 'clientes excluídos'))
-      else if (sucesso === 0) toast.erro('Nenhum excluído: todos têm serviços vinculados.')
-      else toast.alerta(`${plural(sucesso, 'excluído', 'excluídos')}; ${falhas.length} com serviços vinculados.`)
+      else if (sucesso === 0) toast.erro('Nenhum excluído: todos têm serviços vinculados')
+      else toast.alerta(`${plural(sucesso, 'excluído', 'excluídos')}; ${falhas.length} com serviços vinculados`)
     })
   }
 
-  const clientesFiltrados = useMemo(() =>
-    clientes.filter(c => {
-      if (!c.nome.toLowerCase().includes(busca.toLowerCase())) return false
+  const clientesFiltrados = useMemo(() => {
+    const termo = busca.trim().toLowerCase()
+    return clientes.filter(c => {
+      if (termo && !c.nome.toLowerCase().includes(termo)) return false
       if (filtroTipoPessoa && c.tipo_pessoa !== filtroTipoPessoa) return false
       if (filtroServicos === 'com' && !(c.servicos_count > 0)) return false
       if (filtroServicos === 'sem' && !(c.servicos_count === 0)) return false
       return true
-    }),
-    [clientes, busca, filtroTipoPessoa, filtroServicos]
-  )
+    })
+  }, [clientes, busca, filtroTipoPessoa, filtroServicos])
 
   const { pagina, setPagina, tamanhoPagina, mudarTamanhoPagina, totalPaginas, itensPagina } = usePaginacao(clientesFiltrados)
 
@@ -226,7 +226,7 @@ function Clientes() {
       <div className="entrada-suave border-t border-slate-100 bg-slate-50 px-5 py-4 flex flex-col gap-2">
         <div className="flex items-center justify-between mb-1">
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-            Serviços prestados{lista?.length > LIMITE_SERVICOS ? ` · ${LIMITE_SERVICOS} mais recentes de ${lista.length}` : ''}
+            Serviços prestados{lista?.length > LIMITE_SERVICOS ? ` · ${LIMITE_SERVICOS} de ${lista.length}` : ''}
           </p>
         </div>
         {!lista ? (
@@ -246,14 +246,13 @@ function Clientes() {
                     <p className="text-sm font-semibold text-slate-700 flex-1 truncate">{s.titulo}</p>
                     <StatusBadge status={s.status} className="px-2 py-0.5" />
                   </div>
-                  <div className="flex items-center gap-2 mt-1.5">
-                    {s.prazo && (
-                      <span className="text-xs text-slate-500">
-                        Prazo: {new Date(s.prazo + 'T00:00:00').toLocaleDateString('pt-BR')}
-                      </span>
-                    )}
+                  {/* Tag à direita, na mesma coluna do status. */}
+                  <div className="flex items-center justify-between gap-2 mt-1.5">
+                    <span className="text-xs text-slate-500">
+                      {s.prazo && `Prazo: ${new Date(s.prazo + 'T00:00:00').toLocaleDateString('pt-BR')}`}
+                    </span>
                     {s.tag && (
-                      <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">
+                      <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full shrink-0">
                         {TAG_LABEL[s.tag] || s.tag}
                       </span>
                     )}
@@ -286,7 +285,7 @@ function Clientes() {
   )
 
   const renderDocumento = (c) => (
-    <span className="text-sm text-slate-600">
+    <span className="text-sm text-slate-600 whitespace-nowrap">
       {c.cpf ? `CPF: ${c.cpf}` : c.cnpj ? `CNPJ: ${c.cnpj}` : '—'}
     </span>
   )

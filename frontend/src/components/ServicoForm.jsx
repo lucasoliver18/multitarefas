@@ -9,6 +9,8 @@ import { useToast } from '../hooks/useToast'
 import { buscarClientesPagina } from '../hooks/useClientes'
 import { dataValida } from '../utils/prazos'
 import { PRIORIDADE_OPCOES, STATUS_OPCOES, TAG_OPCOES, statusSeguintes } from '../utils/status'
+import Obrigatorio from './Obrigatorio'
+import CampoTextoLimitado from './CampoTextoLimitado'
 
 const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
 const LABEL = 'text-sm font-semibold text-slate-700 mb-1.5'
@@ -19,6 +21,9 @@ const LABEL = 'text-sm font-semibold text-slate-700 mb-1.5'
 function ServicoForm({ titulo, subtitulo, form, setForm, statusOriginal, salvando, onSalvar, onCancelar, voltar }) {
   const toast = useToast()
   const [mostrarCadastroCliente, setMostrarCadastroCliente] = useState(false)
+  // Texto do prazo que não forma uma data válida: bloqueia o salvar (senão o
+  // serviço seria salvo com a data anterior, sem o usuário perceber).
+  const [prazoInvalido, setPrazoInvalido] = useState(false)
 
   const handleChange = (e) => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
 
@@ -40,11 +45,11 @@ function ServicoForm({ titulo, subtitulo, form, setForm, statusOriginal, salvand
 
   const salvar = () => {
     if (!form.titulo.trim() || !form.cliente_id) {
-      toast.erro('Informe título e cliente.')
+      toast.erro('Informe título e cliente')
       return
     }
-    if (form.prazo && !dataValida(form.prazo)) {
-      toast.erro('Prazo inválido.')
+    if (prazoInvalido || (form.prazo && !dataValida(form.prazo))) {
+      toast.erro('Prazo inválido')
       return
     }
     onSalvar()
@@ -60,7 +65,7 @@ function ServicoForm({ titulo, subtitulo, form, setForm, statusOriginal, salvand
 
       <div className="bg-white rounded-2xl border border-slate-200 p-8 grid grid-cols-2 gap-x-6 gap-y-5">
         <div className="flex flex-col col-span-2">
-          <label className={LABEL}>Título *</label>
+          <label className={LABEL}>Título <Obrigatorio /></label>
           <input
             name="titulo"
             value={form.titulo}
@@ -71,7 +76,7 @@ function ServicoForm({ titulo, subtitulo, form, setForm, statusOriginal, salvand
         </div>
 
         <div className="flex flex-col col-span-2">
-          <label className={LABEL}>Cliente *</label>
+          <label className={LABEL}>Cliente <Obrigatorio /></label>
           {!mostrarCadastroCliente && (
             <ComboboxAsync
               valor={form.cliente}
@@ -102,13 +107,12 @@ function ServicoForm({ titulo, subtitulo, form, setForm, statusOriginal, salvand
 
         <div className="flex flex-col col-span-2">
           <label className={LABEL}>Descrição</label>
-          <textarea
+          <CampoTextoLimitado
             name="descricao"
             value={form.descricao}
             onChange={handleChange}
             rows={4}
-            maxLength={5000}
-            className={`${INPUT} resize-none`}
+            className={INPUT}
           />
         </div>
 
@@ -135,7 +139,8 @@ function ServicoForm({ titulo, subtitulo, form, setForm, statusOriginal, salvand
             name="prazo"
             value={form.prazo}
             onChange={handleChange}
-            onInvalida={() => toast.erro('Data inválida.')}
+            onValidade={valida => setPrazoInvalido(!valida)}
+            manterInvalida
             className={INPUT}
           />
         </div>

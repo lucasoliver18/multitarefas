@@ -1,5 +1,5 @@
-const ERRO_GENERICO = 'Erro inesperado. Tente novamente.'
-const ERRO_CONEXAO = 'Sem conexão com o servidor.'
+const ERRO_GENERICO = 'Erro inesperado. Tente novamente'
+const ERRO_CONEXAO = 'Sem conexão com o servidor'
 
 // Monta a mensagem para o usuário a partir de um erro da API. Só repassa o
 // texto do backend em erros de regra/validação (4xx), que são mensagens

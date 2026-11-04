@@ -1,14 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Trash2 } from 'lucide-react'
 import api from '../services/api'
 import Button from '../components/Button'
+import CampoTextoLimitado from '../components/CampoTextoLimitado'
 import { Pagina, CabecalhoPagina, Carregando } from '../components/Pagina'
 import { useToast } from '../hooks/useToast'
 import { mensagemErro } from '../utils/erros'
 
-const LIMITE_CARACTERES = 500
-const LIMITE_AVISO = 450
 
 function Anotacoes() {
   const { id } = useParams()
@@ -19,6 +18,8 @@ function Anotacoes() {
   const [novaAnotacao, setNovaAnotacao] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [carregando, setCarregando] = useState(true)
+  // Trava síncrona: o Ctrl+Enter repetido rápido não espera o estado atualizar.
+  const salvandoRef = useRef(false)
 
   useEffect(() => {
     Promise.all([
@@ -28,14 +29,15 @@ function Anotacoes() {
       setServico(resServico.data)
       setAnotacoes(Array.isArray(resAnotacoes.data) ? resAnotacoes.data : [])
     }).catch(e => {
-      toast.erro(mensagemErro(e, 'Erro ao carregar anotações.'))
+      toast.erro(mensagemErro(e, 'Erro ao carregar anotações'))
       navigate('/servicos')
     }).finally(() => setCarregando(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   const salvarAnotacao = async () => {
-    if (!novaAnotacao.trim()) return
+    if (!novaAnotacao.trim() || salvandoRef.current) return
+    salvandoRef.current = true
     setSalvando(true)
     try {
       const res = await api.post(`/servicos/${id}/anotacoes`, { conteudo: novaAnotacao.trim() })
@@ -43,8 +45,9 @@ function Anotacoes() {
       setNovaAnotacao('')
       toast.sucesso('Anotação salva')
     } catch (e) {
-      toast.erro(mensagemErro(e, 'Erro ao salvar anotação.'))
+      toast.erro(mensagemErro(e, 'Erro ao salvar anotação'))
     } finally {
+      salvandoRef.current = false
       setSalvando(false)
     }
   }
@@ -56,7 +59,7 @@ function Anotacoes() {
         setAnotacoes(prev => prev.filter(a => a.id !== anotacaoId))
         toast.sucesso('Anotação removida')
       } catch (e) {
-        toast.erro(mensagemErro(e, 'Erro ao remover anotação.'))
+        toast.erro(mensagemErro(e, 'Erro ao remover anotação'))
       }
     })
   }
@@ -79,21 +82,15 @@ function Anotacoes() {
       <div className="grid grid-cols-[22rem_minmax(0,1fr)] gap-6 items-start">
         <div className="sticky top-8 bg-white rounded-2xl p-6 border border-slate-200 flex flex-col">
           <p className="text-base font-bold text-slate-800 mb-3">Nova anotação</p>
-          <textarea
+          <CampoTextoLimitado
             value={novaAnotacao}
-            onChange={e => setNovaAnotacao(e.target.value.slice(0, LIMITE_CARACTERES))}
+            onChange={e => setNovaAnotacao(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) salvarAnotacao() }}
             placeholder="Escreva sua anotação aqui..."
             rows={8}
-            maxLength={LIMITE_CARACTERES}
-            className="w-full text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none resize-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            dica="Ctrl + Enter para salvar"
+            className="w-full text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           />
-          <div className="flex justify-between items-center mt-1.5">
-            <span className="text-xs text-slate-400">Ctrl + Enter para salvar</span>
-            <span className={`text-xs ${novaAnotacao.length >= LIMITE_AVISO ? 'text-amber-600 font-semibold' : 'text-slate-400'}`}>
-              {novaAnotacao.length}/{LIMITE_CARACTERES}
-            </span>
-          </div>
           <Button
             onClick={salvarAnotacao}
             disabled={salvando || !novaAnotacao.trim()}

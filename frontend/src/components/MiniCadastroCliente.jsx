@@ -2,8 +2,9 @@ import { useState } from 'react'
 import api from '../services/api'
 import Button from './Button'
 import { useToast } from '../hooks/useToast'
-import { apenasDigitos, mascararCpf, mascararCnpj, cnpjValido } from '../utils/mascaras'
+import { mascararCpf, mascararCnpj, cnpjValido, cpfValido } from '../utils/mascaras'
 import { mensagemErro } from '../utils/erros'
+import Obrigatorio from './Obrigatorio'
 
 const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
 const LABEL = 'text-xs font-semibold text-slate-700 mb-1 block'
@@ -18,12 +19,12 @@ function MiniCadastroCliente({ nomeInicial, onCriado, onCancelar }) {
   const handleCnpjChange = e => setForm({ ...form, cnpj: mascararCnpj(e.target.value) })
 
   const salvar = async () => {
-    if (!form.nome) { toast.erro('Informe o nome.'); return }
-    if (form.tipo_pessoa === 'fisica' && apenasDigitos(form.cpf).length !== 11) {
-      toast.erro('CPF inválido.'); return
+    if (!form.nome.trim()) { toast.erro('Informe o nome'); return }
+    if (form.tipo_pessoa === 'fisica' && !cpfValido(form.cpf)) {
+      toast.erro('CPF inválido'); return
     }
     if (form.tipo_pessoa === 'juridica' && !cnpjValido(form.cnpj)) {
-      toast.erro('CNPJ inválido.'); return
+      toast.erro('CNPJ inválido'); return
     }
 
     setSalvando(true)
@@ -36,7 +37,7 @@ function MiniCadastroCliente({ nomeInicial, onCriado, onCancelar }) {
       })
       onCriado({ id: res.data.id, nome: res.data.nome })
     } catch (e) {
-      toast.erro(mensagemErro(e, 'Erro ao cadastrar cliente.'))
+      toast.erro(mensagemErro(e, 'Erro ao cadastrar cliente'))
     } finally {
       setSalvando(false)
     }
@@ -47,12 +48,12 @@ function MiniCadastroCliente({ nomeInicial, onCriado, onCancelar }) {
       <p className="text-xs font-semibold text-slate-600">Cadastrar novo cliente</p>
 
       <div>
-        <label className={LABEL}>Nome *</label>
+        <label className={LABEL}>Nome <Obrigatorio /></label>
         <input name="nome" value={form.nome} onChange={handleChange} className={INPUT} />
       </div>
 
       <div>
-        <label className={LABEL}>Tipo de cadastro *</label>
+        <label className={LABEL}>Tipo de cadastro <Obrigatorio /></label>
         <div className="flex gap-2">
           <button
             type="button"
@@ -73,14 +74,14 @@ function MiniCadastroCliente({ nomeInicial, onCriado, onCancelar }) {
 
       {form.tipo_pessoa === 'fisica' ? (
         <div>
-          <label className={LABEL}>CPF *</label>
+          <label className={LABEL}>CPF <Obrigatorio /></label>
           <input name="cpf" value={form.cpf} onChange={handleCpfChange}
             inputMode="numeric" placeholder="000.000.000-00" maxLength={14}
             className={INPUT} />
         </div>
       ) : (
         <div>
-          <label className={LABEL}>CNPJ *</label>
+          <label className={LABEL}>CNPJ <Obrigatorio /></label>
           <input name="cnpj" value={form.cnpj} onChange={handleCnpjChange}
             placeholder="00.000.000/0000-00" maxLength={18} autoComplete="off" spellCheck={false}
             className={`${INPUT} uppercase`} />

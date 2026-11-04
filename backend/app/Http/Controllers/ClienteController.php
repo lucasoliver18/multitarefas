@@ -40,9 +40,11 @@ class ClienteController extends Controller
         return new ClienteResource($cliente);
     }
 
+    // Sem os serviços: a edição não usa, e um cliente pode ter muitos (a tela
+    // de Clientes busca os serviços à parte, por /servicos?cliente_id=).
     public function show(Cliente $cliente)
     {
-        return new ClienteResource($cliente->load('servicos'));
+        return new ClienteResource($cliente);
     }
 
     public function update(UpdateClienteRequest $request, Cliente $cliente)

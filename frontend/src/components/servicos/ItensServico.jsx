@@ -1,10 +1,13 @@
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { User, Calendar, NotebookPen, Receipt, Pencil, Trash2 } from 'lucide-react'
 import StatusBadge from '../StatusBadge'
 import ConfirmacaoCartao from '../ConfirmacaoCartao'
+import PerguntaEstoque from './PerguntaEstoque'
+import Calendario from '../Calendario'
 import { useFlutuante } from '../../hooks/useFlutuante'
-import { estaVencido } from '../../utils/prazos'
+import { estaVencido, hojeISO, isoParaBr } from '../../utils/prazos'
 import {
   borderPrioridade,
   fundoPrioridade,
@@ -24,7 +27,7 @@ import {
 //
 // `ctx` reúne o que vem da tela: navigate, hojeStr, selecaoAtiva, selecionados,
 // alternarItem, menuStatus, setMenuStatus, confirmarMudarStatus,
-// handleMudarPago, confirmandoId, setConfirmandoId, handleDeletar.
+// handleMudarPago, handleMudarPrazo, confirmandoId, setConfirmandoId, handleDeletar.
 
 const formatarData = (iso) => new Date(iso + 'T00:00:00').toLocaleDateString('pt-BR')
 
@@ -126,6 +129,118 @@ function StatusComMenu({ s, ctx, proximos, className }) {
   )
 }
 
+// Prazo clicável: abre o calendário do sistema para escolher uma nova data e
+// confirmar, sem passar pela tela de edição. `children` é o prazo como cada
+// visualização o mostra; em volta vai a moldura de botão secundário do sistema
+// (borda, fundo no hover), para deixar claro que dá para alterar.
+// Em modo de seleção (ou sem handleMudarPrazo), é só texto.
+export function PrazoAcao({ s, ctx, className = '', children }) {
+  const [aberto, setAberto] = useState(false)
+  const [escolhido, setEscolhido] = useState('')
+  const [cursor, setCursor] = useState(hojeISO())
+  const [modo, setModo] = useState('dias')
+  const [salvando, setSalvando] = useState(false)
+  // Sem onFechar: o clique fora cai na camada invisível abaixo, que fecha sem
+  // deixar o clique chegar à linha/cartão (que abriria a edição).
+  const { ancoraRef, flutuanteRef, estilo } = useFlutuante({ aberto, altura: 470, largura: 304 })
+
+  const fechar = () => { if (!salvando) setAberto(false) }
+
+  // Esc fecha só o calendário (captura: antes do Esc de um modal em volta).
+  useEffect(() => {
+    if (!aberto) return
+    const aoTeclar = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setAberto(false) } }
+    document.addEventListener('keydown', aoTeclar, true)
+    return () => document.removeEventListener('keydown', aoTeclar, true)
+  }, [aberto])
+
+  if (ctx.selecaoAtiva || !ctx.handleMudarPrazo) return <span className={className}>{children}</span>
+
+  const abrir = () => {
+    setEscolhido(s.prazo || '')
+    setCursor(s.prazo || hojeISO())
+    setModo('dias')
+    setAberto(true)
+  }
+
+  const confirmar = async () => {
+    setSalvando(true)
+    const ok = await ctx.handleMudarPrazo(s.id, escolhido)
+    setSalvando(false)
+    if (ok) setAberto(false)
+  }
+
+  const mudou = escolhido !== (s.prazo || '')
+
+  return (
+    <span ref={ancoraRef} className="inline-flex max-w-full">
+      <button
+        type="button"
+        title="Alterar prazo"
+        onClick={e => { e.stopPropagation(); if (aberto) fechar(); else abrir() }}
+        onPointerDown={e => e.stopPropagation()}
+        className={`${className} inline-flex items-center whitespace-nowrap px-2 py-1 rounded-lg border bg-white text-left cursor-pointer transition-all hover:bg-slate-50 hover:border-slate-300 active:scale-95 ${aberto ? 'border-blue-600 ring-2 ring-blue-100' : 'border-slate-200'}`}
+      >
+        {children}
+      </button>
+      {aberto && createPortal(
+        // O portal continua dentro da árvore do React: sem o stopPropagation,
+        // o clique chegaria à linha/cartão (que abre a edição ou inicia o arraste).
+        <div onClick={e => e.stopPropagation()} onPointerDown={e => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[105]" onClick={fechar} />
+          <div
+            ref={flutuanteRef}
+            role="dialog"
+            aria-label="Alterar prazo"
+            style={estilo}
+            className="fixed z-[110] bg-white border border-slate-200 rounded-xl shadow-lg p-3 overflow-y-auto select-none"
+          >
+            <Calendario
+              valor={escolhido}
+              cursor={cursor}
+              setCursor={setCursor}
+              modo={modo}
+              setModo={setModo}
+              onEscolher={iso => { setEscolhido(iso); setCursor(iso) }}
+            />
+            <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setEscolhido('')}
+                disabled={!escolhido}
+                className="px-2 py-1 rounded-lg text-sm font-semibold text-slate-500 whitespace-nowrap shrink-0 hover:text-slate-800 hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+              >
+                Sem prazo
+              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={fechar}
+                  className="px-3 py-1.5 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmar}
+                  disabled={!mudou || salvando}
+                  className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white bg-[#2563eb] hover:bg-[#1e3a5f] active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
+                >
+                  {salvando ? 'Salvando...' : 'Confirmar'}
+                </button>
+              </div>
+            </div>
+            <p className="text-xs text-slate-400 text-center mt-2 tabular-nums">
+              {escolhido ? `Novo prazo: ${isoParaBr(escolhido)}` : 'O serviço ficará sem prazo'}
+            </p>
+          </div>
+        </div>,
+        document.body
+      )}
+    </span>
+  )
+}
+
 // Camada invisível que fecha o menu de status ao clicar fora dele.
 export function FecharMenuStatus({ ctx }) {
   if (!ctx.menuStatus) return null
@@ -183,13 +298,27 @@ export function AtalhosServico({ s, ctx, tamanho = 15 }) {
   )
 }
 
+// Serviço com orçamento aprovado: antes de excluir, pergunta se o estoque
+// descontado volta (PerguntaEstoque).
 export function ConfirmacaoServico({ s, ctx }) {
+  const [perguntando, setPerguntando] = useState(false)
   return (
-    <ConfirmacaoCartao
-      mensagem="Excluir este serviço?"
-      onConfirmar={() => ctx.handleDeletar(s.id)}
-      onCancelar={() => ctx.setConfirmandoId(null)}
-    />
+    <>
+      <ConfirmacaoCartao
+        mensagem="Excluir este serviço?"
+        onConfirmar={() => s.tem_orcamento_aprovado ? setPerguntando(true) : ctx.handleDeletar(s.id)}
+        onCancelar={() => ctx.setConfirmandoId(null)}
+      />
+      {/* O modal é um portal, mas os eventos sobem pela árvore do React: sem
+          isso, o clique chegaria ao cartão (abre a edição ou inicia o arraste). */}
+      <span className="contents" onClick={e => e.stopPropagation()} onPointerDown={e => e.stopPropagation()}>
+        <PerguntaEstoque
+          aberto={perguntando}
+          onEscolher={devolverEstoque => { setPerguntando(false); ctx.handleDeletar(s.id, { devolverEstoque }) }}
+          onCancelar={() => { setPerguntando(false); ctx.setConfirmandoId(null) }}
+        />
+      </span>
+    </>
   )
 }
 
@@ -239,12 +368,14 @@ export function ServicoCardKanban({ s, ctx }) {
           </div>
         ) : (
           <>
-            {s.prazo ? (
-              <span className={`text-xs inline-flex items-center gap-1 ${vencido ? 'text-red-600 font-semibold' : 'text-slate-500'}`}>
-                <Calendar size={13} />
-                {textoPrazo(s, vencido)}
-              </span>
-            ) : <span className="text-xs text-slate-400">Sem prazo</span>}
+            <PrazoAcao
+              s={s}
+              ctx={ctx}
+              className={`text-xs inline-flex items-center gap-1 ${vencido ? 'text-red-600 font-semibold' : s.prazo ? 'text-slate-500' : 'text-slate-400'}`}
+            >
+              {s.prazo && <Calendar size={13} className="shrink-0" />}
+              {textoPrazo(s, vencido)}
+            </PrazoAcao>
             {!ctx.selecaoAtiva && (
               <div className="flex items-center" onClick={e => e.stopPropagation()}>
                 <AtalhosServico s={s} ctx={ctx} />
@@ -303,10 +434,12 @@ export function ServicoLinha({ s, ctx, semPrazo = false }) {
       <div><TagBadge s={s} /></div>
       <span className={`text-sm font-medium ${corTextoPrioridade(s.prioridade)}`}>{labelPrioridade(s.prioridade)}</span>
       {!semPrazo && (
-        <span className={`text-sm ${vencido ? 'text-red-600 font-semibold' : 'text-slate-600'}`}>
-          {s.prazo ? formatarData(s.prazo) : '—'}
-          {vencido && <span className="block text-xs">Atrasado</span>}
-        </span>
+        <div>
+          <PrazoAcao s={s} ctx={ctx} className={`text-sm ${vencido ? 'text-red-600 font-semibold' : 'text-slate-600'}`}>
+            {s.prazo ? formatarData(s.prazo) : '—'}
+          </PrazoAcao>
+          {vencido && <span className="block text-xs font-semibold text-red-600 mt-0.5">Atrasado</span>}
+        </div>
       )}
       <div className="flex flex-col items-start gap-1">
         <PagoBadge s={s} ctx={ctx} />
@@ -349,10 +482,12 @@ export function ServicoCardDetalhado({ s, ctx }) {
 
       <div className="mt-3 flex flex-col gap-1">
         <p className="text-sm text-slate-600 inline-flex items-center gap-1.5"><User size={14} />{s.cliente}</p>
-        <p className={`text-sm inline-flex items-center gap-1.5 ${vencido ? 'text-red-600 font-semibold' : 'text-slate-600'}`}>
-          <Calendar size={14} />
-          {textoPrazo(s, vencido)}
-        </p>
+        <div>
+          <PrazoAcao s={s} ctx={ctx} className={`text-sm inline-flex items-center gap-1.5 ${vencido ? 'text-red-600 font-semibold' : 'text-slate-600'}`}>
+            <Calendar size={14} className="shrink-0" />
+            {textoPrazo(s, vencido)}
+          </PrazoAcao>
+        </div>
         {s.descricao && <p className="text-sm text-slate-500 mt-1 line-clamp-2">{s.descricao}</p>}
         <div className="flex items-center gap-2 mt-2 flex-wrap">
           <TagBadge s={s} />

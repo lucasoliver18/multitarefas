@@ -64,16 +64,55 @@ class OrcamentoController extends Controller
     public function update(UpdateOrcamentoRequest $request, Orcamento $orcamento)
     {
         $data = $request->validated();
+        $trocaMateriais = array_key_exists('materiais', $data);
 
-        DB::transaction(function () use ($data, $orcamento) {
+        // Orçamento aprovado já debitou o estoque: mudar os materiais debita ou
+        // devolve só a diferença (senão reprovar/excluir depois devolveria a
+        // quantidade errada).
+        $diferencas = $trocaMateriais && $orcamento->status === 'aprovado'
+            ? $this->diferencasDeEstoque($orcamento, $data['materiais'] ?? [])
+            : [];
+
+        if ($diferencas) {
+            $insuficientes = Material::withTrashed()
+                ->whereIn('id', array_keys(array_filter($diferencas, fn ($d) => $d > 0)))
+                ->get()
+                ->filter(fn ($m) => $m->quantidade_estoque < $diferencas[$m->id]);
+
+            if ($insuficientes->isNotEmpty()) {
+                return response()->json([
+                    'message' => 'Estoque insuficiente para: ' . $insuficientes->pluck('nome')->implode(', ') . '.',
+                ], 422);
+            }
+        }
+
+        DB::transaction(function () use ($data, $orcamento, $trocaMateriais, $diferencas) {
             $orcamento->update($data);
 
-            if (array_key_exists('materiais', $data)) {
+            if ($trocaMateriais) {
                 $orcamento->materiais()->sync($this->montarPivot($data['materiais'] ?? []));
+            }
+
+            foreach ($diferencas as $id => $diferenca) {
+                Material::withTrashed()->whereKey($id)->decrement('quantidade_estoque', $diferenca);
             }
         });
 
         return new OrcamentoResource($orcamento->load('materiais'));
+    }
+
+    // Quanto cada material passa a consumir a mais (positivo) ou a menos
+    // (negativo) em relação ao que o orçamento já tinha.
+    private function diferencasDeEstoque(Orcamento $orcamento, array $itens): array
+    {
+        $antes = $orcamento->materiais()->get()
+            ->mapWithKeys(fn ($m) => [$m->id => (float) $m->pivot->quantidade]);
+        $depois = collect($itens)->mapWithKeys(fn ($i) => [(int) $i['id'] => (float) $i['quantidade']]);
+
+        return $antes->keys()->merge($depois->keys())->unique()
+            ->mapWithKeys(fn ($id) => [$id => ($depois[$id] ?? 0) - ($antes[$id] ?? 0)])
+            ->filter(fn ($d) => abs($d) > 0.0000001)
+            ->all();
     }
 
     // Grava o preço do material no momento do orçamento (snapshot). Usa

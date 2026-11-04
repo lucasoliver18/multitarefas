@@ -106,3 +106,21 @@ describe('CampoData', () => {
     expect(campo()).toHaveValue('')
   })
 })
+
+describe('CampoData em formulário (manterInvalida)', () => {
+  it('mantém o texto errado, marca o campo e informa que está inválido', () => {
+    const onValidade = vi.fn()
+    render(<CampoData name="prazo" value="2026-10-29" onChange={() => {}} onValidade={onValidade} manterInvalida />)
+
+    fireEvent.change(campo(), { target: { value: '31022026' } })
+    expect(onValidade).toHaveBeenLastCalledWith(false)
+    fireEvent.blur(campo())
+    expect(campo()).toHaveValue('31/02/2026')
+    expect(campo()).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByText(/Data inválida/)).toBeInTheDocument()
+
+    fireEvent.change(campo(), { target: { value: '' } })
+    expect(onValidade).toHaveBeenLastCalledWith(true)
+    expect(screen.queryByText(/Data inválida/)).not.toBeInTheDocument()
+  })
+})

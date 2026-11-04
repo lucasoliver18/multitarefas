@@ -12,6 +12,8 @@ import { sanitizarNumero } from '../utils/numeros'
 import { mensagemErro } from '../utils/erros'
 import { TAG_OPCOES } from '../utils/status'
 import { plural } from '../utils/texto'
+import Obrigatorio from './Obrigatorio'
+import CampoTextoLimitado from './CampoTextoLimitado'
 
 const INPUT = 'w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
 const LABEL = 'text-sm font-semibold text-slate-700 mb-1.5'
@@ -58,13 +60,13 @@ function CampoMarca({ marca, marcaId, onChange }) {
       onChange({ marca: nova.nome, marca_id: nova.id })
       toast.sucesso('Marca cadastrada')
     } catch (e) {
-      toast.erro(mensagemErro(e, 'Erro ao cadastrar marca.'))
+      toast.erro(mensagemErro(e, 'Erro ao cadastrar marca'))
     }
   }
 
   const excluir = (m) => {
     const mensagem = m.materiais_count > 0
-      ? `"${m.nome}" está em ${plural(m.materiais_count, 'material', 'materiais')}. Excluir mesmo assim? ${m.materiais_count === 1 ? 'Ele ficará' : 'Eles ficarão'} sem marca.`
+      ? `"${m.nome}" está em ${plural(m.materiais_count, 'material', 'materiais')}. Excluir mesmo assim? ${m.materiais_count === 1 ? 'Ele ficará' : 'Eles ficarão'} sem marca`
       : `Excluir a marca "${m.nome}"?`
     toast.confirmar(mensagem, async () => {
       try {
@@ -73,7 +75,7 @@ function CampoMarca({ marca, marcaId, onChange }) {
         setVersao(v => v + 1)
         toast.sucesso('Marca excluída')
       } catch (e) {
-        toast.erro(mensagemErro(e, 'Erro ao excluir marca.'))
+        toast.erro(mensagemErro(e, 'Erro ao excluir marca'))
       }
     })
   }
@@ -119,7 +121,7 @@ function MaterialForm({ titulo, form, onChange, onChangeCampos, onChangeTags, sa
 
       <div className="bg-white rounded-2xl border border-slate-200 p-8 grid grid-cols-2 gap-x-6 gap-y-5">
         <div className="flex flex-col">
-          <label className={LABEL}>Nome *</label>
+          <label className={LABEL}>Nome <Obrigatorio /></label>
           <input
             name="nome"
             value={form.nome}
@@ -141,18 +143,17 @@ function MaterialForm({ titulo, form, onChange, onChangeCampos, onChangeTags, sa
 
         <div className="flex flex-col col-span-2">
           <label className={LABEL}>Descrição</label>
-          <textarea
+          <CampoTextoLimitado
             name="descricao"
             value={form.descricao}
             onChange={onChange}
             rows={3}
-            maxLength={5000}
-            className={`${INPUT} resize-none`}
+            className={INPUT}
           />
         </div>
 
         <div className="flex flex-col">
-          <label className={LABEL}>Preço unitário (R$) *</label>
+          <label className={LABEL}>Preço unitário (R$) <Obrigatorio /></label>
           <input
             name="preco_unitario"
             type="text"
@@ -165,7 +166,7 @@ function MaterialForm({ titulo, form, onChange, onChangeCampos, onChangeTags, sa
         </div>
 
         <div className="flex flex-col">
-          <label className={LABEL}>Unidade *</label>
+          <label className={LABEL}>Unidade <Obrigatorio /></label>
           <Select name="unidade_medida" value={form.unidade_medida} onChange={onChange} className={INPUT}>
             {unidades.map(u => <option key={u} value={u}>{u}</option>)}
           </Select>

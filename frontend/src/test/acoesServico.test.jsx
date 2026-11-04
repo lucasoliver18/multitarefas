@@ -53,4 +53,25 @@ describe.each(Object.entries(VISUALIZACOES))('ações do serviço na visualizaç
     expect(ctx.navigate).toHaveBeenCalledWith('/editar/9')
     expect(screen.getByText(/Atrasado/)).toBeInTheDocument()
   })
+
+  it('altera o prazo pelo calendário, só ao confirmar, sem abrir a edição', async () => {
+    const handleMudarPrazo = vi.fn().mockResolvedValue(true)
+    const ctx = novoCtx({ handleMudarPrazo })
+    render(montar(ctx))
+
+    fireEvent.click(screen.getByTitle('Alterar prazo'))
+    const calendario = screen.getByRole('dialog', { name: 'Alterar prazo' })
+    fireEvent.click(within(calendario).getByRole('button', { name: '15/01/2020' }))
+    expect(handleMudarPrazo).not.toHaveBeenCalled()
+
+    fireEvent.click(within(calendario).getByRole('button', { name: 'Confirmar' }))
+    expect(handleMudarPrazo).toHaveBeenCalledWith(9, '2020-01-15')
+    await screen.findByText('Troca de tela')
+    expect(ctx.navigate).not.toHaveBeenCalled()
+  })
+
+  it('em modo de seleção o prazo é só texto', () => {
+    render(montar(novoCtx({ selecaoAtiva: true, handleMudarPrazo: vi.fn() })))
+    expect(screen.queryByTitle('Alterar prazo')).not.toBeInTheDocument()
+  })
 })
