@@ -140,7 +140,11 @@ class OrcamentoTest extends TestCase
             'preco_unitario_snapshot' => $material->preco_unitario,
         ]);
 
-        $this->patchJson("/api/orcamentos/{$orcamento->id}/aprovar")->assertUnprocessable();
+        $this->patchJson("/api/orcamentos/{$orcamento->id}/aprovar")
+            ->assertUnprocessable()
+            ->assertJsonPath('message', "Estoque insuficiente para: {$material->nome}.")
+            ->assertJsonPath('materiais_insuficientes.0.nome', $material->nome)
+            ->assertJsonPath('materiais_insuficientes.0.unidade_medida', $material->unidade_medida);
 
         $this->assertEquals(2, $material->fresh()->quantidade_estoque);
         $this->assertEquals('pendente', $orcamento->fresh()->status);

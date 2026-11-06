@@ -70,13 +70,14 @@
   .hero .meta{display:flex; gap:28px; flex-wrap:wrap; margin-bottom:40px;}
   .hero .meta div{font-size:14px; color:#9fb0c8;}
   .hero .meta strong{display:block; color:#fff; font-size:15px; font-weight:600;}
-  .phone-shot{
+  .tela-destaque{
     display:flex; justify-content:center;
   }
-  .phone-shot img{
-    width:230px; border-radius:22px;
+  .tela-destaque img{
+    width:100%; max-width:560px; aspect-ratio:16/10; object-fit:cover; object-position:top;
+    border-radius:10px;
     box-shadow:0 30px 60px -20px rgba(0,0,0,.5);
-    border:5px solid #0d1b2e;
+    border:1px solid #0d1b2e;
     display:block;
   }
 
@@ -155,11 +156,12 @@
   }
 
   .screens-grid{
-    display:grid; grid-template-columns:repeat(5,1fr); gap:18px;
+    display:grid; grid-template-columns:repeat(2,1fr); gap:24px;
   }
-  @media (max-width:900px){ .screens-grid{grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:900px){ .screens-grid{grid-template-columns:1fr;} }
   .screen-item img{
-    width:100%; border-radius:10px; border:1px solid var(--line); display:block;
+    width:100%; aspect-ratio:16/10; object-fit:cover; object-position:top;
+    border-radius:10px; border:1px solid var(--line); display:block;
   }
   .screen-item p{text-align:center; font-size:13.5px; color:var(--muted); margin:8px 0 0;}
 
@@ -241,14 +243,14 @@ const DATA = {
   <div class="wrap hero-grid">
     <div>
       <h1>MultiTarefas</h1>
-      <p class="tag">Sistema de gestão de serviços para pequenas empresas, substitui bloco de notas e WhatsApp por um PWA mobile-first que organiza serviços, orçamentos, materiais e clientes num só lugar.</p>
+      <p class="tag">Sistema de gestão de serviços para pequenas empresas, substitui bloco de notas e WhatsApp por um sistema web, usado no computador, que organiza serviços, orçamentos, materiais e clientes num só lugar.</p>
       <div class="meta">
-        <div><strong>PWA mobile-first</strong>React + Laravel</div>
+        <div><strong>Sistema web para desktop</strong>React + Laravel</div>
         <div><strong id="metaEmpresa"></strong>Empresa parceira</div>
         <div><strong>Estágio obrigatório</strong>Engenharia de Software — UniFil</div>
       </div>
     </div>
-    <div class="phone-shot">
+    <div class="tela-destaque">
       <img src="assets/tela-home.png" alt="Tela de início do MultiTarefas">
     </div>
   </div>
@@ -267,7 +269,7 @@ const DATA = {
       </div>
       <div class="stat-card">
         <h3>A solução</h3>
-        <p>Um app web instalável (PWA) que centraliza serviços, orçamentos, estoque de materiais e clientes com prioridade, prazos e cálculo automático de orçamento com base em materiais e margem de lucro.</p>
+        <p>Um sistema web, acessado pelo navegador do computador, que centraliza serviços, orçamentos, estoque de materiais e clientes com prioridade, prazos e cálculo automático de orçamento com base em materiais e margem de lucro.</p>
       </div>
       <div class="stat-card">
         <h3>Arquitetura</h3>
@@ -444,7 +446,7 @@ const DATA = {
 <section id="telas">
   <div class="wrap">
     <h2 class="eyebrow-free-title">Telas do sistema</h2>
-    <p class="lede">Interface construída com React, Vite e Tailwind CSS, seguindo Thumb-Driven Design.</p>
+    <p class="lede">Interface construída com React, Vite e Tailwind CSS para uso no computador: menu lateral, listagens em quadro, lista e cartões, e ações rápidas sem sair da tela.</p>
 
     <div class="screens-grid" style="margin-bottom:56px;">
       <div class="screen-item"><img src="assets/tela-home.png" alt="Tela Início"><p>Início (Home)</p></div>

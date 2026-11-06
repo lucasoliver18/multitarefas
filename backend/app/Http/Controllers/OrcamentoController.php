@@ -8,11 +8,15 @@ use App\Http\Resources\OrcamentoResource;
 use App\Models\Material;
 use App\Models\Orcamento;
 use App\Models\Servico;
+use App\Services\EstoqueOrcamento;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class OrcamentoController extends Controller
 {
+    // Toda movimentação de estoque fica em EstoqueOrcamento.
+    public function __construct(private EstoqueOrcamento $estoque) {}
+
     // Lista geral (com o serviço de cada orçamento). `status` filtra, ex.: os
     // pendentes para o modal "Em negociação" da tela inicial, do mais antigo
     // (esperando há mais tempo) ao mais novo. Orçamentos de serviços
@@ -69,21 +73,11 @@ class OrcamentoController extends Controller
         // Orçamento aprovado já debitou o estoque: mudar os materiais debita ou
         // devolve só a diferença (senão reprovar/excluir depois devolveria a
         // quantidade errada).
-        $diferencas = $trocaMateriais && $orcamento->status === 'aprovado'
-            ? $this->diferencasDeEstoque($orcamento, $data['materiais'] ?? [])
-            : [];
+        $diferencas = $trocaMateriais ? $this->estoque->diferencasNaEdicao($orcamento, $data['materiais'] ?? []) : [];
 
-        if ($diferencas) {
-            $insuficientes = Material::withTrashed()
-                ->whereIn('id', array_keys(array_filter($diferencas, fn ($d) => $d > 0)))
-                ->get()
-                ->filter(fn ($m) => $m->quantidade_estoque < $diferencas[$m->id]);
-
-            if ($insuficientes->isNotEmpty()) {
-                return response()->json([
-                    'message' => 'Estoque insuficiente para: ' . $insuficientes->pluck('nome')->implode(', ') . '.',
-                ], 422);
-            }
+        $faltas = $this->estoque->faltasNasDiferencas($diferencas);
+        if ($faltas) {
+            return response()->json(['message' => EstoqueOrcamento::mensagemFalta($faltas)], 422);
         }
 
         DB::transaction(function () use ($data, $orcamento, $trocaMateriais, $diferencas) {
@@ -93,26 +87,10 @@ class OrcamentoController extends Controller
                 $orcamento->materiais()->sync($this->montarPivot($data['materiais'] ?? []));
             }
 
-            foreach ($diferencas as $id => $diferenca) {
-                Material::withTrashed()->whereKey($id)->decrement('quantidade_estoque', $diferenca);
-            }
+            $this->estoque->aplicarDiferencas($diferencas);
         });
 
         return new OrcamentoResource($orcamento->load('materiais'));
-    }
-
-    // Quanto cada material passa a consumir a mais (positivo) ou a menos
-    // (negativo) em relação ao que o orçamento já tinha.
-    private function diferencasDeEstoque(Orcamento $orcamento, array $itens): array
-    {
-        $antes = $orcamento->materiais()->get()
-            ->mapWithKeys(fn ($m) => [$m->id => (float) $m->pivot->quantidade]);
-        $depois = collect($itens)->mapWithKeys(fn ($i) => [(int) $i['id'] => (float) $i['quantidade']]);
-
-        return $antes->keys()->merge($depois->keys())->unique()
-            ->mapWithKeys(fn ($id) => [$id => ($depois[$id] ?? 0) - ($antes[$id] ?? 0)])
-            ->filter(fn ($d) => abs($d) > 0.0000001)
-            ->all();
     }
 
     // Grava o preço do material no momento do orçamento (snapshot). Usa
@@ -139,11 +117,7 @@ class OrcamentoController extends Controller
     public function destroy(Orcamento $orcamento)
     {
         DB::transaction(function () use ($orcamento) {
-            if ($orcamento->status === 'aprovado') {
-                foreach ($orcamento->materiais as $material) {
-                    $material->increment('quantidade_estoque', $material->pivot->quantidade);
-                }
-            }
+            $this->estoque->devolver($orcamento);
             $orcamento->delete();
         });
 
@@ -162,32 +136,16 @@ class OrcamentoController extends Controller
 
         $orcamento->load('materiais');
 
-        $insuficientes = [];
-        foreach ($orcamento->materiais as $material) {
-            $necessario = $material->pivot->quantidade;
-            if ($material->quantidade_estoque < $necessario) {
-                $insuficientes[] = [
-                    'nome'           => $material->nome,
-                    'disponivel'     => $material->quantidade_estoque,
-                    'necessario'     => $necessario,
-                    'unidade_medida' => $material->unidade_medida,
-                ];
-            }
-        }
-
-        if (!empty($insuficientes)) {
-            $nomes = collect($insuficientes)->pluck('nome')->implode(', ');
-
+        $faltas = $this->estoque->faltasParaAprovar($orcamento);
+        if ($faltas) {
             return response()->json([
-                'message' => "Estoque insuficiente para: {$nomes}.",
-                'materiais_insuficientes' => $insuficientes,
+                'message' => EstoqueOrcamento::mensagemFalta(array_column($faltas, 'nome')),
+                'materiais_insuficientes' => $faltas,
             ], 422);
         }
 
         DB::transaction(function () use ($orcamento) {
-            foreach ($orcamento->materiais as $material) {
-                $material->decrement('quantidade_estoque', $material->pivot->quantidade);
-            }
+            $this->estoque->debitar($orcamento);
             $orcamento->update(['status' => 'aprovado']);
 
             // Só um orçamento aprovado por serviço: aprovar um reprova os demais.
@@ -198,11 +156,7 @@ class OrcamentoController extends Controller
                 ->get();
 
             foreach ($outros as $outro) {
-                if ($outro->status === 'aprovado') {
-                    foreach ($outro->materiais as $material) {
-                        $material->increment('quantidade_estoque', $material->pivot->quantidade);
-                    }
-                }
+                $this->estoque->devolver($outro);
                 $outro->update(['status' => 'reprovado']);
             }
         });
@@ -216,15 +170,9 @@ class OrcamentoController extends Controller
             return response()->json(['message' => 'Orçamento já está reprovado.'], 422);
         }
 
-        $eraAprovado = $orcamento->status === 'aprovado';
-        $orcamento->load('materiais');
-
-        DB::transaction(function () use ($orcamento, $eraAprovado) {
-            if ($eraAprovado) {
-                foreach ($orcamento->materiais as $material) {
-                    $material->increment('quantidade_estoque', $material->pivot->quantidade);
-                }
-            }
+        // Devolve antes de mudar o status: só um aprovado tinha estoque debitado.
+        DB::transaction(function () use ($orcamento) {
+            $this->estoque->devolver($orcamento);
             $orcamento->update(['status' => 'reprovado']);
         });
 

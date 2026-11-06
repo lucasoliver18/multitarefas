@@ -1,49 +1,32 @@
 # MultiTarefas — Contexto do Projeto
 
 ## Sobre o projeto
-Sistema web PWA mobile-first para gestão de serviços da empresa INFOOSEG Sistemas de Segurança e Informática.
+Sistema web de gestão de serviços da empresa INFOOSEG Sistemas de Segurança e
+Informática, usado no computador (desktop), pelo navegador.
 Desenvolvido como estágio obrigatório por Lucas José Gomes Oliveira.
 
 ## Stack
-- **Backend:** PHP 8.3 + Laravel 13 + MySQL 8.0
-- **Frontend:** React 18 + Vite + Tailwind CSS
+- **Backend:** PHP 8.3 + Laravel 13 + MySQL 8.0 (API REST, autenticação com Sanctum)
+- **Frontend:** React 19 + Vite + Tailwind CSS 4
 - **API:** REST com Axios
 
 ## Estrutura
-- `C:\multitarefas\backend` — Laravel (API REST)
-- `C:\multitarefas\frontend` — React (PWA mobile-first)
+- `backend/` — Laravel (API REST)
+- `frontend/` — React (interface web para desktop)
+- `index.html` e `assets/` — página de apresentação do projeto
 
 ## Para iniciar
-**Backend:** `cd backend && php artisan serve`
-**Frontend:** `cd frontend && npm run dev`
+**Backend:** `cd backend && php artisan serve` (http://localhost:8000)
+**Frontend:** `cd frontend && npm run dev` (http://localhost:5173)
 
-## O que já está pronto
-- CRUD completo de serviços
-- Telas: Home, Prazos, Serviços, Novo Serviço, Editar Serviço
-- API REST conectada ao frontend
-- Banco de dados MySQL configurado
+Instalação completa, configuração do `.env` e testes: ver `README.md` na raiz.
 
-## O que falta
-- Navbar como componente reutilizável
-- Prazos conectados ao banco
-- Filtros por tag e prioridade
-- Mudança de status rápida
-- Ajustes visuais finais
-
-## Terminal 1 — Backend (Laravel):
-cd C:\multitarefas\backend
-php artisan serve
-
-cd backend
-php artisan serve --host=0.0.0.0 --port=8000
-
-## Terminal 2 — Frontend (React):
-cd C:\multitarefas\frontend
-npm run dev
-
-cd frontend
-npm run dev -- --host
-
-## Acesso pelo celular:
-http://SEU_IP_LOCAL:5173 (notebook)
-http://SEU_IP_LOCAL:5173 (desktop)
+## O que está pronto
+- Início: pendências, financeiro, agenda da semana, previsão de estoque e desempenho
+- Prazos: calendário mensal, serviços do dia, vencidos e sem prazo
+- Serviços: quadro, lista e detalhado, filtros, prazo editável, exclusão em massa
+- Orçamentos: materiais, margem em % ou R$, aprovação e reprovação com controle de estoque
+- Materiais: estoque, estoque mínimo, marcas, tags e unidades
+- Clientes: pessoa física e jurídica, CPF/CNPJ validados, transferência de serviços
+- Anotações por serviço
+- Testes automatizados no backend e no frontend

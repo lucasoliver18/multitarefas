@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateServicoRequest;
 use App\Http\Resources\ServicoResource;
 use App\Models\Cliente;
 use App\Models\Servico;
+use App\Services\EstoqueOrcamento;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -62,17 +63,14 @@ class ServicoController extends Controller
     // Com `devolver_estoque`, o que os orçamentos aprovados do serviço tinham
     // debitado volta ao estoque; sem ele, o estoque fica como está (o material
     // pode já ter sido usado). A tela pergunta antes de excluir.
-    public function destroy(Request $request, Servico $servico)
+    public function destroy(Request $request, Servico $servico, EstoqueOrcamento $estoque)
     {
         $request->validate(['devolver_estoque' => 'nullable|boolean']);
         $devolver = $request->boolean('devolver_estoque');
 
-        DB::transaction(function () use ($servico, $devolver) {
+        DB::transaction(function () use ($servico, $devolver, $estoque) {
             if ($devolver) {
-                $servico->orcamentos()->where('status', 'aprovado')->with('materiais')->get()
-                    ->each(fn ($orcamento) => $orcamento->materiais->each(
-                        fn ($material) => $material->increment('quantidade_estoque', $material->pivot->quantidade)
-                    ));
+                $estoque->devolverDoServico($servico);
             }
             $servico->delete();
         });
