@@ -7,15 +7,18 @@ import OrcamentoForm from '../components/OrcamentoForm'
 import { Carregando } from '../components/Pagina'
 import { useToast } from '../hooks/useToast'
 import { mensagemErro } from '../utils/erros'
+import { mensagemAprovar, mensagemReprovar, materiaisExcluidos, mensagemMaterialExcluido } from '../utils/orcamentos'
 
 function EditarOrcamento() {
   const { servicoId, id } = useParams()
   const navigate = useNavigate()
   const toast = useToast()
   const [servico, setServico] = useState(null)
-  const [form, setForm] = useState({ titulo: '', descricao: '', margem_lucro: '0', tipo_margem: 'percentual' })
+  const [form, setForm] = useState({ titulo: '', descricao: '', margem_lucro: '0', tipo_margem: 'percentual', sem_materiais: false })
   const [itens, setItens] = useState([])
   const [statusAtual, setStatusAtual] = useState('pendente')
+  // Versão salva: aprovar/reprovar agem sobre ela (não sobre edições não salvas).
+  const [salvo, setSalvo] = useState(null)
   const [salvando, setSalvando] = useState(false)
   const [carregando, setCarregando] = useState(true)
 
@@ -32,8 +35,10 @@ function EditarOrcamento() {
         descricao: o.descricao || '',
         margem_lucro: String(parseFloat(o.margem_lucro)),
         tipo_margem: o.tipo_margem || 'percentual',
+        sem_materiais: !!o.sem_materiais,
       })
       setStatusAtual(o.status)
+      setSalvo(o)
       setItens((o.materiais || []).map(m => {
         const estoque = resMat.data.find(mat => mat.id === m.id)?.quantidade_estoque
         // Aprovado já debitou a própria quantidade: para o aviso de estoque,
@@ -48,6 +53,9 @@ function EditarOrcamento() {
           preco_unitario: m.pivot.preco_unitario_snapshot,
           quantidade_estoque: disponivel,
           quantidade: String(parseFloat(m.pivot.quantidade)),
+          // Excluído do cadastro: só pode manter, diminuir ou remover.
+          excluido: !!m.excluido,
+          quantidade_original: parseFloat(m.pivot.quantidade),
         }
       }))
     }).catch(e => {
@@ -64,8 +72,9 @@ function EditarOrcamento() {
         titulo: form.titulo,
         descricao: form.descricao,
         margem_lucro: parseFloat(form.margem_lucro || 0),
-        tipo_margem: form.tipo_margem,
-        materiais: itens.map(i => ({ id: i.id, quantidade: parseFloat(i.quantidade) })),
+        tipo_margem: form.sem_materiais ? 'valor' : form.tipo_margem,
+        sem_materiais: !!form.sem_materiais,
+        materiais: form.sem_materiais ? [] : itens.map(i => ({ id: i.id, quantidade: parseFloat(i.quantidade) })),
       })
       toast.sucesso('Orçamento atualizado')
       navigate(`/orcamentos/${servicoId}`)
@@ -77,7 +86,18 @@ function EditarOrcamento() {
   }
 
   const aprovar = () => {
-    toast.confirmar('Aprovar? O estoque será debitado', async () => {
+    const excluidos = materiaisExcluidos(salvo)
+    if (excluidos.length > 0) {
+      // Já removido na tela, mas ainda não salvo: o servidor aprova o que está salvo.
+      const removidosSemSalvar = !itens.some(i => i.excluido)
+      toast.erro(removidosSemSalvar
+        ? 'Salve as alterações antes de aprovar: o material excluído ainda está no orçamento salvo'
+        : mensagemMaterialExcluido(excluidos))
+      return
+    }
+    // O serviço tem aprovado e não é este: aprovar este reprova aquele.
+    const outroAprovado = !!servico?.tem_orcamento_aprovado && statusAtual !== 'aprovado'
+    toast.confirmar(mensagemAprovar(salvo, outroAprovado), async () => {
       try {
         await api.patch(`/orcamentos/${id}/aprovar`)
         toast.sucesso('Orçamento aprovado')
@@ -89,7 +109,7 @@ function EditarOrcamento() {
   }
 
   const reprovar = () => {
-    toast.confirmar('Reprovar este orçamento?', async () => {
+    toast.confirmar(mensagemReprovar(salvo), async () => {
       try {
         await api.patch(`/orcamentos/${id}/reprovar`)
         toast.sucesso('Orçamento reprovado')
@@ -114,9 +134,10 @@ function EditarOrcamento() {
       onSalvar={atualizarOrcamento}
       botaoLabel="Salvar alterações"
       onVoltar={() => navigate(`/orcamentos/${servicoId}`)}
-      acoesExtras={statusAtual !== 'reprovado' && (
+      aprovado={statusAtual === 'aprovado'}
+      acoesExtras={(
         <div className="flex gap-3">
-          {statusAtual === 'pendente' && (
+          {statusAtual !== 'aprovado' && (
             <Button
               variant="success"
               onClick={aprovar}
@@ -126,14 +147,16 @@ function EditarOrcamento() {
               Aprovar
             </Button>
           )}
-          <Button
-            variant="danger"
-            onClick={reprovar}
-            className="flex-1 text-sm font-semibold py-2.5 rounded-xl inline-flex items-center justify-center gap-1.5"
-          >
-            <XCircle size={16} />
-            Reprovar
-          </Button>
+          {statusAtual !== 'reprovado' && (
+            <Button
+              variant="danger"
+              onClick={reprovar}
+              className="flex-1 text-sm font-semibold py-2.5 rounded-xl inline-flex items-center justify-center gap-1.5"
+            >
+              <XCircle size={16} />
+              Reprovar
+            </Button>
+          )}
         </div>
       )}
     />

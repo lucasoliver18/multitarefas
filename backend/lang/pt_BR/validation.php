@@ -170,6 +170,9 @@ return [
             'after_or_equal' => 'Informe um prazo com data válida.',
             'before_or_equal' => 'Informe um prazo com data válida.',
         ],
+        'materiais' => [
+            'prohibited' => 'Orçamento marcado como sem materiais não pode ter materiais vinculados.',
+        ],
         'materiais.*.id' => [
             'exists' => 'Material não encontrado. Remova-o do orçamento.',
             'distinct' => 'Material repetido no orçamento.',
@@ -210,6 +213,7 @@ return [
         'prazo_de' => 'prazo inicial',
         'prazo_ate' => 'prazo final',
         'materiais' => 'materiais',
+        'sem_materiais' => 'sem materiais',
         'texto' => 'texto',
         'busca' => 'busca',
         'password' => 'senha',

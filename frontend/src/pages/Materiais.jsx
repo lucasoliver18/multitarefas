@@ -113,6 +113,18 @@ function Materiais() {
     setFiltroSituacaoEstoque([])
   }
 
+  // Material em orçamentos ainda não aprovados: excluí-lo impede aprovar
+  // esses orçamentos (até ele ser removido deles), então pergunta de novo.
+  const confirmarDeletar = (m) => {
+    const emUso = m.orcamentos_nao_aprovados || 0
+    if (emUso === 0) { handleDeletar(m.id); return }
+    toast.confirmar(
+      `"${m.nome}" está em ${plural(emUso, 'orçamento ainda não aprovado', 'orçamentos ainda não aprovados')}, que não ${emUso === 1 ? 'poderá' : 'poderão'} ser ${emUso === 1 ? 'aprovado' : 'aprovados'} enquanto ele estiver ${emUso === 1 ? 'nele' : 'neles'}. Excluir mesmo assim?`,
+      () => handleDeletar(m.id),
+      () => setConfirmandoId(null),
+    )
+  }
+
   const handleDeletar = async (id) => {
     setConfirmandoId(null)
     try {
@@ -133,7 +145,11 @@ function Materiais() {
   }
 
   const handleExcluirSelecionados = () => {
-    toast.confirmar(`Remover ${plural(quantidade, 'material', 'materiais')}?`, async () => {
+    const emUso = materiais.filter(m => selecionados.has(m.id) && m.orcamentos_nao_aprovados > 0).length
+    const aviso = emUso === 0 ? ''
+      : emUso === 1 ? ' 1 deles está em orçamentos ainda não aprovados, que não poderão ser aprovados enquanto ele estiver neles.'
+      : ` ${emUso} deles estão em orçamentos ainda não aprovados, que não poderão ser aprovados enquanto eles estiverem neles.`
+    toast.confirmar(`Remover ${plural(quantidade, 'material', 'materiais')}?${aviso}`, async () => {
       const { sucesso, falhas } = await excluirEmMassa([...selecionados], deletar)
       cancelar()
       if (falhas.length === 0) toast.sucesso(plural(sucesso, 'material removido', 'materiais removidos'))
@@ -360,7 +376,7 @@ function Materiais() {
                     <div className="pt-3 border-t border-slate-100">
                       <ConfirmacaoCartao
                         mensagem="Excluir este material?"
-                        onConfirmar={() => handleDeletar(m.id)}
+                        onConfirmar={() => confirmarDeletar(m)}
                         onCancelar={() => setConfirmandoId(null)}
                       />
                     </div>
@@ -406,7 +422,7 @@ function Materiais() {
                     {!selecaoAtiva && confirmandoId === m.id ? (
                       <ConfirmacaoCartao
                         mensagem="Excluir este material?"
-                        onConfirmar={() => handleDeletar(m.id)}
+                        onConfirmar={() => confirmarDeletar(m)}
                         onCancelar={() => setConfirmandoId(null)}
                       />
                     ) : (<>

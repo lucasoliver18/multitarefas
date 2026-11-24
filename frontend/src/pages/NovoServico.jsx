@@ -17,10 +17,10 @@ function NovoServico() {
   const [salvando, setSalvando] = useState(false)
   const voltarPara = prazoLink ? `/prazos?data=${prazoLink}` : '/servicos'
 
-  const salvar = async () => {
+  const salvar = async (extras = {}) => {
     setSalvando(true)
     try {
-      await api.post('/servicos', form)
+      await api.post('/servicos', { ...form, ...extras })
       toast.sucesso('Serviço criado')
       navigate(prazoLink && form.prazo ? `/prazos?data=${form.prazo}` : voltarPara)
     } catch (e) {

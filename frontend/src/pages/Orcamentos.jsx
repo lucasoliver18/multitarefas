@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Clock, CheckCircle2, XCircle, Plus, Pencil, Trash2 } from 'lucide-react'
+import { Clock, CheckCircle2, XCircle, Plus, Pencil, Trash2, PackageX } from 'lucide-react'
 import api from '../services/api'
 import Button from '../components/Button'
 import { Pagina, CabecalhoPagina, Carregando, Vazio } from '../components/Pagina'
@@ -9,7 +9,7 @@ import { usePaginacao } from '../hooks/usePaginacao'
 import Paginacao from '../components/Paginacao'
 import { mensagemErro } from '../utils/erros'
 import { TAG_LABEL } from '../utils/status'
-import { formatarPreco, calcularValorFinal, descreverMargem } from '../utils/orcamentos'
+import { formatarPreco, calcularValorFinal, descreverMargem, mensagemAprovar, mensagemReprovar, mensagemExcluir, materiaisExcluidos, mensagemMaterialExcluido } from '../utils/orcamentos'
 
 const badgeOrcStatus = (s) => ({
   aprovado:  'bg-[#dcfce7] text-[#166534]',
@@ -19,14 +19,12 @@ const badgeOrcStatus = (s) => ({
 
 const labelStatus = { pendente: 'Pendente', aprovado: 'Aprovado', reprovado: 'Reprovado' }
 
-// Texto da confirmação de cada ação. Excluir um aprovado avisa que ele está
-// aprovado e que o estoque debitado volta.
+// Texto da confirmação de cada ação (avisa o que acontece com o estoque e,
+// ao aprovar, se o aprovado atual do serviço será reprovado).
 const CONFIRMACOES = {
-  aprovar: () => 'Aprovar? O estoque será debitado',
-  reprovar: () => 'Reprovar este orçamento?',
-  excluir: (o) => o.status === 'aprovado'
-    ? 'Orçamento aprovado. Excluir mesmo assim? O estoque será devolvido'
-    : 'Excluir este orçamento?',
+  aprovar: (o, lista) => mensagemAprovar(o, lista.some(x => x.id !== o.id && x.status === 'aprovado')),
+  reprovar: (o) => mensagemReprovar(o),
+  excluir: (o) => mensagemExcluir(o),
 }
 const iconeOrcStatus = { pendente: Clock, aprovado: CheckCircle2, reprovado: XCircle }
 
@@ -156,10 +154,16 @@ function Orcamentos() {
               <div className="mt-4 grid grid-cols-3 gap-3 bg-slate-50 rounded-xl p-4">
                 <div>
                   <p className="text-xs text-slate-500">Materiais</p>
-                  <p className="text-sm font-semibold text-slate-800 mt-0.5">{formatarPreco(valorMateriais)}</p>
+                  {o.sem_materiais ? (
+                    <p className="text-sm font-semibold text-slate-500 mt-0.5 inline-flex items-center gap-1">
+                      <PackageX size={14} /> Não utiliza
+                    </p>
+                  ) : (
+                    <p className="text-sm font-semibold text-slate-800 mt-0.5">{formatarPreco(valorMateriais)}</p>
+                  )}
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">Margem</p>
+                  <p className="text-xs text-slate-500">{o.sem_materiais ? 'Valor do serviço' : 'Margem'}</p>
                   <p className="text-sm font-semibold text-slate-800 mt-0.5">{descreverMargem(o.margem_lucro, o.tipo_margem)}</p>
                 </div>
                 <div>
@@ -168,11 +172,23 @@ function Orcamentos() {
                 </div>
               </div>
 
-              {(o.materiais || []).length > 0 && (
+              {o.sem_materiais && (
+                <div className="mt-4 flex flex-wrap gap-1.5">
+                  <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-500 text-xs px-2.5 py-1 rounded-full">
+                    <PackageX size={12} /> Orçamento sem materiais
+                  </span>
+                </div>
+              )}
+
+              {!o.sem_materiais && (o.materiais || []).length > 0 && (
                 <div className="mt-4 flex flex-wrap gap-1.5">
                   {o.materiais.map(m => (
-                    <span key={m.id} className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full">
-                      {m.nome} × {parseFloat(m.pivot.quantidade)} {m.unidade_medida}
+                    <span
+                      key={m.id}
+                      title={m.excluido ? 'Material excluído do cadastro: remova-o na edição para poder aprovar' : undefined}
+                      className={`text-xs px-2.5 py-1 rounded-full ${m.excluido ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-slate-100 text-slate-600'}`}
+                    >
+                      {m.nome} × {parseFloat(m.pivot.quantidade)} {m.unidade_medida}{m.excluido && ' (excluído)'}
                     </span>
                   ))}
                 </div>
@@ -182,7 +198,7 @@ function Orcamentos() {
                 {confirmando?.id === o.id ? (
                   <div className="pt-4 border-t border-slate-100 flex items-center gap-2">
                     <p className={`text-sm flex-1 ${confirmando.acao === 'excluir' && o.status === 'aprovado' ? 'text-red-700 font-medium' : 'text-slate-600'}`}>
-                      {CONFIRMACOES[confirmando.acao](o)}
+                      {CONFIRMACOES[confirmando.acao](o, orcamentos)}
                     </p>
                     <Button
                       variant={confirmando.acao === 'aprovar' ? 'success' : 'danger'}
@@ -197,8 +213,17 @@ function Orcamentos() {
                   </div>
                 ) : (
                   <div className="pt-4 border-t border-slate-100 flex justify-end gap-2">
-                    {o.status === 'pendente' && (
-                      <Button variant="success" onClick={() => setConfirmando({ id: o.id, acao: 'aprovar' })} className="text-sm px-4 py-1.5 rounded-lg font-semibold">
+                    {o.status !== 'aprovado' && (
+                      <Button
+                        variant="success"
+                        onClick={() => {
+                          // Material excluído trava a aprovação: explica já, sem ir ao servidor.
+                          const excluidos = materiaisExcluidos(o)
+                          if (excluidos.length > 0) toast.erro(mensagemMaterialExcluido(excluidos))
+                          else setConfirmando({ id: o.id, acao: 'aprovar' })
+                        }}
+                        className="text-sm px-4 py-1.5 rounded-lg font-semibold"
+                      >
                         Aprovar
                       </Button>
                     )}

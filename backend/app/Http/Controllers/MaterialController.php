@@ -20,7 +20,11 @@ class MaterialController extends Controller
             'por_pagina' => 'nullable|integer|min:1|max:100',
         ]);
 
-        $query = Material::with('marca');
+        // Orçamentos ainda não aprovados (pendentes ou reprovados) que usam o
+        // material: excluí-lo impede aprová-los, e a tela avisa antes.
+        $query = Material::with('marca')->withCount(['orcamentos as orcamentos_nao_aprovados' => fn ($q) => $q
+            ->where('orcamentos.status', '!=', 'aprovado')
+            ->whereHas('servico')]);
 
         if (! empty($filtros['busca'])) {
             $termo = '%' . $filtros['busca'] . '%';

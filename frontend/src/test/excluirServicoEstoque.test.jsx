@@ -13,8 +13,9 @@ const servico = (id, titulo, extra) => ({
   pago: false, prazo: '2026-12-01', tag: null, tem_orcamento: true, tem_orcamento_aprovado: false, ...extra,
 })
 const SERVICOS = [
-  servico(1, 'Com aprovado', { tem_orcamento_aprovado: true }),
+  servico(1, 'Com aprovado', { tem_orcamento_aprovado: true, tem_estoque_debitado: true }),
   servico(2, 'Sem aprovado'),
+  servico(3, 'Aprovado sem materiais', { tem_orcamento_aprovado: true, tem_estoque_debitado: false }),
 ]
 
 const montar = () => render(
@@ -52,6 +53,29 @@ describe('excluir serviço com orçamento aprovado', () => {
     excluirCartao('Sem aprovado')
 
     await waitFor(() => expect(api.delete).toHaveBeenCalledWith('/servicos/2'))
+    expect(screen.queryByRole('dialog', { name: 'Devolver ao estoque?' })).not.toBeInTheDocument()
+  })
+
+  it('aprovado sem materiais (nada descontado) exclui direto, sem perguntar do estoque', async () => {
+    montar()
+    await screen.findByText('Aprovado sem materiais')
+    excluirCartao('Aprovado sem materiais')
+
+    await waitFor(() => expect(api.delete).toHaveBeenCalledWith('/servicos/3'))
+    expect(screen.queryByRole('dialog', { name: 'Devolver ao estoque?' })).not.toBeInTheDocument()
+    expect(await screen.findByText('Serviço excluído')).toBeInTheDocument()
+  })
+
+  it('em massa, só aprovado sem materiais não pergunta do estoque', async () => {
+    montar()
+    await screen.findByText('Aprovado sem materiais')
+    fireEvent.click(screen.getByRole('button', { name: 'Selecionar' }))
+    fireEvent.click(screen.getByText('Aprovado sem materiais'))
+    fireEvent.click(screen.getByText('Sem aprovado'))
+    fireEvent.click(screen.getByRole('button', { name: 'Excluir selecionados' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirmar' }))
+
+    await waitFor(() => expect(api.delete).toHaveBeenCalledTimes(2))
     expect(screen.queryByRole('dialog', { name: 'Devolver ao estoque?' })).not.toBeInTheDocument()
   })
 

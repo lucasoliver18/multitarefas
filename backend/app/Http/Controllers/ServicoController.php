@@ -26,6 +26,7 @@ class ServicoController extends Controller
 
         $servicos = Servico::with('clienteRelacao')
             ->withExists(['orcamentos as tem_orcamento_aprovado' => fn ($q) => $q->where('status', 'aprovado')])
+            ->withExists(['orcamentos as tem_estoque_debitado' => fn ($q) => $q->where('status', 'aprovado')->whereHas('materiais')])
             ->withExists('orcamentos as tem_orcamento')
             ->withExists(['orcamentos as tem_orcamento_pendente' => fn ($q) => $q->where('status', 'pendente')])
             ->when(! empty($filtros['cliente_id']), fn ($q) => $q->where('cliente_id', $filtros['cliente_id']))
@@ -83,6 +84,12 @@ class ServicoController extends Controller
         $servico->setAttribute(
             'tem_orcamento_aprovado',
             $servico->orcamentos()->where('status', 'aprovado')->exists()
+        );
+        // Só orçamento aprovado COM materiais tirou algo do estoque (um aprovado
+        // "sem materiais" não), então só nesse caso a exclusão pergunta se devolve.
+        $servico->setAttribute(
+            'tem_estoque_debitado',
+            $servico->orcamentos()->where('status', 'aprovado')->whereHas('materiais')->exists()
         );
         $servico->setAttribute(
             'tem_orcamento',

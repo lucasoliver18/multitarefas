@@ -15,7 +15,7 @@ serviços, prazos, orçamentos, estoque de materiais e clientes.
 | **Início** | Painel com pendências (atrasados, finalizados não pagos, orçamentos pendentes, estoque zerado ou baixo), financeiro, agenda da semana, previsão de estoque e desempenho por período |
 | **Prazos** | Calendário mensal dos prazos, serviços do dia, prazos vencidos e serviços sem prazo |
 | **Serviços** | Visualizações em Quadro (arrastar entre status), Lista e Detalhado; filtros combináveis e lembrados; prazo editável direto na listagem; exclusão em massa |
-| **Orçamentos** | Materiais do serviço com preço guardado no momento, margem em % ou em R$, aprovação e reprovação com controle de estoque |
+| **Orçamentos** | Materiais do serviço com preço guardado no momento, margem em % ou em R$, opção sem materiais, aprovação e reprovação com controle de estoque |
 | **Materiais** | Estoque com ajuste rápido, estoque mínimo, marcas, tags e unidades de medida |
 | **Clientes** | Pessoa física ou jurídica, CPF e CNPJ (inclusive alfanumérico) validados, transferência de serviços antes de excluir |
 | **Anotações** | Histórico de anotações por serviço |
@@ -23,10 +23,14 @@ serviços, prazos, orçamentos, estoque de materiais e clientes.
 ## Regras de negócio principais
 
 - O status do serviço só avança (Pendente → Em andamento → Finalizado), nunca volta.
+- Mudar o status pede confirmação da mesma forma em todas as telas (menu de status, arrastar no quadro, Prazos, modais e edição): avisa se o serviço não tem orçamento aprovado e, ao finalizar um serviço ainda não pago, oferece **Finalizar e marcar como pago**.
 - O tipo de pessoa do cliente (física ou jurídica) não muda depois do cadastro.
 - Cada serviço tem no máximo um orçamento aprovado: aprovar um reprova os demais.
-- Só um orçamento **aprovado** desconta materiais do estoque. Reprovar ou excluir devolve. Editar um aprovado ajusta só a diferença. Ao excluir um serviço com orçamento aprovado, o usuário escolhe se o estoque volta.
+- Aprovar e reprovar valem a qualquer momento: um orçamento reprovado pode ser aprovado de novo (o estoque é conferido e debitado outra vez).
+- Um orçamento pode ser marcado como **sem materiais** (só mão de obra): o valor do serviço é informado direto em R$, nenhum material é vinculado e o estoque não é alterado.
+- Só um orçamento **aprovado** desconta materiais do estoque. Reprovar ou excluir devolve. Editar um aprovado ajusta só a diferença. Ao excluir um serviço cujo orçamento aprovado descontou materiais, o usuário escolhe se o estoque volta (orçamento sem materiais não pergunta).
 - O orçamento guarda o preço de cada material no momento em que foi feito, e excluir o material depois não altera o total.
+- Orçamento com material excluído do cadastro não pode ser aprovado até o material ser removido dele; na edição, esse material só pode ser mantido, ter a quantidade diminuída ou ser removido. A tela de Materiais avisa, antes de excluir, quantos orçamentos ainda não aprovados ficarão travados.
 - Um orçamento só aceita materiais da mesma tag do serviço (serviço sem tag aceita qualquer material).
 - Exclusões são lógicas (soft delete): os registros saem das telas, mas o histórico fica no banco.
 - Todas as regras são validadas no servidor. A tela também valida antes de enviar, para o usuário ver o erro na hora.

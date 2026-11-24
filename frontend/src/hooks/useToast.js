@@ -8,6 +8,8 @@ export function useToast() {
     sucesso:   (msg) => add('sucesso', msg),
     erro:      (msg) => add('erro', msg),
     alerta:    (msg) => add('alerta', msg),
-    confirmar: (msg, onConfirm, onCancel) => add('confirmar', msg, { onConfirm, onCancel }),
+    // `opcoes`: { rotuloConfirmar, acaoExtra: { label, onClick } } — a ação
+    // extra vira um terceiro botão (ex.: "Finalizar e marcar como pago").
+    confirmar: (msg, onConfirm, onCancel, opcoes = {}) => add('confirmar', msg, { onConfirm, onCancel, ...opcoes }),
   }), [add])
 }

@@ -298,15 +298,16 @@ export function AtalhosServico({ s, ctx, tamanho = 15 }) {
   )
 }
 
-// Serviço com orçamento aprovado: antes de excluir, pergunta se o estoque
-// descontado volta (PerguntaEstoque).
+// Serviço com orçamento aprovado que descontou materiais: antes de excluir,
+// pergunta se o estoque volta (PerguntaEstoque). Aprovado sem materiais não
+// descontou nada, então exclui direto.
 export function ConfirmacaoServico({ s, ctx }) {
   const [perguntando, setPerguntando] = useState(false)
   return (
     <>
       <ConfirmacaoCartao
         mensagem="Excluir este serviço?"
-        onConfirmar={() => s.tem_orcamento_aprovado ? setPerguntando(true) : ctx.handleDeletar(s.id)}
+        onConfirmar={() => s.tem_estoque_debitado ? setPerguntando(true) : ctx.handleDeletar(s.id)}
         onCancelar={() => ctx.setConfirmandoId(null)}
       />
       {/* O modal é um portal, mas os eventos sobem pela árvore do React: sem

@@ -48,7 +48,8 @@ describe('tela de Orçamentos do serviço', () => {
     await screen.findByText('Proposta A')
 
     fireEvent.click(screen.getByRole('button', { name: 'Aprovar' }))
-    expect(screen.getByText('Aprovar? O estoque será debitado')).toBeInTheDocument()
+    // Proposta B já está aprovada: aprovar a A avisa que a B será reprovada.
+    expect(screen.getByText('Aprovar? O estoque será debitado. O orçamento aprovado atual será reprovado')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Sim, aprovar' }))
 
     await waitFor(() => expect(api.patch).toHaveBeenCalledWith('/orcamentos/1/aprovar'))
@@ -67,6 +68,33 @@ describe('tela de Orçamentos do serviço', () => {
     expect(await screen.findByText('Estoque insuficiente para: Tinta')).toBeInTheDocument()
   })
 
+  it('reprovado pode ser aprovado; sem materiais mostra o indicativo em vez de R$ 0,00', async () => {
+    const lista = [
+      { id: 3, titulo: 'Proposta C', status: 'reprovado', margem_lucro: '10', tipo_margem: 'percentual', sem_materiais: false, materiais: [material(5, 'Tinta', '1', '50')] },
+      { id: 4, titulo: 'Só mão de obra', status: 'aprovado', margem_lucro: '350', tipo_margem: 'valor', sem_materiais: true, materiais: [] },
+    ]
+    api.get.mockImplementation(url => Promise.resolve({
+      data: url.endsWith('/orcamentos') ? lista : { id: 9, titulo: 'Pintura', cliente: 'Luciano', status: 'em_andamento', tag: 'pintura' },
+    }))
+    api.patch.mockResolvedValue({ data: {} })
+    montar()
+    await screen.findByText('Proposta C')
+
+    const semMat = card('Só mão de obra')
+    expect(semMat).toHaveTextContent('Não utiliza')
+    expect(semMat).toHaveTextContent('Orçamento sem materiais')
+    expect(semMat).toHaveTextContent('Valor do serviço')
+    expect(semMat).not.toHaveTextContent(/R\$\s0,00/)
+    expect(semMat).toHaveTextContent(/R\$\s350,00/)
+
+    // Reprovado tem "Aprovar" (e não "Reprovar"); aprovado tem só "Reprovar".
+    expect(screen.getAllByRole('button', { name: 'Aprovar' })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: 'Reprovar' })).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Aprovar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sim, aprovar' }))
+    await waitFor(() => expect(api.patch).toHaveBeenCalledWith('/orcamentos/3/aprovar'))
+  })
+
   it('excluir um aprovado avisa que o estoque volta', async () => {
     api.delete.mockResolvedValue({ data: {} })
     montar()
@@ -76,5 +104,25 @@ describe('tela de Orçamentos do serviço', () => {
     expect(screen.getByText('Orçamento aprovado. Excluir mesmo assim? O estoque será devolvido')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Sim, excluir' }))
     await waitFor(() => expect(api.delete).toHaveBeenCalledWith('/orcamentos/2'))
+  })
+
+  it('material excluído aparece destacado e "Aprovar" explica o bloqueio sem chamar o servidor', async () => {
+    const lista = [{
+      id: 7, titulo: 'Com excluído', status: 'pendente', margem_lucro: '0', tipo_margem: 'percentual', sem_materiais: false,
+      materiais: [{ ...material(5, 'Tinta Azul', '2', '50'), excluido: true }, { ...material(6, 'Rolo', '1', '30'), excluido: false }],
+    }]
+    api.get.mockImplementation(url => Promise.resolve({
+      data: url.endsWith('/orcamentos') ? lista : { id: 9, titulo: 'Pintura', cliente: 'Luciano', status: 'pendente', tag: 'pintura' },
+    }))
+    montar()
+    await screen.findByText('Com excluído')
+
+    expect(card('Com excluído')).toHaveTextContent('Tinta Azul × 2 un (excluído)')
+    expect(card('Com excluído')).not.toHaveTextContent('Rolo × 1 un (excluído)')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aprovar' }))
+    expect(await screen.findByText('Não é possível aprovar: o material "Tinta Azul" foi excluído do cadastro. Edite o orçamento e remova-o')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Sim, aprovar' })).not.toBeInTheDocument()
+    expect(api.patch).not.toHaveBeenCalled()
   })
 })

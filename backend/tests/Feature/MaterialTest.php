@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Material;
+use App\Models\Orcamento;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -106,5 +107,31 @@ class MaterialTest extends TestCase
             'unidade_medida' => 'un',
             'preco_unitario' => 12.00,
         ])->assertCreated();
+    }
+
+    // A lista informa quantos orçamentos ainda não aprovados usam o material,
+    // para a tela avisar que excluí-lo trava a aprovação deles.
+    public function test_lista_conta_orcamentos_nao_aprovados_do_material(): void
+    {
+        $material = Material::factory()->create();
+        foreach (['pendente', 'reprovado', 'aprovado'] as $status) {
+            Orcamento::factory()->create(['status' => $status])
+                ->materiais()->attach($material->id, ['quantidade' => 1, 'preco_unitario_snapshot' => 1]);
+        }
+        $excluido = Orcamento::factory()->create(['status' => 'pendente']);
+        $excluido->materiais()->attach($material->id, ['quantidade' => 1, 'preco_unitario_snapshot' => 1]);
+        $excluido->delete();
+        $deServicoExcluido = Orcamento::factory()->create(['status' => 'pendente']);
+        $deServicoExcluido->materiais()->attach($material->id, ['quantidade' => 1, 'preco_unitario_snapshot' => 1]);
+        $deServicoExcluido->servico->delete();
+        $semUso = Material::factory()->create();
+
+        $res = $this->getJson('/api/materiais')->assertOk()->json();
+        $porId = collect($res)->keyBy('id');
+        $this->assertSame(2, $porId[$material->id]['orcamentos_nao_aprovados']);
+        $this->assertSame(0, $porId[$semUso->id]['orcamentos_nao_aprovados']);
+
+        $this->getJson('/api/materiais?por_pagina=10')->assertOk()
+             ->assertJsonPath('data.0.orcamentos_nao_aprovados', $porId[collect($res)->first()['id']]['orcamentos_nao_aprovados']);
     }
 }

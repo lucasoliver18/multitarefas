@@ -68,6 +68,12 @@ class OrcamentoController extends Controller
     public function update(UpdateOrcamentoRequest $request, Orcamento $orcamento)
     {
         $data = $request->validated();
+
+        // Passar a "sem materiais" tira os que estavam vinculados (e, se o
+        // orçamento estiver aprovado, devolve-os ao estoque pela diferença).
+        if (! empty($data['sem_materiais'])) {
+            $data['materiais'] = [];
+        }
         $trocaMateriais = array_key_exists('materiais', $data);
 
         // Orçamento aprovado já debitou o estoque: mudar os materiais debita ou
@@ -126,15 +132,22 @@ class OrcamentoController extends Controller
 
     public function aprovar(Orcamento $orcamento)
     {
-        if ($orcamento->status === 'reprovado') {
-            return response()->json(['message' => 'Orçamento reprovado não pode ser aprovado.'], 422);
-        }
-
+        // Pendente ou reprovado podem ser aprovados a qualquer momento.
         if ($orcamento->status === 'aprovado') {
             return response()->json(['message' => 'Orçamento já está aprovado.'], 422);
         }
 
         $orcamento->load('materiais');
+
+        // Material excluído do cadastro não pode ter estoque debitado: o
+        // orçamento só é aprovado depois que ele for removido (na edição).
+        $excluidos = $orcamento->materiais->filter(fn (Material $m) => $m->trashed())->pluck('nome')->values()->all();
+        if ($excluidos) {
+            return response()->json([
+                'message'             => self::mensagemMaterialExcluido($excluidos),
+                'materiais_excluidos' => $excluidos,
+            ], 422);
+        }
 
         $faltas = $this->estoque->faltasParaAprovar($orcamento);
         if ($faltas) {
@@ -162,6 +175,14 @@ class OrcamentoController extends Controller
         });
 
         return new OrcamentoResource($orcamento->load('materiais'));
+    }
+
+    // Mesmo texto da tela (utils/orcamentos.js → mensagemMaterialExcluido).
+    public static function mensagemMaterialExcluido(array $nomes): string
+    {
+        return count($nomes) === 1
+            ? "Não é possível aprovar: o material \"{$nomes[0]}\" foi excluído do cadastro. Edite o orçamento e remova-o."
+            : 'Não é possível aprovar: os materiais "' . implode('", "', $nomes) . '" foram excluídos do cadastro. Edite o orçamento e remova-os.';
     }
 
     public function reprovar(Orcamento $orcamento)

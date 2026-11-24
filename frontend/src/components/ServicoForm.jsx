@@ -8,6 +8,7 @@ import { Pagina, CabecalhoPagina } from './Pagina'
 import { useToast } from '../hooks/useToast'
 import { buscarClientesPagina } from '../hooks/useClientes'
 import { dataValida } from '../utils/prazos'
+import { avisoMudancaStatus, perguntarMudancaStatus } from '../utils/servicos'
 import { PRIORIDADE_OPCOES, STATUS_OPCOES, TAG_OPCOES, statusSeguintes } from '../utils/status'
 import Obrigatorio from './Obrigatorio'
 import CampoTextoLimitado from './CampoTextoLimitado'
@@ -18,7 +19,7 @@ const LABEL = 'text-sm font-semibold text-slate-700 mb-1.5'
 // Formulário compartilhado por Novo e Editar Serviço. `statusOriginal` só é
 // passado na edição: o status não pode retroceder, então só aparecem o atual
 // e os seguintes.
-function ServicoForm({ titulo, subtitulo, form, setForm, statusOriginal, salvando, onSalvar, onCancelar, voltar }) {
+function ServicoForm({ titulo, subtitulo, form, setForm, statusOriginal, temOrcamentoAprovado = false, salvando, onSalvar, onCancelar, voltar }) {
   const toast = useToast()
   const [mostrarCadastroCliente, setMostrarCadastroCliente] = useState(false)
   // Texto do prazo que não forma uma data válida: bloqueia o salvar (senão o
@@ -51,6 +52,18 @@ function ServicoForm({ titulo, subtitulo, form, setForm, statusOriginal, salvand
     if (prazoInvalido || (form.prazo && !dataValida(form.prazo))) {
       toast.erro('Prazo inválido')
       return
+    }
+    // Mudou o status: mesma regra das outras telas, mas só pergunta se houver
+    // algo a avisar (editar sem trocar o status não pergunta nada).
+    if (statusOriginal && form.status !== statusOriginal) {
+      const aviso = avisoMudancaStatus({ novoStatus: form.status, pago: form.pago, temOrcamentoAprovado })
+      if (aviso.temAlerta) {
+        perguntarMudancaStatus(toast, aviso, extras => {
+          if (extras.pago) setForm(prev => ({ ...prev, pago: true }))
+          onSalvar(extras)
+        })
+        return
+      }
     }
     onSalvar()
   }

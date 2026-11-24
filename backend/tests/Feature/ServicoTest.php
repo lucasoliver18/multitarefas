@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Cliente;
+use App\Models\Material;
 use App\Models\Orcamento;
 use App\Models\Servico;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -186,6 +187,31 @@ class ServicoTest extends TestCase
         $this->getJson("/api/servicos/{$comOrcamentoAprovado->id}")
              ->assertOk()
              ->assertJsonFragment(['tem_orcamento_aprovado' => true]);
+    }
+
+    // Só aprovado com materiais descontou estoque; aprovado "sem materiais" não,
+    // e a tela usa isso para não perguntar à toa se devolve o estoque.
+    public function test_sinaliza_se_orcamento_aprovado_descontou_estoque(): void
+    {
+        $semMateriais = Servico::factory()->create();
+        Orcamento::factory()->create(['servico_id' => $semMateriais->id, 'status' => 'aprovado', 'sem_materiais' => true]);
+
+        $comMateriais = Servico::factory()->create();
+        $orcamento = Orcamento::factory()->create(['servico_id' => $comMateriais->id, 'status' => 'aprovado']);
+        $orcamento->materiais()->attach(Material::factory()->create()->id, ['quantidade' => 1, 'preco_unitario_snapshot' => 10]);
+
+        $pendenteComMateriais = Servico::factory()->create();
+        $pendente = Orcamento::factory()->create(['servico_id' => $pendenteComMateriais->id, 'status' => 'pendente']);
+        $pendente->materiais()->attach(Material::factory()->create()->id, ['quantidade' => 1, 'preco_unitario_snapshot' => 10]);
+
+        $this->getJson('/api/servicos')
+             ->assertOk()
+             ->assertJsonFragment(['id' => $semMateriais->id, 'tem_orcamento_aprovado' => true, 'tem_estoque_debitado' => false])
+             ->assertJsonFragment(['id' => $comMateriais->id, 'tem_orcamento_aprovado' => true, 'tem_estoque_debitado' => true])
+             ->assertJsonFragment(['id' => $pendenteComMateriais->id, 'tem_estoque_debitado' => false]);
+
+        $this->getJson("/api/servicos/{$semMateriais->id}")->assertOk()->assertJsonPath('tem_estoque_debitado', false);
+        $this->getJson("/api/servicos/{$comMateriais->id}")->assertOk()->assertJsonPath('tem_estoque_debitado', true);
     }
 
     public function test_nao_permite_retroceder_status_do_servico(): void

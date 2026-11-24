@@ -18,6 +18,41 @@ const STYLES = {
 function ToastItem({ toast, onRemove }) {
   const s = STYLES[toast.type] || STYLES.alerta
 
+  // Com uma terceira opção (ex.: "Finalizar e marcar como pago"), os botões
+  // ficam numa linha abaixo da mensagem, para o texto não ficar espremido.
+  if (toast.type === 'confirmar' && toast.acaoExtra) {
+    return (
+      <div className={`${s.bg} text-white rounded-2xl px-4 py-3 shadow-xl flex flex-col gap-3 ${toast.leaving ? 'toast-leave' : 'toast-enter'}`}>
+        <div className="flex items-center gap-3">
+          <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+            <s.Icone size={14} />
+          </span>
+          <p className="flex-1 text-sm font-medium leading-snug">{toast.message}</p>
+        </div>
+        <div className="flex flex-wrap justify-end gap-1.5">
+          <button
+            onClick={() => { toast.onCancel?.(); onRemove(toast.id) }}
+            className="text-xs bg-white/20 text-white font-semibold px-3 py-1 rounded-full whitespace-nowrap transition-all hover:bg-white/30 active:scale-95"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={() => { toast.onConfirm?.(); onRemove(toast.id) }}
+            className="text-xs bg-white text-[#1e3a5f] font-bold px-3 py-1 rounded-full whitespace-nowrap transition-all hover:bg-slate-100 active:scale-95"
+          >
+            {toast.rotuloConfirmar || 'Confirmar'}
+          </button>
+          <button
+            onClick={() => { toast.acaoExtra.onClick?.(); onRemove(toast.id) }}
+            className="text-xs bg-[#16a34a] text-white font-bold px-3 py-1 rounded-full whitespace-nowrap transition-all hover:brightness-110 active:scale-95"
+          >
+            {toast.acaoExtra.label}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={`${s.bg} text-white rounded-2xl px-4 py-3 shadow-xl flex items-center gap-3 ${toast.leaving ? 'toast-leave' : 'toast-enter'}`}>
       <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center shrink-0">
@@ -31,7 +66,7 @@ function ToastItem({ toast, onRemove }) {
             onClick={() => { toast.onConfirm?.(); onRemove(toast.id) }}
             className="text-xs bg-white text-[#1e3a5f] font-bold px-3 py-1 rounded-full whitespace-nowrap transition-all hover:bg-slate-100 active:scale-95"
           >
-            Confirmar
+            {toast.rotuloConfirmar || 'Confirmar'}
           </button>
           <button
             onClick={() => { toast.onCancel?.(); onRemove(toast.id) }}

@@ -174,14 +174,161 @@ class OrcamentoTest extends TestCase
              ->assertUnprocessable();
     }
 
-    public function test_nao_aprova_orcamento_reprovado(): void
+    // Material excluído do cadastro trava a aprovação (pendente ou reprovado)
+    // até ser removido do orçamento; estoque e status não mudam.
+    public function test_nao_aprova_orcamento_com_material_excluido(): void
     {
-        $orcamento = Orcamento::factory()->create(['status' => 'reprovado']);
+        $tinta = Material::factory()->create(['nome' => 'Tinta Azul', 'quantidade_estoque' => 10]);
+        $rolo  = Material::factory()->create(['nome' => 'Rolo', 'quantidade_estoque' => 10]);
+
+        foreach (['pendente', 'reprovado'] as $status) {
+            $orcamento = Orcamento::factory()->create(['status' => $status]);
+            $orcamento->materiais()->attach($tinta->id, ['quantidade' => 2, 'preco_unitario_snapshot' => 10]);
+            $orcamento->materiais()->attach($rolo->id, ['quantidade' => 1, 'preco_unitario_snapshot' => 5]);
+            $orcamentos[$status] = $orcamento;
+        }
+        $this->deleteJson("/api/materiais/{$tinta->id}")->assertOk();
+
+        foreach ($orcamentos as $status => $orcamento) {
+            $this->patchJson("/api/orcamentos/{$orcamento->id}/aprovar")
+                 ->assertUnprocessable()
+                 ->assertJsonPath('message', 'Não é possível aprovar: o material "Tinta Azul" foi excluído do cadastro. Edite o orçamento e remova-o.')
+                 ->assertJsonPath('materiais_excluidos', ['Tinta Azul']);
+            $this->assertEquals($status, $orcamento->fresh()->status);
+        }
+        $this->assertEquals(10, Material::withTrashed()->find($tinta->id)->quantidade_estoque);
+        $this->assertEquals(10, $rolo->fresh()->quantidade_estoque);
+
+        // A API marca o item excluído, para a tela destacá-lo.
+        $this->getJson("/api/orcamentos/{$orcamentos['pendente']->id}")
+             ->assertJsonPath('materiais.0.excluido', true)
+             ->assertJsonPath('materiais.1.excluido', false);
+
+        // Removido o material excluído, aprova normalmente.
+        $id = $orcamentos['pendente']->id;
+        $this->putJson("/api/orcamentos/{$id}", ['materiais' => [['id' => $rolo->id, 'quantidade' => 1]]])->assertOk();
+        $this->patchJson("/api/orcamentos/{$id}/aprovar")->assertOk();
+        $this->assertEquals(9, $rolo->fresh()->quantidade_estoque);
+    }
+
+    public function test_mensagem_lista_todos_os_materiais_excluidos(): void
+    {
+        $orcamento = Orcamento::factory()->create();
+        foreach (['Tinta', 'Rolo'] as $nome) {
+            $m = Material::factory()->create(['nome' => $nome]);
+            $orcamento->materiais()->attach($m->id, ['quantidade' => 1, 'preco_unitario_snapshot' => 1]);
+            $m->delete();
+        }
 
         $this->patchJson("/api/orcamentos/{$orcamento->id}/aprovar")
-             ->assertUnprocessable();
+             ->assertUnprocessable()
+             ->assertJsonPath('message', 'Não é possível aprovar: os materiais "Tinta", "Rolo" foram excluídos do cadastro. Edite o orçamento e remova-os.');
+    }
 
+    // Na edição, material excluído só pode ser mantido, diminuído ou removido;
+    // e não dá para vincular um material excluído que o orçamento não tinha.
+    public function test_edicao_com_material_excluido(): void
+    {
+        $tinta = Material::factory()->create(['nome' => 'Tinta Azul', 'quantidade_estoque' => 10]);
+        $outro = Material::factory()->create(['nome' => 'Lixa']);
+        $orcamento = Orcamento::factory()->create();
+        $orcamento->materiais()->attach($tinta->id, ['quantidade' => 3, 'preco_unitario_snapshot' => 10]);
+        $this->patchJson("/api/orcamentos/{$orcamento->id}/aprovar")->assertOk();
+        $tinta->delete();
+        $outro->delete();
+
+        $this->putJson("/api/orcamentos/{$orcamento->id}", ['materiais' => [['id' => $tinta->id, 'quantidade' => 4]]])
+             ->assertUnprocessable()
+             ->assertJsonPath('errors.materiais.0', 'O material "Tinta Azul" foi excluído do cadastro: só é possível manter ou diminuir a quantidade, ou removê-lo.');
+
+        $this->putJson("/api/orcamentos/{$orcamento->id}", ['materiais' => [
+            ['id' => $tinta->id, 'quantidade' => 3], ['id' => $outro->id, 'quantidade' => 1],
+        ]])->assertUnprocessable()->assertJsonPath('errors.materiais.0', 'Material não encontrado. Remova-o do orçamento.');
+
+        // Manter e diminuir funcionam (o aprovado devolve a diferença).
+        $this->putJson("/api/orcamentos/{$orcamento->id}", ['materiais' => [['id' => $tinta->id, 'quantidade' => 3]]])->assertOk();
+        $this->putJson("/api/orcamentos/{$orcamento->id}", ['materiais' => [['id' => $tinta->id, 'quantidade' => 1]]])->assertOk();
+        $this->assertEquals(9, Material::withTrashed()->find($tinta->id)->quantidade_estoque);
+    }
+
+    // Reprovado pode voltar a ser aprovado (e debita o estoque de novo).
+    public function test_pode_aprovar_orcamento_reprovado(): void
+    {
+        $material  = Material::factory()->create(['quantidade_estoque' => 10]);
+        $orcamento = Orcamento::factory()->create();
+        $orcamento->materiais()->attach($material->id, ['quantidade' => 4, 'preco_unitario_snapshot' => 10]);
+
+        $this->patchJson("/api/orcamentos/{$orcamento->id}/aprovar")->assertOk();
+        $this->patchJson("/api/orcamentos/{$orcamento->id}/reprovar")->assertOk();
+        $this->assertEquals(10, $material->fresh()->quantidade_estoque);
+
+        $this->patchJson("/api/orcamentos/{$orcamento->id}/aprovar")->assertOk();
+        $this->assertEquals('aprovado', $orcamento->fresh()->status);
+        $this->assertEquals(6, $material->fresh()->quantidade_estoque);
+    }
+
+    public function test_reprovado_nao_aprova_sem_estoque(): void
+    {
+        $material  = Material::factory()->create(['quantidade_estoque' => 1]);
+        $orcamento = Orcamento::factory()->create(['status' => 'reprovado']);
+        $orcamento->materiais()->attach($material->id, ['quantidade' => 4, 'preco_unitario_snapshot' => 10]);
+
+        $this->patchJson("/api/orcamentos/{$orcamento->id}/aprovar")->assertUnprocessable();
         $this->assertEquals('reprovado', $orcamento->fresh()->status);
+        $this->assertEquals(1, $material->fresh()->quantidade_estoque);
+    }
+
+    public function test_cria_orcamento_sem_materiais_com_valor_em_reais(): void
+    {
+        $servico = Servico::factory()->create();
+
+        $res = $this->postJson('/api/orcamentos', [
+            'servico_id'    => $servico->id,
+            'titulo'        => 'Só mão de obra',
+            'margem_lucro'  => 350,
+            'tipo_margem'   => 'percentual',
+            'sem_materiais' => true,
+        ])->assertCreated()->json();
+
+        $this->assertTrue($res['sem_materiais']);
+        $this->assertEquals('valor', $res['tipo_margem']);
+        $this->assertEquals(350, $res['valor_final']);
+        $this->assertCount(0, $res['materiais']);
+    }
+
+    public function test_orcamento_sem_materiais_recusa_materiais_e_valor_zero(): void
+    {
+        $servico  = Servico::factory()->create();
+        $material = Material::factory()->create();
+        $base = ['servico_id' => $servico->id, 'titulo' => 'X', 'sem_materiais' => true];
+
+        $this->postJson('/api/orcamentos', $base + [
+            'margem_lucro' => 100,
+            'materiais'    => [['id' => $material->id, 'quantidade' => 1]],
+        ])->assertUnprocessable()
+          ->assertJsonPath('errors.materiais.0', 'Orçamento marcado como sem materiais não pode ter materiais vinculados.');
+
+        $this->postJson('/api/orcamentos', $base + ['margem_lucro' => 0])
+             ->assertUnprocessable()
+             ->assertJsonPath('errors.margem_lucro.0', 'Informe o valor do orçamento sem materiais.');
+    }
+
+    // Marcar "sem materiais" num aprovado tira os materiais e devolve o estoque.
+    public function test_editar_para_sem_materiais_devolve_estoque_do_aprovado(): void
+    {
+        $material  = Material::factory()->create(['quantidade_estoque' => 10]);
+        $orcamento = Orcamento::factory()->create();
+        $orcamento->materiais()->attach($material->id, ['quantidade' => 3, 'preco_unitario_snapshot' => 10]);
+        $this->patchJson("/api/orcamentos/{$orcamento->id}/aprovar")->assertOk();
+        $this->assertEquals(7, $material->fresh()->quantidade_estoque);
+
+        $this->putJson("/api/orcamentos/{$orcamento->id}", [
+            'sem_materiais' => true,
+            'margem_lucro'  => 200,
+        ])->assertOk()->assertJsonPath('sem_materiais', true)->assertJsonPath('valor_final', 200);
+
+        $this->assertEquals(10, $material->fresh()->quantidade_estoque);
+        $this->assertCount(0, $orcamento->fresh()->materiais);
     }
 
     public function test_nao_reprova_orcamento_ja_reprovado(): void

@@ -13,6 +13,7 @@ function EditarServico() {
   const toast = useToast()
   const [form, setForm] = useState(FORM_SERVICO_VAZIO)
   const [statusOriginal, setStatusOriginal] = useState(null)
+  const [temOrcamentoAprovado, setTemOrcamentoAprovado] = useState(false)
   const [salvando, setSalvando] = useState(false)
 
   useEffect(() => {
@@ -20,6 +21,7 @@ function EditarServico() {
       .then(res => {
         const s = res.data
         setStatusOriginal(s.status || 'pendente')
+        setTemOrcamentoAprovado(!!s.tem_orcamento_aprovado)
         setForm({
           titulo:     s.titulo     || '',
           descricao:  s.descricao  || '',
@@ -39,10 +41,10 @@ function EditarServico() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
-  const salvar = async () => {
+  const salvar = async (extras = {}) => {
     setSalvando(true)
     try {
-      await api.put(`/servicos/${id}`, form)
+      await api.put(`/servicos/${id}`, { ...form, ...extras })
       toast.sucesso('Serviço atualizado')
       navigate('/servicos')
     } catch (e) {
@@ -61,6 +63,7 @@ function EditarServico() {
       form={form}
       setForm={setForm}
       statusOriginal={statusOriginal}
+      temOrcamentoAprovado={temOrcamentoAprovado}
       salvando={salvando}
       onSalvar={salvar}
       onCancelar={() => navigate('/servicos')}

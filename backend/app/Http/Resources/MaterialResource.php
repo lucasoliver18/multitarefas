@@ -19,6 +19,10 @@ class MaterialResource extends JsonResource
             'preco_unitario'     => $this->preco_unitario,
             'quantidade_estoque' => $this->quantidade_estoque,
             'quantidade_minima'  => $this->quantidade_minima,
+            'orcamentos_nao_aprovados' => $this->when(
+                array_key_exists('orcamentos_nao_aprovados', $this->resource->getAttributes()),
+                fn () => (int) $this->orcamentos_nao_aprovados
+            ),
         ];
     }
 }

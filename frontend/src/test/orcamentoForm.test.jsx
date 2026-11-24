@@ -56,8 +56,48 @@ describe('novo orçamento', () => {
     expect(await screen.findByText('Lista de orçamentos')).toBeInTheDocument()
     expect(api.post).toHaveBeenCalledWith('/orcamentos', {
       servico_id: 9, titulo: 'Opção A', descricao: '', margem_lucro: 10, tipo_margem: 'percentual',
-      materiais: [{ id: 5, quantidade: 2 }],
+      sem_materiais: false, materiais: [{ id: 5, quantidade: 2 }],
     })
+  })
+
+  it('"Sem materiais" esconde a busca, pede o valor em R$ e envia sem materiais', async () => {
+    api.post.mockResolvedValue({ data: {} })
+    montar('/orcamentos/9/novo')
+    await screen.findByText(/a mesma do serviço/)
+
+    fireEvent.change(campo('titulo'), { target: { value: 'Mão de obra' } })
+    fireEvent.click(screen.getByLabelText('Sem materiais'))
+    expect(screen.queryByPlaceholderText('Clique ou digite para buscar um material...')).not.toBeInTheDocument()
+    expect(screen.getByText(/não utiliza materiais/)).toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Tipo de margem' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar orçamento' }))
+    expect(await screen.findByText('Informe o valor do serviço')).toBeInTheDocument()
+    expect(api.post).not.toHaveBeenCalled()
+
+    fireEvent.change(campo('margem_lucro'), { target: { value: '350' } })
+    expect(screen.getByText('Total').nextSibling).toHaveTextContent(/R\$\s350,00/)
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar orçamento' }))
+
+    expect(await screen.findByText('Lista de orçamentos')).toBeInTheDocument()
+    expect(api.post).toHaveBeenCalledWith('/orcamentos', expect.objectContaining({
+      margem_lucro: 350, tipo_margem: 'valor', sem_materiais: true, materiais: [],
+    }))
+  })
+
+  it('marcar "Sem materiais" com materiais adicionados pede confirmação e os remove', async () => {
+    montar('/orcamentos/9/novo')
+    await screen.findByText(/a mesma do serviço/)
+    fireEvent.focus(screen.getByPlaceholderText('Clique ou digite para buscar um material...'))
+    fireEvent.mouseDown(await screen.findByRole('button', { name: /Tinta Branca/ }))
+
+    fireEvent.click(screen.getByLabelText('Sem materiais'))
+    expect(await screen.findByText('Remover o material adicionado?')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+    await waitFor(() => expect(screen.getByLabelText('Sem materiais')).toBeChecked())
+
+    fireEvent.click(screen.getByLabelText('Sem materiais'))
+    expect(screen.getByText('Nenhum material adicionado.')).toBeInTheDocument()
   })
 
   it('descrição limitada a 500 caracteres com contador', async () => {
@@ -106,5 +146,45 @@ describe('editar orçamento aprovado', () => {
     expect(await screen.findByText('Lista de orçamentos')).toBeInTheDocument()
     expect(screen.queryByText(/Estoque insuficiente/)).not.toBeInTheDocument()
     expect(api.put).toHaveBeenCalledWith('/orcamentos/2', expect.objectContaining({ titulo: 'Aprovado (revisado)', materiais: [{ id: 5, quantidade: 3 }] }))
+  })
+})
+
+describe('editar orçamento com material excluído do cadastro', () => {
+  beforeEach(() => {
+    api.get.mockReset(); api.put.mockReset(); api.patch.mockReset()
+    api.put.mockResolvedValue({ data: {} })
+    api.get.mockImplementation(url => {
+      if (url === '/materiais') return Promise.resolve({ data: [] })
+      if (url.startsWith('/orcamentos/')) return Promise.resolve({ data: {
+        id: 3, titulo: 'Pendente', descricao: '', margem_lucro: '0', tipo_margem: 'percentual', status: 'pendente', sem_materiais: false,
+        materiais: [{ id: 5, nome: 'Tinta Azul', unidade_medida: 'L', excluido: true, pivot: { quantidade: '2', preco_unitario_snapshot: '50' } }],
+      } })
+      return Promise.resolve({ data: SERVICO })
+    })
+  })
+
+  it('marca o item, avisa, bloqueia aprovar e não deixa aumentar a quantidade', async () => {
+    montar('/orcamentos/9/editar/3')
+    await waitFor(() => expect(campo('titulo')).toHaveValue('Pendente'))
+
+    expect(screen.getByText('Excluído')).toBeInTheDocument()
+    expect(screen.getByText('Há material excluído do cadastro neste orçamento. Remova-o para poder aprovar.')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /Aprovar/ }))
+    expect(await screen.findByText('Não é possível aprovar: o material "Tinta Azul" foi excluído do cadastro. Edite o orçamento e remova-o')).toBeInTheDocument()
+    expect(api.patch).not.toHaveBeenCalled()
+
+    fireEvent.change(screen.getByLabelText('Quantidade de Tinta Azul'), { target: { value: '3' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    expect(await screen.findByText('O material "Tinta Azul" foi excluído do cadastro: só é possível manter ou diminuir a quantidade, ou removê-lo')).toBeInTheDocument()
+    expect(api.put).not.toHaveBeenCalled()
+
+    // Removido na tela mas não salvo: aprovar pede para salvar antes.
+    fireEvent.click(screen.getByRole('button', { name: 'Remover Tinta Azul' }))
+    fireEvent.click(screen.getByRole('button', { name: /Aprovar/ }))
+    expect(await screen.findByText('Salve as alterações antes de aprovar: o material excluído ainda está no orçamento salvo')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await waitFor(() => expect(api.put).toHaveBeenCalledWith('/orcamentos/3', expect.objectContaining({ materiais: [] })))
   })
 })

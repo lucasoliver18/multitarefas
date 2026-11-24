@@ -11,7 +11,7 @@ function NovoOrcamento() {
   const navigate = useNavigate()
   const toast = useToast()
   const [servico, setServico] = useState(null)
-  const [form, setForm] = useState({ titulo: '', descricao: '', margem_lucro: '0', tipo_margem: 'percentual' })
+  const [form, setForm] = useState({ titulo: '', descricao: '', margem_lucro: '0', tipo_margem: 'percentual', sem_materiais: false })
   const [itens, setItens] = useState([])
   const [salvando, setSalvando] = useState(false)
 
@@ -33,8 +33,9 @@ function NovoOrcamento() {
         titulo: form.titulo,
         descricao: form.descricao,
         margem_lucro: parseFloat(form.margem_lucro || 0),
-        tipo_margem: form.tipo_margem,
-        materiais: itens.map(i => ({ id: i.id, quantidade: parseFloat(i.quantidade) })),
+        tipo_margem: form.sem_materiais ? 'valor' : form.tipo_margem,
+        sem_materiais: !!form.sem_materiais,
+        materiais: form.sem_materiais ? [] : itens.map(i => ({ id: i.id, quantidade: parseFloat(i.quantidade) })),
       })
       toast.sucesso('Orçamento criado')
       navigate(`/orcamentos/${servicoId}`)

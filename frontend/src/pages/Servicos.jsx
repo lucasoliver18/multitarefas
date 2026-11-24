@@ -22,7 +22,6 @@ import { useSelecaoMultipla } from '../hooks/useSelecaoMultipla'
 import { useEstadoPersistido } from '../hooks/useEstadoPersistido'
 import { excluirEmMassa } from '../utils/exclusaoEmMassa'
 import { hojeISO } from '../utils/prazos'
-import { mensagemErro } from '../utils/erros'
 import { STATUS_ICONE, STATUS_OPCOES, labelStatus } from '../utils/status'
 import { plural } from '../utils/texto'
 
@@ -99,27 +98,13 @@ function Servicos() {
 
   const { pagina, setPagina, tamanhoPagina, mudarTamanhoPagina, totalPaginas, itensPagina } = usePaginacao(servicosOrdenados)
 
-  // Arrastar entre colunas salva o status direto, sem confirmação.
+  // Arrastar entre colunas pede a mesma confirmação do menu de status; o
+  // cartão só muda de coluna depois de confirmado.
   const sensoresArraste = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
-  const handleDragEnd = async ({ active, over }) => {
+  const handleDragEnd = ({ active, over }) => {
     if (!over) return
-    const servico = servicos.find(s => s.id === active.id)
-    const novoStatus = over.id
-    if (!servico || servico.status === novoStatus) return
-
-    try {
-      await mudarStatus(servico.id, novoStatus)
-      const exigeOrcamento = (novoStatus === 'em_andamento' || novoStatus === 'finalizado') && !servico.tem_orcamento_aprovado
-      if (exigeOrcamento) {
-        toast.alerta('Status atualizado. Serviço sem orçamento aprovado')
-      } else {
-        toast.sucesso('Status atualizado')
-      }
-    } catch (e) {
-      buscar()
-      toast.erro(mensagemErro(e, 'Erro ao atualizar status'))
-    }
+    acoes.confirmarMudarStatus(servicos.find(s => s.id === active.id), over.id)
   }
 
   const excluirSelecionados = async (ids, devolverEstoque) => {
@@ -131,13 +116,13 @@ function Servicos() {
     else toast.alerta(`${plural(sucesso, 'excluído', 'excluídos')}; ${falhas.length} com erro`)
   }
 
-  // Entre os selecionados, os com orçamento aprovado fazem perguntar se o
-  // estoque descontado volta (uma pergunta só, para todos).
+  // Entre os selecionados, os com orçamento aprovado que descontou materiais
+  // fazem perguntar se o estoque volta (uma pergunta só, para todos).
   const [perguntaEstoque, setPerguntaEstoque] = useState(null)
   const handleExcluirSelecionados = () => {
     toast.confirmar(`Excluir ${plural(quantidade, 'serviço', 'serviços')}?`, () => {
       const ids = [...selecionados]
-      const comAprovado = servicos.filter(s => selecionados.has(s.id) && s.tem_orcamento_aprovado).length
+      const comAprovado = servicos.filter(s => selecionados.has(s.id) && s.tem_estoque_debitado).length
       if (comAprovado > 0) setPerguntaEstoque({ ids, comAprovado })
       else excluirSelecionados(ids, false)
     })

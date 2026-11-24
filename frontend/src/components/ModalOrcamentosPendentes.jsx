@@ -83,7 +83,7 @@ function ConteudoPendentes({ onEscolher }) {
                 >
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-800 truncate">{o.titulo}</p>
-                    <p className="text-xs text-slate-400 truncate">Margem {descreverMargem(o.margem_lucro, o.tipo_margem)}</p>
+                    <p className="text-xs text-slate-400 truncate">{o.sem_materiais ? 'Sem materiais' : `Margem ${descreverMargem(o.margem_lucro, o.tipo_margem)}`}</p>
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm text-slate-700 truncate">{o.servico?.titulo}</p>

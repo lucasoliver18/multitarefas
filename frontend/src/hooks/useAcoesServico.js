@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useToast } from './useToast'
 import { mensagemErro } from '../utils/erros'
-import { labelStatus } from '../utils/status'
+import { avisoMudancaStatus, perguntarMudancaStatus, retrocedeStatus, MENSAGEM_RETROCEDER } from '../utils/servicos'
 
 // Ações rápidas sobre um serviço (mudar status, pago, prazo, excluir) com as
 // confirmações e avisos padrão. Recebe as funções de useServicos(); sem
@@ -21,23 +21,27 @@ export function useAcoesServico({ deletar, mudarStatus, mudarPago, mudarPrazo, b
     }
   }
 
-  const handleMudarStatus = async (id, novoStatus) => {
+  const handleMudarStatus = async (id, novoStatus, extras = {}) => {
     try {
-      await mudarStatus(id, novoStatus)
-      toast.sucesso('Status atualizado')
+      await mudarStatus(id, novoStatus, extras)
+      toast.sucesso(extras.pago ? 'Serviço finalizado e marcado como pago' : 'Status atualizado')
     } catch (e) {
       buscar()
       toast.erro(mensagemErro(e, 'Erro ao atualizar status'))
     }
   }
 
+  // Toda mudança de status (menu, arrastar no quadro, modais, Prazos) passa
+  // por aqui: mesma regra e mesma confirmação em todas as telas.
   const confirmarMudarStatus = (s, novoStatus) => {
     setMenuStatus(null)
-    const exigeOrcamento = (novoStatus === 'em_andamento' || novoStatus === 'finalizado') && !s.tem_orcamento_aprovado
-    const mensagem = exigeOrcamento
-      ? `Serviço sem orçamento aprovado. Mudar para "${labelStatus(novoStatus)}" mesmo assim?`
-      : `Mudar status para "${labelStatus(novoStatus)}"?`
-    toast.confirmar(mensagem, () => handleMudarStatus(s.id, novoStatus))
+    if (!s || s.status === novoStatus) return
+    if (retrocedeStatus(s.status, novoStatus)) {
+      toast.erro(MENSAGEM_RETROCEDER)
+      return
+    }
+    const aviso = avisoMudancaStatus({ novoStatus, pago: s.pago, temOrcamentoAprovado: s.tem_orcamento_aprovado })
+    perguntarMudancaStatus(toast, aviso, extras => handleMudarStatus(s.id, novoStatus, extras))
   }
 
   const handleMudarPago = async (id, novoPago) => {

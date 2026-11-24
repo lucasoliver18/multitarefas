@@ -20,6 +20,7 @@ class ServicoResource extends JsonResource
             'tag'        => $this->tag,
             'descricao'  => $this->descricao,
             'tem_orcamento_aprovado' => (bool) $this->tem_orcamento_aprovado,
+            'tem_estoque_debitado' => (bool) $this->tem_estoque_debitado,
             'tem_orcamento' => (bool) $this->tem_orcamento,
             'tem_orcamento_pendente' => (bool) $this->tem_orcamento_pendente,
             'pago_em'       => $this->pago_em,

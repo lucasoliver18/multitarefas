@@ -40,9 +40,10 @@ export function useServicos({ params } = {}) {
     }
   }, [buscar])
 
-  const mudarStatus = useCallback(async (id, novoStatus) => {
-    await api.patch(`/servicos/${id}`, { status: novoStatus })
-    setServicos(prev => prev.map(s => s.id === id ? { ...s, status: novoStatus } : s))
+  // `extras` vai junto na mesma requisição (ex.: finalizar e marcar como pago).
+  const mudarStatus = useCallback(async (id, novoStatus, extras = {}) => {
+    await api.patch(`/servicos/${id}`, { status: novoStatus, ...extras })
+    setServicos(prev => prev.map(s => s.id === id ? { ...s, status: novoStatus, ...extras } : s))
   }, [])
 
   const mudarPago = useCallback(async (id, novoPago) => {

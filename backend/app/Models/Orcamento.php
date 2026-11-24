@@ -16,13 +16,15 @@ class Orcamento extends Model
         'descricao',
         'margem_lucro',
         'tipo_margem',
+        'sem_materiais',
         'status',
     ];
 
     protected $appends = ['valor_materiais', 'valor_final'];
 
     protected $casts = [
-        'aprovado_em' => 'datetime',
+        'aprovado_em'   => 'datetime',
+        'sem_materiais' => 'boolean',
     ];
 
     // Registra quando o orçamento foi aprovado; reprovar limpa a data.

@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { X, Info } from 'lucide-react'
+import { X, Info, PackageX, AlertTriangle } from 'lucide-react'
 import Button from './Button'
 import ComboboxAsync from './ComboboxAsync'
 import { Pagina, CabecalhoPagina } from './Pagina'
@@ -17,7 +17,7 @@ const LABEL = 'text-sm font-semibold text-slate-700 mb-1.5'
 
 // Formulário compartilhado por Novo e Editar Orçamento. Os materiais
 // oferecidos na busca são só os da tag do serviço; serviço sem tag mostra todos.
-function OrcamentoForm({ titulo, servico, form, setForm, itens, setItens, salvando, onSalvar, botaoLabel, onVoltar, acoesExtras }) {
+function OrcamentoForm({ titulo, servico, form, setForm, itens, setItens, salvando, onSalvar, botaoLabel, onVoltar, acoesExtras, aprovado = false }) {
   const toast = useToast()
   const [buscaMaterial, setBuscaMaterial] = useState('')
   const tag = servico?.tag || null
@@ -44,9 +44,30 @@ function OrcamentoForm({ titulo, servico, form, setForm, itens, setItens, salvan
 
   const removerItem = (id) => setItens(itens.filter(i => i.id !== id))
 
-  const valorMateriais = itens.reduce((acc, i) => acc + parseFloat(i.preco_unitario) * parseFloat(i.quantidade || 0), 0)
-  const tipoMargem = form.tipo_margem || 'percentual'
+  const semMateriais = !!form.sem_materiais
+  const valorMateriais = semMateriais ? 0 : itens.reduce((acc, i) => acc + parseFloat(i.preco_unitario) * parseFloat(i.quantidade || 0), 0)
+  const tipoMargem = semMateriais ? 'valor' : (form.tipo_margem || 'percentual')
   const valorFinal = calcularValorFinal(valorMateriais, form.margem_lucro, tipoMargem)
+
+  // "Sem materiais": orçamento só de mão de obra, com o valor direto em R$.
+  // Marcar tira os materiais já adicionados (pede confirmação se houver).
+  const aplicarSemMateriais = () => {
+    setItens([])
+    setForm({ ...form, sem_materiais: true, tipo_margem: 'valor', margem_lucro: tipoMargem === 'valor' ? form.margem_lucro : '0' })
+  }
+  const alternarSemMateriais = () => {
+    if (semMateriais) {
+      setForm({ ...form, sem_materiais: false })
+      return
+    }
+    if (itens.length > 0) {
+      const pergunta = itens.length === 1 ? 'Remover o material adicionado?' : `Remover os ${itens.length} materiais adicionados?`
+      // Aprovado já debitou esses materiais: ao salvar, eles voltam ao estoque.
+      toast.confirmar(aprovado ? `${pergunta} Ao salvar, o estoque será devolvido` : pergunta, aplicarSemMateriais)
+      return
+    }
+    aplicarSemMateriais()
+  }
 
   // Trocar o tipo zera a margem: 10% e R$ 10,00 não são equivalentes.
   const mudarTipoMargem = (tipo) => {
@@ -56,8 +77,17 @@ function OrcamentoForm({ titulo, servico, form, setForm, itens, setItens, salvan
 
   const salvar = () => {
     if (!form.titulo.trim()) { toast.erro('Informe o título'); return }
+    if (semMateriais && !(parseFloat(form.margem_lucro) > 0)) {
+      toast.erro('Informe o valor do serviço')
+      return
+    }
     if (itens.some(i => !(parseFloat(i.quantidade) > 0))) {
       toast.erro('Quantidade deve ser maior que zero')
+      return
+    }
+    const aumentado = itens.find(i => i.excluido && parseFloat(i.quantidade) > i.quantidade_original)
+    if (aumentado) {
+      toast.erro(`O material "${aumentado.nome}" foi excluído do cadastro: só é possível manter ou diminuir a quantidade, ou removê-lo`)
       return
     }
     if (parseFloat(form.margem_lucro || 0) > MARGEM_MAX[tipoMargem]) {
@@ -116,11 +146,29 @@ function OrcamentoForm({ titulo, servico, form, setForm, itens, setItens, salvan
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 p-6 flex flex-col gap-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
               <h2 className="text-base font-bold text-slate-800">Materiais</h2>
-              <span className="text-sm text-slate-500">{itens.length} {itens.length === 1 ? 'item' : 'itens'}</span>
+              <div className="flex items-center gap-4">
+                {!semMateriais && <span className="text-sm text-slate-500">{itens.length} {itens.length === 1 ? 'item' : 'itens'}</span>}
+                <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    name="sem_materiais"
+                    checked={semMateriais}
+                    onChange={alternarSemMateriais}
+                    className="w-4 h-4 rounded border-slate-300 accent-blue-600 cursor-pointer"
+                  />
+                  Sem materiais
+                </label>
+              </div>
             </div>
 
+            {semMateriais ? (
+              <div className="flex items-start gap-3 text-sm text-slate-600 bg-slate-50 border border-dashed border-slate-300 rounded-xl px-4 py-4">
+                <PackageX size={18} className="text-slate-400 shrink-0 mt-0.5" />
+                <span>Este orçamento <strong>não utiliza materiais</strong>. Informe o valor do serviço no resumo ao lado. O estoque não é alterado.</span>
+              </div>
+            ) : (<>
             <div className="flex items-start gap-2 text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5">
               <Info size={16} className="text-slate-400 shrink-0 mt-0.5" />
               {tag
@@ -147,6 +195,17 @@ function OrcamentoForm({ titulo, servico, form, setForm, itens, setItens, salvan
               className={INPUT}
             />
 
+            {itens.some(i => i.excluido) && (
+              <div className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5">
+                <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                <span>
+                  {aprovado
+                    ? 'Há material excluído do cadastro neste orçamento. Ele pode ser mantido, ter a quantidade diminuída ou ser removido.'
+                    : 'Há material excluído do cadastro neste orçamento. Remova-o para poder aprovar.'}
+                </span>
+              </div>
+            )}
+
             {itens.length === 0 ? (
               <p className="text-sm text-slate-400 text-center py-6 border border-dashed border-slate-200 rounded-xl">
                 Nenhum material adicionado.
@@ -162,7 +221,14 @@ function OrcamentoForm({ titulo, servico, form, setForm, itens, setItens, salvan
                 </div>
                 {itens.map(item => (
                   <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_8rem_9rem_8rem_2.5rem] gap-3 px-4 py-2.5 items-center border-t border-slate-100">
-                    <p className="text-sm font-semibold text-slate-700 truncate">{item.nome}</p>
+                    <p className="text-sm font-semibold text-slate-700 truncate flex items-center gap-1.5">
+                      <span className="truncate">{item.nome}</span>
+                      {item.excluido && (
+                        <span title="Material excluído do cadastro" className="shrink-0 text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                          Excluído
+                        </span>
+                      )}
+                    </p>
                     <span className="text-sm text-slate-600">{formatarPreco(parseFloat(item.preco_unitario))}</span>
                     <div className="flex items-center gap-2">
                       <input
@@ -189,6 +255,7 @@ function OrcamentoForm({ titulo, servico, form, setForm, itens, setItens, salvan
                 ))}
               </div>
             )}
+            </>)}
           </div>
         </div>
 
@@ -197,8 +264,10 @@ function OrcamentoForm({ titulo, servico, form, setForm, itens, setItens, salvan
 
           <div className="flex flex-col">
             <div className="flex items-center justify-between mb-1.5">
-              <label htmlFor="margem_lucro" className="text-sm font-semibold text-slate-700">Margem de lucro</label>
-              <div className="inline-flex bg-slate-100 rounded-lg p-0.5 gap-0.5" role="group" aria-label="Tipo de margem">
+              <label htmlFor="margem_lucro" className="text-sm font-semibold text-slate-700">
+                {semMateriais ? <>Valor do serviço <Obrigatorio /></> : 'Margem de lucro'}
+              </label>
+              {!semMateriais && <div className="inline-flex bg-slate-100 rounded-lg p-0.5 gap-0.5" role="group" aria-label="Tipo de margem">
                 {TIPOS_MARGEM.map(t => (
                   <button
                     key={t.val}
@@ -213,7 +282,7 @@ function OrcamentoForm({ titulo, servico, form, setForm, itens, setItens, salvan
                     {t.label}
                   </button>
                 ))}
-              </div>
+              </div>}
             </div>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">
@@ -237,14 +306,29 @@ function OrcamentoForm({ titulo, servico, form, setForm, itens, setItens, salvan
           </div>
 
           <div className="flex flex-col gap-2 pt-4 border-t border-slate-100">
-            <div className="flex justify-between text-sm text-slate-600">
-              <span>Custo dos materiais</span>
-              <span className="font-semibold text-slate-800">{formatarPreco(valorMateriais)}</span>
-            </div>
-            <div className="flex justify-between text-sm text-slate-600">
-              <span>Margem ({descreverMargem(form.margem_lucro, tipoMargem)})</span>
-              <span className="font-semibold text-slate-800">{formatarPreco(valorFinal - valorMateriais)}</span>
-            </div>
+            {semMateriais ? (
+              <>
+                <div className="flex justify-between text-sm text-slate-600">
+                  <span>Materiais</span>
+                  <span className="inline-flex items-center gap-1 font-semibold text-slate-500"><PackageX size={14} /> Não utiliza</span>
+                </div>
+                <div className="flex justify-between text-sm text-slate-600">
+                  <span>Valor do serviço</span>
+                  <span className="font-semibold text-slate-800">{formatarPreco(valorFinal)}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex justify-between text-sm text-slate-600">
+                  <span>Custo dos materiais</span>
+                  <span className="font-semibold text-slate-800">{formatarPreco(valorMateriais)}</span>
+                </div>
+                <div className="flex justify-between text-sm text-slate-600">
+                  <span>Margem ({descreverMargem(form.margem_lucro, tipoMargem)})</span>
+                  <span className="font-semibold text-slate-800">{formatarPreco(valorFinal - valorMateriais)}</span>
+                </div>
+              </>
+            )}
             <div className="flex justify-between items-baseline pt-3 mt-1 border-t border-slate-100">
               <span className="text-sm font-semibold text-slate-700">Total</span>
               <span className="text-2xl font-bold text-[#2563eb]">{formatarPreco(valorFinal)}</span>

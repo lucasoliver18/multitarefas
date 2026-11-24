@@ -98,4 +98,20 @@ describe('tela de Materiais', () => {
     expect(screen.queryByText('Tinta Branca')).not.toBeInTheDocument()
     expect(await screen.findByText('Material removido')).toBeInTheDocument()
   })
+
+  it('material em orçamentos não aprovados: avisa que eles ficarão travados antes de excluir', async () => {
+    api.get.mockResolvedValue({ data: MATERIAIS.map(m => m.id === 1 ? { ...m, orcamentos_nao_aprovados: 2 } : m) })
+    api.delete.mockResolvedValue({ data: {} })
+    montar()
+    await screen.findByText('Tinta Branca')
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Excluir' })[0])
+    const confirmacao = screen.getByRole('button', { name: 'Cancelar' }).parentElement
+    fireEvent.click(within(confirmacao).getByRole('button', { name: 'Excluir' }))
+
+    expect(await screen.findByText('"Tinta Branca" está em 2 orçamentos ainda não aprovados, que não poderão ser aprovados enquanto ele estiver neles. Excluir mesmo assim?')).toBeInTheDocument()
+    expect(api.delete).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+    await waitFor(() => expect(api.delete).toHaveBeenCalledWith('/materiais/1'))
+  })
 })
