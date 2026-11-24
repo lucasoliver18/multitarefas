@@ -31,7 +31,7 @@ describe('mudança rápida para Finalizado', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Só finalizar' }))
 
     await waitFor(() => expect(mudarStatus).toHaveBeenCalledWith(9, 'finalizado', {}))
-    expect(await screen.findByText('Status atualizado')).toBeInTheDocument()
+    expect(await screen.findByText('Serviço finalizado. O pagamento continua pendente')).toBeInTheDocument()
   })
 
   it('"Finalizar e marcar como pago" faz as duas coisas na mesma requisição', async () => {

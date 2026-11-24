@@ -23,7 +23,7 @@ serviços, prazos, orçamentos, estoque de materiais e clientes.
 ## Regras de negócio principais
 
 - O status do serviço só avança (Pendente → Em andamento → Finalizado), nunca volta.
-- Mudar o status pede confirmação da mesma forma em todas as telas (menu de status, arrastar no quadro, Prazos, modais e edição): avisa se o serviço não tem orçamento aprovado e, ao finalizar um serviço ainda não pago, oferece **Finalizar e marcar como pago**.
+- Mudar o status pede confirmação da mesma forma em todas as telas (menu de status, arrastar no quadro, Prazos, modais e edição): avisa se o serviço não tem orçamento aprovado e, ao finalizar um serviço ainda não pago, oferece **Finalizar e marcar como pago**. "Só finalizar" nunca mexe no pagamento, e trocar o pagamento pelo selo Pago/Não pago também pede confirmação.
 - O tipo de pessoa do cliente (física ou jurídica) não muda depois do cadastro.
 - Cada serviço tem no máximo um orçamento aprovado: aprovar um reprova os demais.
 - Aprovar e reprovar valem a qualquer momento: um orçamento reprovado pode ser aprovado de novo (o estoque é conferido e debitado outra vez).

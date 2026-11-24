@@ -66,6 +66,37 @@ describe('arrastar serviço no quadro', () => {
     expect(api.patch).not.toHaveBeenCalled()
   })
 
+  it('"Só finalizar" manda só o status: o pagamento continua pendente, sem nenhuma outra requisição', async () => {
+    montar([servico(1, 'Troca de tela', { tem_orcamento_aprovado: false })])
+    await screen.findByText('Troca de tela')
+
+    arrastar(1, 'finalizado')
+    fireEvent.click(await screen.findByRole('button', { name: 'Só finalizar' }))
+
+    expect(await screen.findByText('Serviço finalizado. O pagamento continua pendente')).toBeInTheDocument()
+    expect(api.patch).toHaveBeenCalledTimes(1)
+    expect(api.patch).toHaveBeenCalledWith('/servicos/1', { status: 'finalizado' })
+    // O cartão continua "Não pago".
+    expect(screen.getByRole('button', { name: 'Não pago' })).toBeInTheDocument()
+  })
+
+  it('clicar no selo "Não pago" pergunta antes; cancelar não muda nada', async () => {
+    montar([servico(1, 'Troca de tela', { status: 'finalizado' })])
+    await screen.findByText('Troca de tela')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Não pago' }))
+    expect(await screen.findByText('Marcar "Troca de tela" como pago?')).toBeInTheDocument()
+    expect(api.patch).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    await waitFor(() => expect(screen.queryByText(/como pago\?/)).not.toBeInTheDocument())
+    expect(api.patch).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Não pago' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirmar' }))
+    await waitFor(() => expect(api.patch).toHaveBeenCalledWith('/servicos/1', { pago: true }))
+    expect(await screen.findByText('Marcado como pago')).toBeInTheDocument()
+  })
+
   it('não deixa voltar o status (Finalizado → Pendente)', async () => {
     montar([servico(1, 'Troca de tela', { status: 'finalizado', pago: true })])
     await screen.findByText('Troca de tela')

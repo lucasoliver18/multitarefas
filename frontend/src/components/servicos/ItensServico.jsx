@@ -40,8 +40,10 @@ export function PagoBadge({ s, ctx }) {
     return <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${badgePago(s.pago)}`}>{labelPago(s.pago)}</span>
   }
   return (
+    // onPointerDown: apertar o selo não inicia o arraste do cartão no quadro.
     <button
-      onClick={e => { e.stopPropagation(); ctx.handleMudarPago(s.id, !s.pago) }}
+      onClick={e => { e.stopPropagation(); ctx.confirmarMudarPago(s) }}
+      onPointerDown={e => e.stopPropagation()}
       title={s.pago ? 'Marcar como não pago' : 'Marcar como pago'}
       className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full cursor-pointer transition-all hover:brightness-95 active:scale-95 ${badgePago(s.pago)}`}
     >

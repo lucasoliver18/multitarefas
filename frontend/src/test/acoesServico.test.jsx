@@ -10,7 +10,7 @@ const servico = {
 
 const novoCtx = (extra = {}) => ({
   navigate: vi.fn(), hojeStr: '2026-10-30', selecaoAtiva: false,
-  menuStatus: null, setMenuStatus: vi.fn(), confirmarMudarStatus: vi.fn(), handleMudarPago: vi.fn(),
+  menuStatus: null, setMenuStatus: vi.fn(), confirmarMudarStatus: vi.fn(), handleMudarPago: vi.fn(), confirmarMudarPago: vi.fn(),
   confirmandoId: null, setConfirmandoId: vi.fn(), handleDeletar: vi.fn(),
   ...extra,
 })
@@ -67,6 +67,15 @@ describe.each(Object.entries(VISUALIZACOES))('ações do serviço na visualizaç
     fireEvent.click(within(calendario).getByRole('button', { name: 'Confirmar' }))
     expect(handleMudarPrazo).toHaveBeenCalledWith(9, '2020-01-15')
     await screen.findByText('Troca de tela')
+    expect(ctx.navigate).not.toHaveBeenCalled()
+  })
+
+  it('o selo "Não pago" pede confirmação (não muda o pagamento direto) e não abre a edição', () => {
+    const ctx = novoCtx()
+    render(montar(ctx))
+    fireEvent.click(screen.getByRole('button', { name: 'Não pago' }))
+    expect(ctx.confirmarMudarPago).toHaveBeenCalledWith(servico)
+    expect(ctx.handleMudarPago).not.toHaveBeenCalled()
     expect(ctx.navigate).not.toHaveBeenCalled()
   })
 

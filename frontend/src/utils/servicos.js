@@ -39,6 +39,14 @@ export function avisoMudancaStatus({ novoStatus, pago, temOrcamentoAprovado }) {
   return { mensagem, temAlerta: naoPago || semOrcamento, oferecerPagar: naoPago }
 }
 
+// Mensagem de sucesso: ao finalizar, deixa claro se o pagamento foi marcado
+// junto ou se continua pendente ("Só finalizar" nunca mexe no pagamento).
+export function mensagemStatusAtualizado(novoStatus, pago, extras = {}) {
+  if (novoStatus !== 'finalizado') return 'Status atualizado'
+  if (extras.pago) return 'Serviço finalizado e marcado como pago'
+  return pago ? 'Serviço finalizado' : 'Serviço finalizado. O pagamento continua pendente'
+}
+
 // Mostra a confirmação. `confirmar(extras)` recebe `{ pago: true }` quando o
 // usuário escolhe "Finalizar e marcar como pago".
 export function perguntarMudancaStatus(toast, aviso, confirmar) {

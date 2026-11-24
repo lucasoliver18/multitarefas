@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useToast } from './useToast'
 import { mensagemErro } from '../utils/erros'
-import { avisoMudancaStatus, perguntarMudancaStatus, retrocedeStatus, MENSAGEM_RETROCEDER } from '../utils/servicos'
+import { avisoMudancaStatus, perguntarMudancaStatus, retrocedeStatus, mensagemStatusAtualizado, MENSAGEM_RETROCEDER } from '../utils/servicos'
 
 // Ações rápidas sobre um serviço (mudar status, pago, prazo, excluir) com as
 // confirmações e avisos padrão. Recebe as funções de useServicos(); sem
@@ -21,10 +21,10 @@ export function useAcoesServico({ deletar, mudarStatus, mudarPago, mudarPrazo, b
     }
   }
 
-  const handleMudarStatus = async (id, novoStatus, extras = {}) => {
+  const handleMudarStatus = async (id, novoStatus, extras = {}, mensagemSucesso = 'Status atualizado') => {
     try {
       await mudarStatus(id, novoStatus, extras)
-      toast.sucesso(extras.pago ? 'Serviço finalizado e marcado como pago' : 'Status atualizado')
+      toast.sucesso(mensagemSucesso)
     } catch (e) {
       buscar()
       toast.erro(mensagemErro(e, 'Erro ao atualizar status'))
@@ -41,7 +41,18 @@ export function useAcoesServico({ deletar, mudarStatus, mudarPago, mudarPrazo, b
       return
     }
     const aviso = avisoMudancaStatus({ novoStatus, pago: s.pago, temOrcamentoAprovado: s.tem_orcamento_aprovado })
-    perguntarMudancaStatus(toast, aviso, extras => handleMudarStatus(s.id, novoStatus, extras))
+    perguntarMudancaStatus(toast, aviso, extras => handleMudarStatus(s.id, novoStatus, extras, mensagemStatusAtualizado(novoStatus, s.pago, extras)))
+  }
+
+  // Pagamento é ação financeira: o selo "Pago/Não pago" pede confirmação,
+  // para um clique sem querer (ex.: ao abrir o cartão) não mudar o pagamento.
+  const confirmarMudarPago = (s) => {
+    setMenuStatus(null)
+    const novoPago = !s.pago
+    toast.confirmar(
+      novoPago ? `Marcar "${s.titulo}" como pago?` : `Marcar "${s.titulo}" como não pago?`,
+      () => handleMudarPago(s.id, novoPago),
+    )
   }
 
   const handleMudarPago = async (id, novoPago) => {
@@ -68,7 +79,7 @@ export function useAcoesServico({ deletar, mudarStatus, mudarPago, mudarPrazo, b
   return {
     menuStatus, setMenuStatus,
     confirmandoId, setConfirmandoId,
-    handleDeletar, confirmarMudarStatus, handleMudarPago,
+    handleDeletar, confirmarMudarStatus, handleMudarPago, confirmarMudarPago,
     handleMudarPrazo: mudarPrazo ? handleMudarPrazo : undefined,
   }
 }
