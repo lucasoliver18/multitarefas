@@ -86,4 +86,4 @@ cd frontend && npm run test && npm run lint      # telas, fluxos e componentes
 ```
 
 Os testes do backend usam um banco SQLite em memória, então não precisam do
-MySQL. Em novembro de 2026 eram 118 testes no backend e 158 no frontend.
+MySQL. Em novembro de 2026 eram 134 testes no backend e 192 no frontend.

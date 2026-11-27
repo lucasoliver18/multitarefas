@@ -9,6 +9,12 @@ class CpfValido implements ValidationRule
 {
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
+        // Lista, objeto etc. não são CPF (e não podem virar texto sem erro).
+        if (! is_string($value) && ! is_int($value)) {
+            $fail('O :attribute informado é inválido.');
+            return;
+        }
+
         $cpf = preg_replace('/\D/', '', (string) $value);
 
         if (strlen($cpf) !== 11 || preg_match('/^(\d)\1{10}$/', $cpf)) {

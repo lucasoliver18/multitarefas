@@ -45,7 +45,9 @@ class StoreOrcamentoRequest extends FormRequest
     {
         $validator->after(function (Validator $validator) {
             $this->validarValorSemMateriais($validator, $this->boolean('sem_materiais'), $this->input('margem_lucro'));
-            $this->validarTagDosMateriais($validator, Servico::find($this->input('servico_id')));
+            // servico_id fora do formato já foi recusado pelas regras acima.
+            $servicoId = $this->input('servico_id');
+            $this->validarTagDosMateriais($validator, is_numeric($servicoId) ? Servico::find($servicoId) : null);
         });
     }
 }

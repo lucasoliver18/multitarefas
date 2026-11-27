@@ -331,7 +331,10 @@ function Home() {
             <Metrica className="col-span-2" rotulo="Serviços finalizados" valor={desempenho.finalizados}
               detalhe={<Variacao atual={desempenho.finalizados} anterior={desempenho.finalizados_anterior} />} />
             <Metrica className="col-span-2" rotulo="Tempo médio de conclusão"
-              valor={desempenho.tempo_medio_conclusao_dias != null ? plural(desempenho.tempo_medio_conclusao_dias.toLocaleString('pt-BR'), 'dia', 'dias') : '—'}
+              valor={desempenho.tempo_medio_conclusao_dias != null
+                // Singular/plural decidido pelo número (o texto formatado "1" não é igual a 1).
+                ? `${desempenho.tempo_medio_conclusao_dias.toLocaleString('pt-BR')} ${desempenho.tempo_medio_conclusao_dias === 1 ? 'dia' : 'dias'}`
+                : '—'}
               detalhe={<span className="text-xs text-slate-400">da criação à finalização</span>} />
           </div>
           <div>

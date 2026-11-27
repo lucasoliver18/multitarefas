@@ -376,6 +376,85 @@ class OrcamentoTest extends TestCase
         $this->assertEquals(10, $material->fresh()->quantidade_estoque);
     }
 
+    // "Aprovar um reprova os demais": o que o aprovado atual devolve ao ser
+    // reprovado conta como estoque disponível para o novo. Ex.: estoque 10,
+    // aprovado A usa 10 (sobra 0); aprovar B (também 10) troca um pelo outro.
+    public function test_trocar_o_aprovado_conta_o_estoque_que_o_anterior_devolve(): void
+    {
+        $servico  = Servico::factory()->create();
+        $material = Material::factory()->create(['quantidade_estoque' => 10]);
+
+        $a = Orcamento::factory()->create(['servico_id' => $servico->id]);
+        $a->materiais()->attach($material->id, ['quantidade' => 10, 'preco_unitario_snapshot' => $material->preco_unitario]);
+        $b = Orcamento::factory()->create(['servico_id' => $servico->id]);
+        $b->materiais()->attach($material->id, ['quantidade' => 10, 'preco_unitario_snapshot' => $material->preco_unitario]);
+
+        $this->patchJson("/api/orcamentos/{$a->id}/aprovar")->assertOk();
+        $this->assertEquals(0, $material->fresh()->quantidade_estoque);
+
+        $this->patchJson("/api/orcamentos/{$b->id}/aprovar")->assertOk();
+
+        $this->assertEquals('reprovado', $a->fresh()->status);
+        $this->assertEquals('aprovado', $b->fresh()->status);
+        $this->assertEquals(0, $material->fresh()->quantidade_estoque);
+    }
+
+    public function test_trocar_o_aprovado_ainda_barra_quando_nem_com_a_devolucao_ha_estoque(): void
+    {
+        $servico  = Servico::factory()->create();
+        $material = Material::factory()->create(['nome' => 'Tinta', 'quantidade_estoque' => 10]);
+
+        $a = Orcamento::factory()->create(['servico_id' => $servico->id]);
+        $a->materiais()->attach($material->id, ['quantidade' => 10, 'preco_unitario_snapshot' => $material->preco_unitario]);
+        $b = Orcamento::factory()->create(['servico_id' => $servico->id]);
+        $b->materiais()->attach($material->id, ['quantidade' => 12, 'preco_unitario_snapshot' => $material->preco_unitario]);
+
+        $this->patchJson("/api/orcamentos/{$a->id}/aprovar")->assertOk();
+
+        $this->patchJson("/api/orcamentos/{$b->id}/aprovar")
+             ->assertUnprocessable()
+             ->assertJsonPath('message', 'Estoque insuficiente para: Tinta.');
+
+        // Nada muda: A continua aprovado e B continua reprovado (aprovar A já o reprovou).
+        $this->assertEquals('aprovado', $a->fresh()->status);
+        $this->assertEquals('reprovado', $b->fresh()->status);
+        $this->assertEquals(0, $material->fresh()->quantidade_estoque);
+    }
+
+    // Quantidades com casas decimais: 1,1 − 0,8 dá 0,30000000000000004 em
+    // ponto flutuante, e isso não pode virar "estoque insuficiente" quando
+    // sobra exatamente 0,3.
+    public function test_editar_aprovado_com_decimais_usa_a_precisao_do_estoque(): void
+    {
+        $material  = Material::factory()->create(['quantidade_estoque' => 1.1]);
+        $orcamento = Orcamento::factory()->create();
+        $orcamento->materiais()->attach($material->id, ['quantidade' => 0.8, 'preco_unitario_snapshot' => $material->preco_unitario]);
+
+        $this->patchJson("/api/orcamentos/{$orcamento->id}/aprovar")->assertOk();
+        $this->assertEquals(0.3, round((float) $material->fresh()->quantidade_estoque, 3));
+
+        $this->putJson("/api/orcamentos/{$orcamento->id}", ['materiais' => [['id' => $material->id, 'quantidade' => 1.1]]])
+             ->assertOk();
+
+        $this->assertEquals(0, round((float) $material->fresh()->quantidade_estoque, 3));
+    }
+
+    // Material excluído do cadastro depois da aprovação: reprovar (ou excluir)
+    // o orçamento devolve o estoque dele mesmo assim.
+    public function test_reprovar_devolve_estoque_de_material_excluido_depois_da_aprovacao(): void
+    {
+        $material  = Material::factory()->create(['quantidade_estoque' => 10]);
+        $orcamento = Orcamento::factory()->create();
+        $orcamento->materiais()->attach($material->id, ['quantidade' => 4, 'preco_unitario_snapshot' => $material->preco_unitario]);
+
+        $this->patchJson("/api/orcamentos/{$orcamento->id}/aprovar")->assertOk();
+        $material->delete();
+
+        $this->patchJson("/api/orcamentos/{$orcamento->id}/reprovar")->assertOk();
+
+        $this->assertEquals(10, Material::withTrashed()->find($material->id)->quantidade_estoque);
+    }
+
     public function test_lista_pendentes_com_servico_do_mais_antigo_ao_mais_novo(): void
     {
         $servico = Servico::factory()->create(['titulo' => 'Pintura da sala']);

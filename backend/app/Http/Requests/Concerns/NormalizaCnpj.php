@@ -11,7 +11,8 @@ trait NormalizaCnpj
 {
     protected function prepareForValidation(): void
     {
-        if (! $this->filled('cnpj')) {
+        // Só normaliza texto; outro tipo segue para a validação, que o recusa.
+        if (! $this->filled('cnpj') || ! is_string($this->input('cnpj'))) {
             return;
         }
 

@@ -83,6 +83,15 @@ function Clientes() {
     }
   }
 
+  // Busca de destino da transferência (sem o próprio cliente). Estável entre
+  // renderizações: uma função nova a cada render refazia a busca à toa.
+  const idTransferindo = transferindoCliente?.id
+  const buscarDestinosTransferencia = useCallback(
+    (termo, pag) => buscarClientesPagina(termo, pag)
+      .then(r => ({ ...r, itens: r.itens.filter(o => o.id !== idTransferindo) })),
+    [idTransferindo]
+  )
+
   const cancelarTransferencia = () => {
     setTransferindoCliente(null)
     setNovoClienteId('')
@@ -176,8 +185,7 @@ function Clientes() {
               valor={novoClienteTexto}
               onChangeTexto={texto => { setNovoClienteTexto(texto); setNovoClienteId('') }}
               onSelecionar={o => { setNovoClienteTexto(o.nome); setNovoClienteId(o.id) }}
-              buscarPagina={(termo, pag) => buscarClientesPagina(termo, pag)
-                .then(r => ({ ...r, itens: r.itens.filter(o => o.id !== c.id) }))}
+              buscarPagina={buscarDestinosTransferencia}
               renderItem={o => <span>{o.nome}</span>}
               placeholder="Buscar cliente..."
               className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-600"

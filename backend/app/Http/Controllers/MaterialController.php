@@ -59,7 +59,12 @@ class MaterialController extends Controller
 
     public function update(UpdateMaterialRequest $request, Material $material)
     {
-        $material->update($request->validated());
+        $data = $request->validated();
+        // Igual ao cadastro: estoque vazio vale zero (a coluna não aceita vazio).
+        if (array_key_exists('quantidade_estoque', $data) && $data['quantidade_estoque'] === null) {
+            $data['quantidade_estoque'] = 0;
+        }
+        $material->update($data);
         return new MaterialResource($material);
     }
 

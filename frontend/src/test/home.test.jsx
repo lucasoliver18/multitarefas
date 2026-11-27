@@ -85,6 +85,14 @@ describe('tela inicial', () => {
     expect(screen.getByTestId('local')).toHaveTextContent('/orcamentos/8')
   })
 
+  it('tempo médio de exatamente 1 dia fica no singular', async () => {
+    api.get.mockResolvedValue({ data: { ...resumo, desempenho: { ...resumo.desempenho, tempo_medio_conclusao_dias: 1 } } })
+    montar()
+
+    expect(await screen.findByText('1 dia')).toBeInTheDocument()
+    expect(screen.queryByText('1 dias')).not.toBeInTheDocument()
+  })
+
   it('sem pendências mostra "Tudo em dia"', async () => {
     const semNada = Object.fromEntries(Object.keys(resumo.atencao).map(k => [k, 0]))
     api.get.mockResolvedValue({ data: { ...resumo, atencao: semNada } })

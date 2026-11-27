@@ -27,6 +27,14 @@ export function useComboboxAssincrono({ buscarPagina, minCaracteres = 1 }) {
         setTemMais(proximaTemMais)
         setPagina(paginaAlvo)
       })
+      // Falha na busca (sem conexão, servidor fora do ar...): não deixa o erro
+      // escapar sem tratamento e para o "carregar mais" (senão a lista tentaria
+      // de novo sem parar). Uma nova digitação busca outra vez.
+      .catch(() => {
+        if (idRequisicao !== requisicaoAtual.current) return
+        if (paginaAlvo === 1) setItens([])
+        setTemMais(false)
+      })
       .finally(() => {
         if (idRequisicao !== requisicaoAtual.current) return
         setLoadingFlag(false)

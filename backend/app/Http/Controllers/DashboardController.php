@@ -7,8 +7,8 @@ use App\Models\Material;
 use App\Models\Orcamento;
 use App\Models\Servico;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -72,16 +72,20 @@ class DashboardController extends Controller
 
     private function financeiro(): array
     {
-        $aprovados = Orcamento::with(['materiais', 'servico'])->where('status', 'aprovado')->whereHas('servico')->get();
-        $pendentes = Orcamento::with('materiais')->where('status', 'pendente')->whereHas('servico')->get();
-
-        $aReceber = $aprovados->filter(fn ($o) => $o->servico->status === 'finalizado' && ! $o->servico->pago);
+        // A receber: aprovados de serviços finalizados e ainda não pagos.
+        [$aReceber, $aReceberQtd] = $this->somaValorFinal(
+            Orcamento::where('status', 'aprovado')
+                ->whereHas('servico', fn ($q) => $q->where('status', 'finalizado')->where('pago', false))
+        );
+        [$emNegociacao, $emNegociacaoQtd] = $this->somaValorFinal(
+            Orcamento::where('status', 'pendente')->whereHas('servico')
+        );
 
         return [
-            'a_receber'           => $this->soma($aReceber),
-            'a_receber_qtd'       => $aReceber->count(),
-            'em_negociacao'       => $this->soma($pendentes),
-            'em_negociacao_qtd'   => $pendentes->count(),
+            'a_receber'           => $aReceber,
+            'a_receber_qtd'       => $aReceberQtd,
+            'em_negociacao'       => $emNegociacao,
+            'em_negociacao_qtd'   => $emNegociacaoQtd,
         ];
     }
 
@@ -138,10 +142,9 @@ class DashboardController extends Controller
     {
         $finalizados = Servico::whereBetween('finalizado_em', [$inicio, $fim])->get(['created_at', 'finalizado_em']);
 
-        $aprovadosNoPeriodo = Orcamento::with('materiais')
-            ->whereBetween('aprovado_em', [$inicio, $fim])
-            ->whereHas('servico')
-            ->get();
+        [$aprovado, $aprovadoQtd] = $this->somaValorFinal(
+            Orcamento::whereBetween('aprovado_em', [$inicio, $fim])->whereHas('servico')
+        );
 
         $decididos = Orcamento::whereIn('status', ['aprovado', 'reprovado'])
             ->whereBetween('updated_at', [$inicio, $fim])
@@ -154,8 +157,8 @@ class DashboardController extends Controller
             ->pluck('total', 'tag');
 
         return [
-            'aprovado'                => $this->soma($aprovadosNoPeriodo),
-            'aprovado_qtd'            => $aprovadosNoPeriodo->count(),
+            'aprovado'                => $aprovado,
+            'aprovado_qtd'            => $aprovadoQtd,
             'finalizados'             => $finalizados->count(),
             'finalizados_anterior'    => Servico::where('finalizado_em', '>=', $inicioAnterior)->where('finalizado_em', '<', $inicio)->count(),
             'criados'                 => Servico::whereBetween('created_at', [$inicio, $fim])->count(),
@@ -193,8 +196,27 @@ class DashboardController extends Controller
         return $eventos->sortByDesc(fn ($e) => $e['data'])->take($limite)->values()->all();
     }
 
-    private function soma(Collection $orcamentos): float
+    // Soma do valor final (e quantidade) dos orçamentos da consulta. O custo
+    // dos materiais (quantidade × preço guardado no orçamento) é somado no
+    // banco, sem carregar orçamento por orçamento com seus materiais; a margem
+    // segue a mesma conta de Orcamento::valor_final.
+    private function somaValorFinal(Builder $orcamentos): array
     {
-        return round($orcamentos->sum('valor_final'), 2);
+        $custos = DB::table('orcamento_material')
+            ->select('orcamento_id', DB::raw('SUM(quantidade * preco_unitario_snapshot) as custo'))
+            ->groupBy('orcamento_id');
+
+        $linhas = $orcamentos->toBase()
+            ->leftJoinSub($custos, 'custos', 'custos.orcamento_id', '=', 'orcamentos.id')
+            ->get(['orcamentos.margem_lucro', 'orcamentos.tipo_margem', DB::raw('COALESCE(custos.custo, 0) as custo')]);
+
+        $total = $linhas->sum(function ($o) {
+            $custo = (float) $o->custo;
+            $margem = (float) $o->margem_lucro;
+
+            return $o->tipo_margem === 'valor' ? $custo + $margem : $custo * (1 + $margem / 100);
+        });
+
+        return [round($total, 2), $linhas->count()];
     }
 }

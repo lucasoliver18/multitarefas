@@ -24,7 +24,8 @@ final class LimitesBanco
     public const MARGEM_PERCENTUAL_MAX = 999.99;
     public const MARGEM_VALOR_MAX = 99999999.99;
 
-    public static function margemMax(?string $tipo): float
+    // `mixed`: o tipo vem da requisição antes de ser validado (pode nem ser texto).
+    public static function margemMax(mixed $tipo): float
     {
         return $tipo === 'valor' ? self::MARGEM_VALOR_MAX : self::MARGEM_PERCENTUAL_MAX;
     }

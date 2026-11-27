@@ -74,6 +74,52 @@ class TratamentoErrosTest extends TestCase
         ])->assertCreated();
     }
 
+    // Campos enviados com o tipo errado (ex.: uma lista no lugar de um texto)
+    // viram erro de validação (422) com mensagem, nunca erro interno (500).
+    public function test_campos_com_tipo_errado_sao_barrados_na_validacao(): void
+    {
+        $servico = Servico::factory()->create(['status' => 'pendente']);
+        $cliente = Cliente::factory()->create(['tipo_pessoa' => 'fisica', 'cpf' => '529.982.247-25']);
+
+        $this->putJson("/api/servicos/{$servico->id}", ['status' => ['finalizado']])
+             ->assertUnprocessable()->assertJsonValidationErrors(['status']);
+
+        $this->postJson('/api/clientes', ['nome' => 'A', 'tipo_pessoa' => 'fisica', 'cpf' => ['529.982.247-25']])
+             ->assertUnprocessable()->assertJsonValidationErrors(['cpf']);
+        $this->putJson("/api/clientes/{$cliente->id}", ['cpf' => ['x']])
+             ->assertUnprocessable()->assertJsonValidationErrors(['cpf']);
+        $this->postJson('/api/clientes', ['nome' => 'B', 'tipo_pessoa' => 'juridica', 'cnpj' => ['11.222.333/0001-81']])
+             ->assertUnprocessable()->assertJsonValidationErrors(['cnpj']);
+
+        $this->postJson('/api/orcamentos', ['servico_id' => [$servico->id], 'titulo' => 'P', 'margem_lucro' => 1])
+             ->assertUnprocessable()->assertJsonValidationErrors(['servico_id']);
+        $this->postJson('/api/orcamentos', ['servico_id' => $servico->id, 'titulo' => 'P', 'margem_lucro' => 1, 'tipo_margem' => ['valor']])
+             ->assertUnprocessable()->assertJsonValidationErrors(['tipo_margem']);
+        $orcamento = $this->postJson('/api/orcamentos', ['servico_id' => $servico->id, 'titulo' => 'P', 'margem_lucro' => 1])
+             ->assertCreated()->json('id');
+        $this->putJson("/api/orcamentos/{$orcamento}", ['tipo_margem' => ['valor'], 'margem_lucro' => 1])
+             ->assertUnprocessable()->assertJsonValidationErrors(['tipo_margem']);
+
+        $this->postJson('/api/marcas', ['nome' => ['Suvinil']])
+             ->assertUnprocessable()->assertJsonValidationErrors(['nome']);
+    }
+
+    // Campos que o banco não aceita vazios: enviar null usa o padrão do cadastro
+    // (não pago / estoque zero) em vez de virar erro interno.
+    public function test_null_em_campo_obrigatorio_do_banco_usa_o_valor_padrao(): void
+    {
+        $cliente = Cliente::factory()->create();
+
+        $id = $this->postJson('/api/servicos', [
+            'titulo' => 'Sem pago', 'cliente_id' => $cliente->id, 'prioridade' => 'media', 'status' => 'pendente', 'pago' => null,
+        ])->assertCreated()->assertJsonPath('pago', false)->json('id');
+        $this->assertFalse(Servico::find($id)->pago);
+
+        $material = Material::factory()->create(['quantidade_estoque' => 8]);
+        $this->putJson("/api/materiais/{$material->id}", ['quantidade_estoque' => null])->assertOk();
+        $this->assertEquals(0, $material->fresh()->quantidade_estoque);
+    }
+
     public function test_orcamento_nao_aceita_material_excluido(): void
     {
         $servico = Servico::factory()->create();

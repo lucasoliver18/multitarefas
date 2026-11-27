@@ -28,4 +28,10 @@ describe('cadastro de material', () => {
       { id: 3, quantidade: '9', quantidade_estoque: null },
     ]).map(i => i.id)).toEqual([1])
   })
+
+  it('compara o estoque na precisão de 3 casas (sem aviso falso por ponto flutuante)', () => {
+    // 0,7 + 0,1 = 0,7999999999999999 em ponto flutuante: pedir 0,8 cabe no estoque.
+    expect(materiaisComEstoqueInsuficiente([{ id: 1, quantidade: '0.8', quantidade_estoque: 0.7 + 0.1 }])).toEqual([])
+    expect(materiaisComEstoqueInsuficiente([{ id: 1, quantidade: '0.801', quantidade_estoque: 0.7 + 0.1 }]).map(i => i.id)).toEqual([1])
+  })
 })

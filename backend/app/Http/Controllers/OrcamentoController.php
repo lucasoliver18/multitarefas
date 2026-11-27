@@ -149,7 +149,16 @@ class OrcamentoController extends Controller
             ], 422);
         }
 
-        $faltas = $this->estoque->faltasParaAprovar($orcamento);
+        // Só um orçamento aprovado por serviço: aprovar um reprova os demais. O
+        // que o aprovado atual devolve ao estoque conta como disponível para
+        // este (trocar um aprovado por outro não exige estoque para os dois).
+        $outros = Orcamento::where('servico_id', $orcamento->servico_id)
+            ->where('id', '!=', $orcamento->id)
+            ->where('status', '!=', 'reprovado')
+            ->with('materiais')
+            ->get();
+
+        $faltas = $this->estoque->faltasParaAprovar($orcamento, $this->estoque->devolucoes($outros));
         if ($faltas) {
             return response()->json([
                 'message' => EstoqueOrcamento::mensagemFalta(array_column($faltas, 'nome')),
@@ -157,21 +166,14 @@ class OrcamentoController extends Controller
             ], 422);
         }
 
-        DB::transaction(function () use ($orcamento) {
-            $this->estoque->debitar($orcamento);
-            $orcamento->update(['status' => 'aprovado']);
-
-            // Só um orçamento aprovado por serviço: aprovar um reprova os demais.
-            $outros = Orcamento::where('servico_id', $orcamento->servico_id)
-                ->where('id', '!=', $orcamento->id)
-                ->where('status', '!=', 'reprovado')
-                ->with('materiais')
-                ->get();
-
+        DB::transaction(function () use ($orcamento, $outros) {
             foreach ($outros as $outro) {
                 $this->estoque->devolver($outro);
                 $outro->update(['status' => 'reprovado']);
             }
+
+            $this->estoque->debitar($orcamento);
+            $orcamento->update(['status' => 'aprovado']);
         });
 
         return new OrcamentoResource($orcamento->load('materiais'));

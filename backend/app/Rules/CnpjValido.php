@@ -19,7 +19,13 @@ class CnpjValido implements ValidationRule
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        $cnpj = self::normalizar($value);
+        // Lista, objeto etc. não são CNPJ (e não podem virar texto sem erro).
+        if (! is_string($value) && ! is_int($value)) {
+            $fail('O :attribute informado é inválido.');
+            return;
+        }
+
+        $cnpj = self::normalizar((string) $value);
 
         if (! preg_match('/^[A-Z0-9]{12}\d{2}$/', $cnpj) || preg_match('/^(.)\1{13}$/', $cnpj)) {
             $fail('O :attribute informado é inválido.');

@@ -26,6 +26,19 @@ class AuthTest extends TestCase
             ->assertJsonValidationErrors(['email']);
     }
 
+    // Limite de tentativas de login (5 por minuto): a 6ª recebe uma mensagem
+    // amigável, não um erro técnico.
+    public function test_excesso_de_tentativas_de_login_tem_mensagem_amigavel(): void
+    {
+        for ($i = 0; $i < 5; $i++) {
+            $this->postJson('/api/auth/login', ['email' => 'dono@empresa.com', 'password' => 'errada'])->assertUnprocessable();
+        }
+
+        $this->postJson('/api/auth/login', ['email' => 'dono@empresa.com', 'password' => 'errada'])
+            ->assertStatus(429)
+            ->assertExactJson(['message' => 'Muitas tentativas. Aguarde um instante.']);
+    }
+
     public function test_login_rejeita_email_inexistente(): void
     {
         $this->postJson('/api/auth/login', ['email' => 'estranho@gmail.com', 'password' => 'qualquer'])

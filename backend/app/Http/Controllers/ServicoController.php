@@ -42,6 +42,8 @@ class ServicoController extends Controller
     {
         $data = $request->validated();
         $data['cliente'] = Cliente::find($data['cliente_id'])->nome;
+        // A coluna não aceita vazio: sem informar, o serviço nasce não pago.
+        $data['pago'] = (bool) ($data['pago'] ?? false);
         $servico = Servico::create($data);
         return new ServicoResource($this->comOrcamentoAprovado($servico->load('clienteRelacao')));
     }

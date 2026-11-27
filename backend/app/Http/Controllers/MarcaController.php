@@ -30,7 +30,10 @@ class MarcaController extends Controller
 
     public function store(Request $request)
     {
-        $request->merge(['nome' => trim(preg_replace('/\s+/', ' ', (string) $request->input('nome')))]);
+        // Só normaliza texto; outro tipo segue para a validação, que o recusa.
+        if (is_string($request->input('nome'))) {
+            $request->merge(['nome' => trim(preg_replace('/\s+/', ' ', $request->input('nome')))]);
+        }
         $dados = $request->validate([
             'nome' => ['required', 'string', 'max:255', Rule::unique('marcas', 'nome')],
         ], [

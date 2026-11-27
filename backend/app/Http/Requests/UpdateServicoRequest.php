@@ -31,7 +31,8 @@ class UpdateServicoRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
-            if (!$this->filled('status')) {
+            // Status que não é texto já foi recusado pela regra "in".
+            if (! $this->filled('status') || ! is_string($this->input('status'))) {
                 return;
             }
 
